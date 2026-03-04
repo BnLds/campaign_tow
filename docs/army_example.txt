@@ -1,0 +1,29 @@
+## Zboooiiiiing [500 pts]
+Warhammer: The Old World, Tribus des Orques & Gobelins, Colonne de Bataille
+
+### Personnages [102 pts]
+- Chef de Guerre Gobelin de la Nuit [102 pts] 
+ -# (Arme de base, Lance de cavalerie, Armure légère, Bouclier, Général, Squig des Cavernes Géant, Lame de Morsure)
+ - __Règles spéciales:__ *Peur des Elfes, Haine (Nains), Cri de Ralliement, Bande de Guerre*
+ - [Night Goblin Warboss] M(4) CC(5) CT(3) F(4) E(4) PV(3) I(5) A(4) Cd(6)
+ - [Giant Cave Squig] M(3D6) CC(4) CT(-) F(5) E(-) PV((+1)) I(3) A(3) Cd(-)
+### Unités de base [159 pts]
+- 15 Troupeau de Squigs Gobelins de la Nuit [159 pts] 
+ -# (3x Berger Gobelin de la Nuit)
+ - __Règles spéciales:__ *Haine (Nains), Immunisé à la Psychologie, Impétueux, Solitaire, Bande Hétéroclite, Ordre Dispersé, Tirailleurs, Squigs Sauvages, Bande de Guerre*
+ - [Squig Herder] M(4) CC(2) CT(3) F(3) E(3) PV(1) I(3) A(1) Cd(6)
+ - [Cave Squig] M(4) CC(4) CT(-) F(5) E(3) PV(1) I(4) A(2) Cd(3)
+### Unités spéciales [144 pts]
+- 12 Bande de Gobelins de la Nuit sur Squigs [144 pts] 
+ -# (Armes de base)
+ - __Règles spéciales:__ *Haine (Nains), Immunisé à la Psychologie, Touches d’Impact (1), Solitaire, Ordre Dispersé, Mouvement Aléatoire, Tirailleurs, Bande de Guerre*
+ - [Squig Hopper] M(-) CC(2) CT(3) F(3) E(3) PV(1) I(3) A(1) Cd(5)
+ - [Boss] M(-) CC(2) CT(3) F(3) E(3) PV(1) I(3) A(2) Cd(6)
+ - [ Bounder Squig] M(3D6) CC(4) CT(-) F(5) E(-) PV(-) I(4) A(2) Cd(-)
+### Unités rares [95 pts]
+- Squigs Broyeurs [95 pts] 
+ -# (Colossale gueule garnie de crocs, Armure lourde)
+ - __Règles spéciales:__ *Ordre Serré, Haine (Nains), Immunisé à la Psychologie, Touches d’Impact (D6), Sproutch, Grande Cible, Attaques Aléatoires, Mouvement Aléatoire, Chaînes & Boulets, Attaques de Piétinement (D3), Timmm-berrr!*
+ - [Mangler Squig] M(3D6) CC(4) CT(0) F(6) E(5) PV(4) I(3) A(D6) Cd(4)
+
+*Créé avec "Old World Builder"* - https://old-world-builder.com
