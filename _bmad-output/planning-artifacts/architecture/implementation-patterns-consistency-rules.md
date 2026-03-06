@@ -1,0 +1,168 @@
+# Implementation Patterns & Consistency Rules
+
+## Pattern Categories Defined
+
+**Critical Conflict Points Identified:** 12 areas where AI agents could make different choices, now resolved with explicit patterns.
+
+## Naming Patterns
+
+**Database Naming Conventions:**
+- Tables: `snake_case`, plural → `players`, `armies`, `units`, `sub_profiles`, `unit_deltas`
+- Columns: `snake_case` → `player_id`, `army_name`, `created_at`
+- Foreign keys: `<singular_table>_id` → `player_id`, `army_id`, `match_id`
+- Indexes: `idx_<table>_<columns>` → `idx_units_army_id`
+
+**Code Naming Conventions:**
+- Variables / functions: `camelCase` → `getArmyById`, `currentPlayer`
+- React components: `PascalCase` → `UnitCard`, `ActionChip`
+- Types / interfaces: `PascalCase` → `Player`, `UnitWithDeltas`
+- Constants: `UPPER_SNAKE_CASE` → `XP_THRESHOLDS_UNIT`, `MAX_TIER_LEVEL`
+- Files: `kebab-case.tsx` → `unit-card.tsx`, `action-chip.tsx`
+- **Explicit rule:** File names are `kebab-case`, but exports are always `PascalCase` for components and types, `camelCase` for functions.
+
+## Structure Patterns
+
+**Project Organization:**
+
+```
+src/
+  components/
+    ui/                ← shadcn primitives (Button, Input, Select, etc.)
+    unit-card.tsx       ← custom domain components
+    timeline-entry.tsx
+    action-chip.tsx
+    army-list-item.tsx
+    tab-bar.tsx
+    create-match-fab.tsx
+    ref-table.tsx
+    tier-up-screen.tsx
+  db/
+    schema.ts           ← Drizzle schema (all tables, single file for MVP)
+    index.ts            ← DB connection + export client
+    seed.ts             ← Seed script using real OWB parser + army_example.txt
+  lib/
+    xp-calculator.ts    ← domain logic (tiers, thresholds)
+    delta-composer.ts    ← base stats + deltas composition
+    owb-parser.ts       ← isolated OWB parser module
+    auth.ts             ← session/cookie helpers + createMiddleware()
+    validators.ts       ← Zod schemas exported from drizzle-zod
+  routes/
+    __root.tsx
+    index.tsx            ← Campaign view
+    armies/
+      index.tsx          ← Army list
+      $armyId.tsx        ← Army detail view
+    references.tsx
+    login.tsx
+    match/
+      new.tsx            ← Match creation
+      $matchId/
+        post-match.tsx   ← Post-match flow
+e2e/
+  login-and-browse.spec.ts
+  post-match-flow.spec.ts
+  cross-army-view.spec.ts
+playwright.config.ts
+```
+
+**Key structural rules:**
+- Server functions: co-located in route files via `createServerFn()` — NO separate `server/` directory
+- Shared business logic: always in `src/lib/` — never duplicated in components or route files
+- Tests: co-located for unit tests (`owb-parser.test.ts` next to `owb-parser.ts`), root-level `e2e/` for Playwright
+- Test fixtures: `src/lib/__fixtures__/` for OWB sample files and test data
+
+## Format Patterns
+
+**Server Function Return Types:**
+
+Mutations use a typed discriminated union:
+```typescript
+type ServerResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: { code: ErrorCode; message: string } }
+
+type ErrorCode = 'UNAUTHORIZED' | 'FORBIDDEN' | 'NOT_FOUND' | 'VALIDATION_ERROR'
+```
+
+Loaders (read operations) return data directly and throw on error — caught by React error boundary. No `ServerResult` wrapper for loaders.
+
+**Dates:** ISO 8601 strings in DB and transit. Localized formatting only in UI layer.
+
+## Communication Patterns
+
+**State Management:**
+- Server state: TanStack Query — single source of truth for all server data
+- Local UI state: React `useState` — modal open/close, local toggles, form step tracking
+- No global state store (no Zustand, no Redux)
+
+**Cache Invalidation:**
+- After mutations, invalidate relevant TanStack Query keys
+- Pattern: `queryClient.invalidateQueries({ queryKey: ['armies', armyId] })`
+
+## Process Patterns
+
+**Auth Middleware (TanStack Start idiomatic):**
+```typescript
+import { createMiddleware } from '@tanstack/start'
+
+const authMiddleware = createMiddleware().server(async ({ next }) => {
+  const session = await getSession()
+  if (!session) throw new Error('UNAUTHORIZED')
+  return next({ context: { session } })
+})
+
+const armyOwnerMiddleware = createMiddleware().server(async ({ next, context, data }) => {
+  const army = await db.query.armies.findFirst({ where: eq(armies.id, data.armyId) })
+  if (army.playerId !== context.session.playerId && !context.session.isAdmin)
+    throw new Error('FORBIDDEN')
+  return next({ context: { ...context, army } })
+})
+```
+
+**Validation:**
+- Always validated server-side in server functions via Zod
+- Client-side: TanStack Form with same Zod schema (via adapter) for immediate UX feedback
+- Server is source of truth — never trust client
+
+**Error UI:**
+- Error boundary (global) for unrecoverable errors
+- Toast (shadcn Sonner) for recoverable errors and success confirmations
+- Loading states managed by TanStack Query (`isPending`, `isError`)
+
+**Domain Logic:**
+- Centralized in `src/lib/` — pure functions, unit-testable
+- Examples: `calculateTier(xp, entityType)`, `composeStats(baseStats, deltas)`, `getAvailableImprovements(tier, entityType)`
+- NEVER duplicated in components or server functions — always imported from `lib/`
+
+## Testing Strategy
+
+| Level | Tool | Scope | When |
+|---|---|---|---|
+| Unit | Vitest | `src/lib/` (XP calculator, delta composer, OWB parser) | MVP — mandatory |
+| Integration | Vitest + test DB | Server functions + auth middleware | MVP — critical mutations |
+| E2E | Playwright | Full user flows | MVP — 3 critical happy paths |
+
+**E2E Scenarios (MVP):**
+1. Login → browse timeline → view unit card
+2. Create match → complete post-match flow (XP + tier-up + improvement)
+3. Browse opponent army → view unit with campaign deltas
+
+**Test Fixtures:**
+- OWB parser: `src/lib/__fixtures__/owb-sample.txt` (from `docs/army_example.txt`)
+- DB seed: `src/db/seed.ts` — uses real OWB parser to populate test data. Shared between dev and E2E setup.
+
+**CI Pipeline (GitHub Actions):**
+```
+lint → typecheck → vitest → playwright
+```
+Sequential, fail-fast. Playwright only runs if all previous steps pass.
+
+## Enforcement Guidelines
+
+**All AI Agents MUST:**
+- Follow naming conventions exactly (snake_case DB, camelCase code, PascalCase components, kebab-case files)
+- Place server functions in route files, shared logic in `src/lib/`
+- Use `ServerResult<T>` for mutations, direct return + throw for loaders
+- Use `createMiddleware()` for auth — not inline checks
+- Import domain logic from `src/lib/` — never reimplement XP/delta/tier logic locally
+- Write unit tests for any new function in `src/lib/`
