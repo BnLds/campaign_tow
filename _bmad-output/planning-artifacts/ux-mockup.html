@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Campaign TOW — Refonte UX v5.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<style>
+    :root {
+      --bg: #0f0d0b;
+      --panel: #171310;
+      --panel-2: #1e1915;
+      --stroke: #2b241e;
+      --gold: #d4a843;
+      --gold-2: #f0d58b;
+      --cream: #f6f1e9;
+      --cream-2: #ebe4d9;
+      --text: #171310;
+      --muted: #85796b;
+      --brand: #334155;
+      --brand-2: #1e293b;
+      --success: #2d7a3a;
+      --success-bg: #edf8ef;
+      --danger: #b82c2c;
+      --danger-bg: #fdf0f0;
+      --info: #2a5ab8;
+      --info-bg: #eef4ff;
+      --shadow: 0 12px 34px rgba(0,0,0,.34);
+      --phone-shadow: 0 24px 70px rgba(0,0,0,.55);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(212,168,67,.1), transparent 28%),
+        linear-gradient(180deg, #15110d, #0f0d0b 40%);
+      color: white;
+      min-height: 100vh;
+    }
+
+    .showcase {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 42px 24px 72px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .hero h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 30px;
+      letter-spacing: .08em;
+      color: var(--gold);
+      margin: 0 0 10px;
+    }
+
+    .hero p {
+      margin: 0 auto;
+      max-width: 900px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: #a79a8b;
+    }
+
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin: 26px 0 42px;
+    }
+
+    .principle {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .principle-kicker {
+      display: inline-flex;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(212,168,67,.12);
+      color: var(--gold-2);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .principle h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: #f7efe2;
+    }
+
+    .principle p {
+      margin: 0;
+      font-size: 12px;
+      color: #aa9d8f;
+      line-height: 1.55;
+    }
+
+    .section {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      padding: 24px;
+      margin-bottom: 34px;
+      box-shadow: var(--shadow);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .section-title {
+      font-family: 'Cinzel', serif;
+      color: var(--gold);
+      font-size: 18px;
+      margin: 0 0 6px;
+      letter-spacing: .04em;
+    }
+
+    .section-sub {
+      margin: 0;
+      font-size: 13px;
+      color: #a89a8c;
+      line-height: 1.55;
+      max-width: 780px;
+    }
+
+    .phones-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 28px;
+      justify-content: center;
+    }
+
+    .phone-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .phone-col-label {
+      font-family: 'Cinzel', serif;
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: .04em;
+      text-align: center;
+    }
+
+    .phone-col-sub {
+      max-width: 320px;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #988b7d;
+    }
+
+    .phone {
+      width: 336px;
+      height: 690px;
+      background: linear-gradient(180deg, #f7f1e8, #f0e8dd 100%);
+      border-radius: 34px;
+      border: 4px solid #1d1a17;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 0 1px rgba(212,168,67,.12), var(--phone-shadow);
+    }
+
+    .statusbar {
+      height: 20px;
+      flex-shrink: 0;
+      background: #f7f1e8;
+    }
+
+    .app-header {
+      flex-shrink: 0;
+      padding: 8px 12px 8px;
+      border-bottom: 1px solid #ddd2c3;
+      background: rgba(250,246,240,.88);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .header-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .eyebrow {
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .screen-title {
+      font-family: 'Cinzel', serif;
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.2;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .screen-sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .header-ghost-btn {
+      min-width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid #d9cfbf;
+      color: var(--brand);
+      background: #fff9f2;
+      font-weight: 800;
+      box-shadow: 0 2px 10px rgba(0,0,0,.05);
+    }
+
+    .header-meta-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 0;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid #ddd2c3;
+      background: #fffaf3;
+      color: #5f5447;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .content {
+      flex: 1;
+      overflow: auto;
+      padding: 12px 12px 88px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0)),
+        #f1eade;
+    }
+
+    .content::-webkit-scrollbar { width: 4px; }
+    .content::-webkit-scrollbar-thumb { background: #d6c8b4; border-radius: 999px; }
+
+    .block-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 6px 6px 10px;
+    }
+
+    .block-title span:first-child {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: #938677;
+      text-transform: uppercase;
+    }
+
+    .block-link {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--brand);
+    }
+
+    
+    .todo-strip {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 1px 1px 4px;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+      margin: 6px 0 6px;
+    }
+
+    .todo-strip::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .todo-strip::-webkit-scrollbar-thumb {
+      background: #d6cec3;
+      border-radius: 999px;
+    }
+
+    .todo-item {
+      min-width: 144px;
+      max-width: 144px;
+      flex: 0 0 144px;
+      scroll-snap-align: start;
+      background: linear-gradient(180deg, #f8fbff, #f2f6fc);
+      border: 1px solid #d7e1ef;
+      border-radius: 14px;
+      padding: 10px 10px 9px;
+      box-shadow: 0 8px 18px rgba(0,0,0,.05);
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .todo-item:active {
+      transform: translateY(1px);
+    }
+
+    .todo-item h4 {
+      margin: 0 0 3px;
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.25;
+    }
+
+    .todo-item::before {
+      content: '';
+      display: block;
+      width: 28px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--brand);
+      opacity: .82;
+      margin-bottom: 8px;
+    }
+
+    .todo-item p {
+      margin: 0;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .todo-item .cta-row {
+      margin-top: 8px;
+    }
+
+    .action-cluster {
+      margin: 0 4px 12px;
+      padding: 8px 9px 7px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(233,240,250,.9), rgba(240,245,252,.72));
+      border: 1px solid #d7e1ef;
+      box-shadow: 0 8px 20px rgba(51,65,85,.05);
+    }
+
+    .action-cluster .block-title {
+      margin: 0 2px 8px;
+    }
+
+    .action-count {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--brand);
+      opacity: .82;
+    }
+
+
+    .history-list {
+      margin: 0 4px;
+    }
+
+    .history-list .card {
+      position: relative;
+      margin: 0 0 8px;
+    }
+
+    .history-list .card:last-child {
+      margin-bottom: 0;
+    }
+
+    .history-list .card:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: -9px;
+      transform: translateX(-50%);
+      height: 10px;
+      border-left: 1px dashed rgba(166, 150, 131, .55);
+      pointer-events: none;
+    }
+
+.card {
+      background: rgba(255,251,245,.92);
+      border: 1px solid #e0d5c8;
+      border-radius: 16px;
+      padding: 10px 12px;
+      margin: 0 4px 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.06);
+    }
+
+    .invite-card {
+      background: var(--info-bg);
+      border-color: #bfd0f7;
+    }
+
+    .match-card.pending-win {
+      border-left: 4px solid var(--success);
+      background: linear-gradient(180deg, #fffdf9, #fffaf4);
+    }
+
+    .match-card.pending-loss {
+      border-left: 4px solid var(--danger);
+      background: linear-gradient(180deg, #fffdf9, #fffaf4);
+    }
+
+    .match-top,
+    .list-item,
+    .ref-row,
+    .stat-grid,
+    .unit-top {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .match-top { justify-content: space-between; gap: 10px; }
+
+    .match-name,
+    .list-title,
+    .unit-name {
+      color: var(--text);
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .match-name { font-size: 13px; }
+    .meta-line {
+      margin-top: 4px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .badge {
+      flex-shrink: 0;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .badge.win { background: var(--success-bg); color: var(--success); border-color: #bfe0c6; }
+    .badge.loss { background: var(--danger-bg); color: var(--danger); border-color: #efc2c2; }
+    .badge.info { background: #f8f2e3; color: #8a6a10; border-color: #ead9a8; }
+
+    .evolution {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      color: #64594c;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .evolution-icon {
+      width: 18px;
+      text-align: center;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 28px;
+      box-shadow: 0 5px 12px rgba(0,0,0,.08);
+    }
+
+    .btn-primary { background: #334155; color: #f8fafc; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-secondary { background: #fff8ef; color: #6a5b4b; border: 1px solid #dfd1bf; }
+    .btn-block { width: auto; }
+
+    .action-board {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 0 4px 16px;
+    }
+
+    .action-lead {
+      background: linear-gradient(180deg, #eef4ff, #e8f0ff);
+      border: 1px solid #c6d6f7;
+      border-radius: 16px;
+      padding: 10px 12px;
+      box-shadow: 0 8px 18px rgba(42,90,184,.08);
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .action-tile {
+      background: linear-gradient(180deg, #fbfcfe, #f5f8fc);
+      border: 1px solid #d6dee8;
+      border-radius: 16px;
+      padding: 10px;
+      min-width: 0;
+      box-shadow: 0 6px 16px rgba(0,0,0,.05);
+    }
+
+    .action-tile.win {
+      border-color: #c9ddd0;
+      background: linear-gradient(180deg, #f8fcf9, #f3faf5);
+    }
+
+    .action-tile.loss {
+      border-color: #ead2d2;
+      background: linear-gradient(180deg, #fffafa, #fff6f6);
+    }
+
+    .action-kicker {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      background: rgba(51,65,85,.08);
+      color: var(--brand);
+    }
+
+    .action-title {
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.3;
+      margin: 0;
+    }
+
+    .action-meta {
+      margin-top: 4px;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .action-footer {
+      margin-top: 8px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .action-footer .btn {
+      padding-inline: 9px;
+    }
+
+    .helper {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #6d604f;
+      background: #fbf5eb;
+      border: 1px dashed #decdb8;
+    }
+
+    .list-item {
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,251,245,.92);
+      border: 1px solid #e0d5c8;
+      margin: 0 4px 7px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.06);
+      align-items: center;
+    }
+
+    .list-item.current {
+      border-color: #ead69b;
+      background: linear-gradient(180deg, #fff9ec, #fff6eb);
+      box-shadow: 0 8px 22px rgba(212,168,67,.16);
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: #6f6458;
+      background: #e8ddd0;
+      flex-shrink: 0;
+    }
+
+    .list-main {
+      display: flex;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .list-copy { min-width: 0; }
+
+    .list-title {
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .list-sub {
+      margin-top: 4px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .list-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .list-meta-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+
+    .list-score { font-size: 11px; font-weight: 800; }
+    .list-chevron {
+      font-size: 16px;
+      line-height: 1;
+      color: #a69683;
+      display: flex;
+      align-items: center;
+      align-self: center;
+      height: 100%;
+    }
+    .muted { color: var(--muted); }
+    .success { color: var(--success); }
+    .danger { color: var(--danger); }
+
+    .unit-card {
+      background: rgba(255,251,245,.92);
+      border-radius: 18px;
+      margin: 0 4px 12px;
+      padding: 14px;
+      border: 1px solid #e0d5c8;
+      box-shadow: 0 6px 20px rgba(0,0,0,.06);
+    }
+
+    .tier-bronze { border-color: rgba(205,127,50,.55); }
+    .tier-silver { border-color: rgba(154,160,166,.7); }
+    .tier-gold {
+      border: 2px solid rgba(212,168,67,.85);
+      background: linear-gradient(180deg, #fffcf3, #fff7ea);
+      box-shadow: 0 10px 26px rgba(212,168,67,.16);
+    }
+
+    .unit-top {
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .unit-name { font-size: 13px; }
+    .tier-pill {
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: #fbf3e3;
+    }
+
+    .tier-pill.bronze { color: #a45c19; }
+    .tier-pill.silver { color: #6c7278; }
+    .tier-pill.gold { color: #8a6a10; }
+
+    .subprofile {
+      margin: 10px 0 6px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #958677;
+    }
+
+    .stat-grid {
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .stat {
+      flex: 1 0 calc(20% - 6px);
+      min-width: 46px;
+      background: #f3ebdf;
+      border: 1px solid #e3d7c5;
+      border-radius: 10px;
+      text-align: center;
+      padding: 7px 4px;
+    }
+
+    .stat-label {
+      font-size: 8px;
+      font-weight: 800;
+      color: #978a7c;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .delta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .delta {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+
+    .delta.pos { color: var(--success); background: var(--success-bg); border-color: #bfe0c6; }
+    .delta.neg { color: var(--danger); background: var(--danger-bg); border-color: #efc2c2; }
+
+
+    .stats-row {
+      display: flex;
+      background: #f3ebdf;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e3d7c5;
+      margin-bottom: 8px;
+    }
+
+    .stat-cell {
+      flex: 1;
+      text-align: center;
+      padding: 5px 2px 6px;
+      border-right: 1px solid #e3d7c5;
+    }
+
+    .stat-cell:last-child { border-right: 0; }
+
+    .stat-lbl {
+      font-size: 8px;
+      font-weight: 800;
+      color: #978a7c;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .stat-val {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .stat-val.mod { color: var(--success); }
+    .stat-val.pen { color: var(--danger); }
+    .stat-val.small { font-size: 10px; }
+
+    .ref-card {
+      background: rgba(255,251,245,.94);
+      border: 1px solid #e0d5c8;
+      border-radius: 16px;
+      margin: 0 4px 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0,0,0,.06);
+    }
+
+    .ref-card.ref-xp .ref-head,
+    .ref-card.ref-xp .dice {
+      background: #f6f0e4;
+    }
+
+    .ref-card.ref-injury .ref-head,
+    .ref-card.ref-injury .dice {
+      background: #fbf0ef;
+    }
+
+    .ref-card.ref-destruction .ref-head,
+    .ref-card.ref-destruction .dice {
+      background: #f0f2f4;
+    }
+
+    .ref-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #f8f1e7;
+      border-bottom: 1px solid #e5d8c7;
+    }
+
+    .ref-head h4 {
+      margin: 0;
+      font-size: 11px;
+      color: var(--brand);
+      font-family: 'Cinzel', serif;
+      letter-spacing: .03em;
+    }
+
+    .ref-row {
+      justify-content: flex-start;
+      gap: 10px;
+      padding: 8px 14px;
+      border-top: 1px solid #f0e6da;
+      font-size: 12px;
+      color: #5f5447;
+      line-height: 1.3;
+    }
+
+    .ref-row:first-child { border-top: 0; }
+
+    .ref-row > div:last-child {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dice {
+      width: 48px;
+      flex-shrink: 0;
+      font-weight: 900;
+      color: var(--brand);
+      text-align: center;
+      border-radius: 8px;
+      padding: 3px 4px;
+      align-self: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fab {
+      position: absolute;
+      right: 16px;
+      bottom: 62px;
+      transform: none;
+      z-index: 4;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: 3px solid #f2eadf;
+      background: linear-gradient(180deg, var(--brand), var(--brand-2));
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      box-shadow: 0 10px 22px rgba(30, 41, 59, .24), 0 0 0 1px rgba(51, 65, 85, .08);
+      font-weight: 900;
+    }
+
+    .fab .plus { font-size: 22px; line-height: 1; }
+    .fab .mini { display:none; }
+
+    .tabbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 58px;
+      background: rgba(236,228,216,.96);
+      border-top: 1px solid #d2c3af;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 6px 10px 8px;
+      backdrop-filter: blur(12px);
+      z-index: 3;
+      box-shadow: 0 -6px 20px rgba(0,0,0,.04);
+    }
+
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: #9a8d7f;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      border-radius: 12px;
+      padding: 4px 6px;
+      position: relative;
+    }
+
+    .tab.active {
+      color: var(--brand);
+      background: #dfe8f4;
+      box-shadow: inset 0 0 0 1px #c7d3e4;
+    }
+
+    .tab.active::before {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--brand);
+    }
+
+    .tab-icon { font-size: 16px; line-height: 1; }
+
+    .notes {
+      margin-top: 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      padding: 22px 24px;
+      color: #b0a393;
+      line-height: 1.7;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+    }
+
+    .notes strong {
+      color: var(--gold);
+    }
+
+    .notes code {
+      background: rgba(255,255,255,.05);
+      color: #f5e5be;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: inherit;
+    }
+
+    @media (max-width: 1100px) {
+      .principles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 720px) {
+      .showcase { padding: 28px 12px 44px; }
+      .principles { grid-template-columns: 1fr; }
+      .section { padding: 18px 14px; }
+      .section-head { display: block; }
+      .section-sub { margin-top: 8px; }
+    }
+  
+.action-chips{display:flex;gap:8px;overflow-x:auto;margin:10px 4px 16px;align-items:center;}
+.action-chip{white-space:nowrap;background:#eef4ff;border:1px solid #d7e1ef;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:700;color:#334155;text-decoration:none;box-shadow:0 4px 10px rgba(0,0,0,.05);display:inline-flex;align-items:center;max-width:max-content;}
+.action-chip::after{content:"›";margin-left:6px;font-weight:900;opacity:.72;line-height:1;}
+</style>
+</head>
+<body>
+<div class="showcase">
+<section class="hero">
+<h1>Campaign TOW — Refonte UX v4.0</h1>
+<p>
+        V4 avec des ajustements ciblés : meilleure distinction entre <strong>actions à traiter</strong> et <strong>historique</strong>, tabbar légèrement assombrie et conservation d’une palette sobre sans multiplier les couleurs d’état.
+      </p>
+</section>
+<section class="principles">
+<article class="principle">
+<div class="principle-kicker">Principe 1</div>
+<h3>Une navigation stable</h3>
+<p>Campagne, Armées et Références sont toujours au même endroit. On ne fait plus varier le sens du tab de gauche selon l’écran.</p>
+</article>
+<article class="principle">
+<div class="principle-kicker">Principe 2</div>
+<h3>Une seule action primaire</h3>
+<p>“Créer une partie” sort de la tabbar et devient un FAB déporté à droite. L’action n’est plus confondue avec la navigation.</p>
+</article>
+<article class="principle">
+<div class="principle-kicker">Principe 3</div>
+<h3>Headers allégés</h3>
+<p>Les headers servent à contextualiser l’écran, pas à porter les actions majeures. “Mon armée” devient un écran de navigation primaire.</p>
+</article>
+<article class="principle">
+<div class="principle-kicker">Principe 4</div>
+<h3>Cartes plus explicites</h3>
+<p>Les éléments à traiter ne reprennent plus le même pattern que l’historique. La zone haute devient un vrai bloc d’actions, plus compact et plus différencié.</p>
+</article>
+</section>
+<section class="section">
+<div class="section-head">
+<div>
+<h2 class="section-title">Vue 1 — Campagne</h2>
+<p class="section-sub">Zone d’actions mieux séparée sans multiplier les couleurs, historique inchangé et tabbar légèrement renforcée.</p>
+</div>
+</div>
+<div class="phones-row">
+<div class="phone-col">
+<div class="phone-col-label">Accueil campagne</div>
+<div class="phone-col-sub">Même structure, avec une distinction plus nette entre actions et historique</div>
+<div class="phone">
+<div class="statusbar"></div>
+<div class="app-header">
+<div class="header-topline">
+<div>
+<h3 class="screen-title">Zboooiiiiing</h3>
+<div class="screen-sub">Orques &amp; Gobelins · 3V · 1D · 4 parties</div>
+</div>
+</div>
+</div>
+<div class="content">
+<div class="action-chips">
+<a class="action-chip" href="#">Voir la partie — vs Marc · 5 mars</a>
+<a class="action-chip" href="#">Rapport de bataille — vs Julien · Partie 4</a>
+<a class="action-chip" href="#">Rapport de bataille — vs Thomas · Partie 1</a>
+</div>
+<div class="block-title"><span>Historique</span></div>
+<div class="history-list">
+<div class="card">
+<div class="match-top">
+<div>
+<div class="match-name">vs. Julien · Nains · Partie 4</div>
+<div class="meta-line">28 février 2026</div>
+</div>
+<span class="badge win">Victoire</span>
+</div>
+</div>
+<div class="card">
+<div class="match-top">
+<div>
+<div class="match-name">vs. Marc · Empire · Partie 3</div>
+<div class="meta-line">14 février 2026</div>
+</div>
+<span class="badge loss">Défaite</span>
+</div>
+<div class="evolution"><span class="evolution-icon success">↑</span><div>Squigs Broyeurs passent <strong>Aguerri</strong> et gagnent <strong>+1 Force</strong>.</div></div>
+</div>
+<div class="card">
+<div class="match-top">
+<div>
+<div class="match-name">vs. Julien · Nains · Partie 2</div>
+<div class="meta-line">1 février 2026</div>
+</div>
+<span class="badge win">Victoire</span>
+</div>
+<div class="evolution"><span class="evolution-icon success">↑</span><div>Chef de Guerre devient <strong>Vétéran</strong> avec <strong>+1 Initiative</strong>.</div></div>
+<div class="evolution"><span class="evolution-icon danger">↓</span><div>Blessure permanente sur le Chef de Guerre : <strong>–1 Endurance</strong>.</div></div>
+</div>
+<div class="card">
+<div class="match-top">
+<div>
+<div class="match-name">vs. Thomas · Hauts Elfes · Partie 1</div>
+<div class="meta-line">18 janvier 2026</div>
+</div>
+<span class="badge loss">Défaite</span>
+</div>
+</div>
+</div>
+<div class="fab"><div class="plus">+</div><div class="mini">Partie</div></div>
+<div class="tabbar">
+<div class="tab active"><div class="tab-icon">📜</div><div>Campagne</div></div>
+<div class="tab"><div class="tab-icon">🛡</div><div>Armées</div></div>
+<div class="tab"><div class="tab-icon">📖</div><div>Références</div></div>
+</div>
+</div>
+</div>
+</div>
+</div></section>
+<section class="section">
+<div class="section-head">
+<div>
+<h2 class="section-title">Vue 2 — Armées</h2>
+<p class="section-sub">La liste des armées est simplifiée, sans surcouches de tri, de recherche ni de libellés décoratifs.</p>
+</div>
+</div>
+<div class="phones-row">
+<div class="phone-col">
+<div class="phone-col-label">Liste des armées</div>
+<div class="phone-col-sub">Lecture plus directe, sans bruit dans le header</div>
+<div class="phone">
+<div class="statusbar"></div>
+<div class="app-header">
+<div class="header-topline">
+<div>
+<h3 class="screen-title">Armées</h3>
+</div>
+</div>
+</div>
+<div class="content">
+<div class="list-item current">
+<div class="list-main">
+<div class="avatar" style="background:#f4e3b2;color:#8a6a10;">Z</div>
+<div class="list-copy">
+<div class="list-title">Zboooiiiiing</div>
+<div class="list-sub">Ben · Orques &amp; Gobelins · 5 unités</div>
+</div>
+</div>
+<div class="list-meta">
+<div class="list-meta-copy">
+<div class="list-score success">3V · 1D</div>
+</div>
+<div class="list-chevron">›</div>
+</div>
+</div>
+<div class="list-item">
+<div class="list-main">
+<div class="avatar">N</div>
+<div class="list-copy">
+<div class="list-title">Forteresse de Kharak</div>
+<div class="list-sub">Julien · Nains · 6 unités</div>
+</div>
+</div>
+<div class="list-meta">
+<div class="list-meta-copy">
+<div class="list-score success">3V · 1D</div>
+</div>
+<div class="list-chevron">›</div>
+</div>
+</div>
+<div class="list-item">
+<div class="list-main">
+<div class="avatar">E</div>
+<div class="list-copy">
+<div class="list-title">Empire Doré de l’Est</div>
+<div class="list-sub">Marc · Empire · 8 unités</div>
+</div>
+</div>
+<div class="list-meta">
+<div class="list-meta-copy">
+<div class="list-score danger">1V · 3D</div>
+</div>
+<div class="list-chevron">›</div>
+</div>
+</div>
+<div class="list-item">
+<div class="list-main">
+<div class="avatar">C</div>
+<div class="list-copy">
+<div class="list-title">Cavalerie de Caledor</div>
+<div class="list-sub">Thomas · Hauts Elfes · 5 unités</div>
+</div>
+</div>
+<div class="list-meta">
+<div class="list-meta-copy">
+<div class="list-score success">2V · 1D</div>
+</div>
+<div class="list-chevron">›</div>
+</div>
+</div>
+<div class="list-item">
+<div class="list-main">
+<div class="avatar" style="font-size:11px;">TC</div>
+<div class="list-copy">
+<div class="list-title">Les Petits Gâteaux</div>
+<div class="list-sub">Tante Cotillet · Comtes Vampires · 7 unités</div>
+</div>
+</div>
+<div class="list-meta">
+<div class="list-meta-copy">
+<div class="list-score success">2V · 2D</div>
+</div>
+<div class="list-chevron">›</div>
+</div>
+</div>
+<div class="list-item" style="opacity:.62;">
+<div class="list-main">
+<div class="avatar">S</div>
+<div class="list-copy">
+<div class="list-title">Légion des Oubliés</div>
+<div class="list-sub">Pierre · Morts-Vivants · 6 unités</div>
+</div>
+</div>
+<div class="list-meta">
+<div class="list-meta-copy">
+<div class="muted" style="font-size:10px;font-style:italic;">Aucune partie</div>
+</div>
+<div class="list-chevron">›</div>
+</div>
+</div>
+</div>
+<div class="fab"><div class="plus">+</div><div class="mini">Partie</div></div>
+<div class="tabbar">
+<div class="tab"><div class="tab-icon">📜</div><div>Campagne</div></div>
+<div class="tab active"><div class="tab-icon">🛡</div><div>Armées</div></div>
+<div class="tab"><div class="tab-icon">📖</div><div>Références</div></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="section">
+<div class="section-head">
+<div>
+<h2 class="section-title">Vue 3 — Détail d’armée</h2>
+<p class="section-sub">Retour à une présentation de stats plus simple et plus proche de ta version initiale.</p>
+</div>
+</div>
+<div class="phones-row">
+<div class="phone-col">
+<div class="phone-col-label">Détail d’armée</div>
+<div class="phone-col-sub">Cartes plus sobres, stats remises en lignes compactes</div>
+<div class="phone">
+<div class="statusbar"></div>
+<div class="app-header">
+<div class="header-topline">
+<div style="display:flex;align-items:center;gap:10px;min-width:0;">
+<div class="header-ghost-btn">‹</div>
+<div>
+<h3 class="screen-title">Zboooiiiiing</h3>
+<div class="screen-sub">Orques &amp; Gobelins · 5 unités</div>
+</div>
+</div>
+</div>
+</div>
+<div class="content">
+<div class="block-title"><span>Personnages</span></div>
+<div class="unit-card tier-gold">
+<div class="unit-top">
+<div class="unit-name">Chef de Guerre Gobelin</div>
+<span class="tier-pill gold">✦ Vétéran</span>
+</div>
+<div class="subprofile">Gobelin de la Nuit</div>
+<div class="stats-row">
+<div class="stat-cell"><div class="stat-lbl">M</div><div class="stat-val">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">CC</div><div class="stat-val mod">6</div></div>
+<div class="stat-cell"><div class="stat-lbl">CT</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">F</div><div class="stat-val">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">E</div><div class="stat-val pen">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">PV</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">I</div><div class="stat-val mod">6</div></div>
+<div class="stat-cell"><div class="stat-lbl">A</div><div class="stat-val">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">Cd</div><div class="stat-val">6</div></div>
+</div>
+<div class="subprofile">Squig des Cavernes</div>
+<div class="stats-row">
+<div class="stat-cell"><div class="stat-lbl">M</div><div class="stat-val small">3D6</div></div>
+<div class="stat-cell"><div class="stat-lbl">CC</div><div class="stat-val">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">CT</div><div class="stat-val">—</div></div>
+<div class="stat-cell"><div class="stat-lbl">F</div><div class="stat-val">5</div></div>
+<div class="stat-cell"><div class="stat-lbl">E</div><div class="stat-val">—</div></div>
+<div class="stat-cell"><div class="stat-lbl">PV</div><div class="stat-val small">+1</div></div>
+<div class="stat-cell"><div class="stat-lbl">I</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">A</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">Cd</div><div class="stat-val">—</div></div>
+</div>
+<div class="delta-row">
+<span class="delta pos">+1 CC</span>
+<span class="delta pos">+1 Initiative</span>
+<span class="delta neg">–1 Endurance</span>
+</div>
+</div>
+<div class="block-title"><span>Unités de base</span></div>
+<div class="unit-card tier-silver">
+<div class="unit-top">
+<div class="unit-name">Troupeau de Squigs</div>
+<span class="tier-pill silver">◆ Expérimenté</span>
+</div>
+<div class="subprofile">Berger Gobelin</div>
+<div class="stats-row">
+<div class="stat-cell"><div class="stat-lbl">M</div><div class="stat-val">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">CC</div><div class="stat-val">2</div></div>
+<div class="stat-cell"><div class="stat-lbl">CT</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">F</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">E</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">PV</div><div class="stat-val">1</div></div>
+<div class="stat-cell"><div class="stat-lbl">I</div><div class="stat-val mod">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">A</div><div class="stat-val">1</div></div>
+<div class="stat-cell"><div class="stat-lbl">Cd</div><div class="stat-val">6</div></div>
+</div>
+<div class="delta-row"><span class="delta pos">+1 Initiative</span></div>
+</div>
+<div class="block-title"><span>Unités rares</span></div>
+<div class="unit-card tier-bronze">
+<div class="unit-top">
+<div class="unit-name">Squigs Broyeurs</div>
+<span class="tier-pill bronze">◈ Aguerri</span>
+</div>
+<div class="stats-row">
+<div class="stat-cell"><div class="stat-lbl">M</div><div class="stat-val small">3D6</div></div>
+<div class="stat-cell"><div class="stat-lbl">CC</div><div class="stat-val">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">CT</div><div class="stat-val">0</div></div>
+<div class="stat-cell"><div class="stat-lbl">F</div><div class="stat-val mod">7</div></div>
+<div class="stat-cell"><div class="stat-lbl">E</div><div class="stat-val">5</div></div>
+<div class="stat-cell"><div class="stat-lbl">PV</div><div class="stat-val">4</div></div>
+<div class="stat-cell"><div class="stat-lbl">I</div><div class="stat-val">3</div></div>
+<div class="stat-cell"><div class="stat-lbl">A</div><div class="stat-val small">D6</div></div>
+<div class="stat-cell"><div class="stat-lbl">Cd</div><div class="stat-val">4</div></div>
+</div>
+<div class="delta-row"><span class="delta pos">+1 Force</span></div>
+</div>
+</div>
+<div class="fab"><div class="plus">+</div><div class="mini">Partie</div></div>
+<div class="tabbar">
+<div class="tab"><div class="tab-icon">📜</div><div>Campagne</div></div>
+<div class="tab active"><div class="tab-icon">🛡</div><div>Armées</div></div>
+<div class="tab"><div class="tab-icon">📖</div><div>Références</div></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="section">
+<div class="section-head">
+<div>
+<h2 class="section-title">Vue 4 — Références</h2>
+<p class="section-sub">Version allégée du header et des cartes de référence, sans badges ni sous-navigation secondaire.</p>
+</div>
+</div>
+<div class="phones-row">
+<div class="phone-col">
+<div class="phone-col-label">Références de campagne</div>
+<div class="phone-col-sub">Consultation rapide, sans éléments d’interface superflus</div>
+<div class="phone">
+<div class="statusbar"></div>
+<div class="app-header">
+<div class="header-topline">
+<div>
+<h3 class="screen-title">Références</h3>
+</div>
+</div>
+</div>
+<div class="content">
+<div class="ref-card ref-xp">
+<div class="ref-head"><h4>Gain d’XP — Unités</h4></div>
+<div class="ref-row"><div class="dice">+1 XP</div><div>Participation à la bataille</div></div>
+<div class="ref-row"><div class="dice">+1 XP</div><div>Unité survivante après la bataille</div></div>
+<div class="ref-row"><div class="dice">+1 XP</div><div>Unité ayant mis hors combat une unité ennemie</div></div>
+<div class="ref-row"><div class="dice">+1 XP</div><div>Unité ayant mis hors combat un personnage ennemi</div></div>
+</div>
+<div class="ref-card ref-injury">
+<div class="ref-head"><h4>Blessures permanentes — 2D6</h4></div>
+<div class="ref-row"><div class="dice">2</div><div>Mort héroïque — retirez le personnage</div></div>
+<div class="ref-row"><div class="dice">3–4</div><div>Blessure grave — –1 à une caractéristique au choix</div></div>
+<div class="ref-row"><div class="dice">5–6</div><div>Blessure — –1 à une caractéristique aléatoire</div></div>
+<div class="ref-row"><div class="dice">7</div><div>Cicatrice — aucun effet permanent</div></div>
+<div class="ref-row"><div class="dice">8–9</div><div>Survie miraculeuse — aucun effet</div></div>
+<div class="ref-row"><div class="dice">10–11</div><div>Leçon douloureuse — +1 XP supplémentaire</div></div>
+<div class="ref-row"><div class="dice">12</div><div>Invincible — +1 à une caractéristique au choix</div></div>
+</div>
+<div class="ref-card ref-destruction">
+<div class="ref-head"><h4>Destruction d’unités — 2D6</h4></div>
+<div class="ref-row"><div class="dice">2–3</div><div>Détruite — unité retirée de la campagne</div></div>
+<div class="ref-row"><div class="dice">4–5</div><div>Dispersée — perd 1D3 figurines, perd 1 XP</div></div>
+<div class="ref-row"><div class="dice">6–8</div><div>Retraite — aucune perte permanente</div></div>
+<div class="ref-row"><div class="dice">9–10</div><div>Réformée — récupère 1D3 figurines</div></div>
+<div class="ref-row"><div class="dice">11–12</div><div>Ralliement héroïque — récupère toutes ses figurines</div></div>
+</div>
+</div>
+<div class="fab"><div class="plus">+</div><div class="mini">Partie</div></div>
+<div class="tabbar">
+<div class="tab"><div class="tab-icon">📜</div><div>Campagne</div></div>
+<div class="tab"><div class="tab-icon">🛡</div><div>Armées</div></div>
+<div class="tab active"><div class="tab-icon">📖</div><div>Références</div></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="notes">
+<strong>V4.0 :</strong><br/>
+      La zone “À traiter maintenant” reste discrète mais gagne en lisibilité grâce à un conteneur dédié, des cartes d’action légèrement différenciées et une tabbar un peu plus présente.
+    </section>
+</div>
+</body>
+</html>
