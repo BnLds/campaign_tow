@@ -18,42 +18,42 @@ const root = resolve(__dirname, '../..')
 // ---------------------------------------------------------------------------
 
 describe('[AC1][P0] TanStack CLI initialization — project structure', () => {
-  it.skip('[1.1-UNIT-001] app.config.ts exists (TanStack Start config)', () => {
-    // THIS TEST WILL FAIL — project not scaffolded yet
-    expect(existsSync(resolve(root, 'app.config.ts'))).toBe(true)
+  it('[1.1-UNIT-001] vite.config.ts exists (TanStack Start + Vite config)', () => {
+    // Note: CLI generates vite.config.ts (not app.config.ts) in current RC
+    expect(existsSync(resolve(root, 'vite.config.ts'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-002] drizzle.config.ts exists (drizzle add-on)', () => {
+  it('[1.1-UNIT-002] drizzle.config.ts exists (drizzle add-on)', () => {
     expect(existsSync(resolve(root, 'drizzle.config.ts'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-003] src/db/schema.ts exists (drizzle add-on)', () => {
+  it('[1.1-UNIT-003] src/db/schema.ts exists (drizzle add-on)', () => {
     expect(existsSync(resolve(root, 'src/db/schema.ts'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-004] src/db/index.ts exists (drizzle add-on)', () => {
+  it('[1.1-UNIT-004] src/db/index.ts exists (drizzle add-on)', () => {
     expect(existsSync(resolve(root, 'src/db/index.ts'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-005] src/components/ui/ directory exists (shadcn add-on)', () => {
+  it('[1.1-UNIT-005] src/components/ui/ directory exists (shadcn add-on)', () => {
     expect(existsSync(resolve(root, 'src/components/ui'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-006] nixpacks.toml exists (railway add-on)', () => {
+  it('[1.1-UNIT-006] nixpacks.toml exists (railway add-on)', () => {
     expect(existsSync(resolve(root, 'nixpacks.toml'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-007] package.json has lint script (eslint add-on)', () => {
+  it('[1.1-UNIT-007] package.json has lint script (eslint add-on)', () => {
     const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8'))
     expect(pkg.scripts).toHaveProperty('lint')
   })
 
-  it.skip('[1.1-UNIT-008] package.json has format script (eslint add-on)', () => {
+  it('[1.1-UNIT-008] package.json has format script (eslint add-on)', () => {
     const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8'))
     expect(pkg.scripts).toHaveProperty('format')
   })
 
-  it.skip('[1.1-UNIT-009] src/routes/__root.tsx exists (TanStack Router root layout)', () => {
+  it('[1.1-UNIT-009] src/routes/__root.tsx exists (TanStack Router root layout)', () => {
     expect(existsSync(resolve(root, 'src/routes/__root.tsx'))).toBe(true)
   })
 })
@@ -66,12 +66,11 @@ describe('[AC1][P0] TanStack CLI initialization — project structure', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC2][P0] Additional dev dependencies', () => {
-  it.skip('[1.1-UNIT-011] vitest.config.ts exists', () => {
-    // THIS TEST WILL FAIL — not created yet
+  it('[1.1-UNIT-011] vitest.config.ts exists', () => {
     expect(existsSync(resolve(root, 'vitest.config.ts'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-012] playwright.config.ts exists', () => {
+  it('[1.1-UNIT-012] playwright.config.ts exists', () => {
     expect(existsSync(resolve(root, 'playwright.config.ts'))).toBe(true)
   })
 })
@@ -81,27 +80,26 @@ describe('[AC2][P0] Additional dev dependencies', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC3][P1] GitHub Actions CI pipeline', () => {
-  it.skip('[1.1-UNIT-013] .github/workflows/ci.yml exists', () => {
-    // THIS TEST WILL FAIL — CI pipeline not created yet
+  it('[1.1-UNIT-013] .github/workflows/ci.yml exists', () => {
     expect(existsSync(resolve(root, '.github/workflows/ci.yml'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-014] CI pipeline runs pnpm lint step', () => {
+  it('[1.1-UNIT-014] CI pipeline runs pnpm lint step', () => {
     const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf-8')
     expect(ci).toContain('pnpm lint')
   })
 
-  it.skip('[1.1-UNIT-015] CI pipeline runs pnpm typecheck step', () => {
+  it('[1.1-UNIT-015] CI pipeline runs pnpm typecheck step', () => {
     const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf-8')
     expect(ci).toContain('pnpm typecheck')
   })
 
-  it.skip('[1.1-UNIT-016] CI pipeline runs pnpm test step', () => {
+  it('[1.1-UNIT-016] CI pipeline runs pnpm test step', () => {
     const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf-8')
     expect(ci).toContain('pnpm test')
   })
 
-  it.skip('[1.1-UNIT-017] CI pipeline triggers on pull_request to main', () => {
+  it('[1.1-UNIT-017] CI pipeline triggers on pull_request to main', () => {
     const ci = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf-8')
     expect(ci).toContain('pull_request')
     expect(ci).toContain('main')
@@ -113,33 +111,32 @@ describe('[AC3][P1] GitHub Actions CI pipeline', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC5][P1] Railway environment variables & DB health check', () => {
-  it.skip('[1.1-UNIT-018] .env.example exists (no secrets committed to repo)', () => {
-    // THIS TEST WILL FAIL — file not created yet
+  it('[1.1-UNIT-018] .env.example exists (no secrets committed to repo)', () => {
     expect(existsSync(resolve(root, '.env.example'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-019] .env.example contains DATABASE_URL placeholder', () => {
+  it('[1.1-UNIT-019] .env.example contains DATABASE_URL placeholder', () => {
     const envExample = readFileSync(resolve(root, '.env.example'), 'utf-8')
     expect(envExample).toContain('DATABASE_URL')
   })
 
-  it.skip('[1.1-UNIT-020] .env.example contains SESSION_SECRET placeholder', () => {
+  it('[1.1-UNIT-020] .env.example contains SESSION_SECRET placeholder', () => {
     const envExample = readFileSync(resolve(root, '.env.example'), 'utf-8')
     expect(envExample).toContain('SESSION_SECRET')
   })
 
-  it.skip('[1.1-UNIT-021] .env.example contains ADMIN_PASSWORD_HASH placeholder', () => {
+  it('[1.1-UNIT-021] .env.example contains ADMIN_PASSWORD_HASH placeholder', () => {
     const envExample = readFileSync(resolve(root, '.env.example'), 'utf-8')
     expect(envExample).toContain('ADMIN_PASSWORD_HASH')
   })
 
-  it.skip('[1.1-UNIT-022] .gitignore contains .env entry', () => {
+  it('[1.1-UNIT-022] .gitignore contains .env entry', () => {
     const gitignore = readFileSync(resolve(root, '.gitignore'), 'utf-8')
     // Match .env as a standalone line (not .env.example)
     expect(gitignore).toMatch(/^\.env$/m)
   })
 
-  it.skip('[1.1-UNIT-023] src/db/index.ts contains DB startup health check (SELECT 1)', () => {
+  it('[1.1-UNIT-023] src/db/index.ts contains DB startup health check (SELECT 1)', () => {
     const dbIndex = readFileSync(resolve(root, 'src/db/index.ts'), 'utf-8')
     expect(dbIndex).toContain('SELECT 1')
   })
@@ -150,48 +147,47 @@ describe('[AC5][P1] Railway environment variables & DB health check', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC6][P2] Design system bootstrap — palette tokens & fonts', () => {
-  it.skip('[1.1-UNIT-024] src/styles/globals.css exists', () => {
-    // THIS TEST WILL FAIL — file not created yet
+  it('[1.1-UNIT-024] src/styles/globals.css exists', () => {
     expect(existsSync(resolve(root, 'src/styles/globals.css'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-025] globals.css contains --color-bg token (#f1eade)', () => {
+  it('[1.1-UNIT-025] globals.css contains --color-bg token (#f1eade)', () => {
     const css = readFileSync(resolve(root, 'src/styles/globals.css'), 'utf-8')
     expect(css).toContain('--color-bg: #f1eade')
   })
 
-  it.skip('[1.1-UNIT-026] globals.css contains --color-brand token (#334155)', () => {
+  it('[1.1-UNIT-026] globals.css contains --color-brand token (#334155)', () => {
     const css = readFileSync(resolve(root, 'src/styles/globals.css'), 'utf-8')
     expect(css).toContain('--color-brand: #334155')
   })
 
-  it.skip('[1.1-UNIT-027] globals.css contains --font-display (Cinzel)', () => {
+  it('[1.1-UNIT-027] globals.css contains --font-display (Cinzel)', () => {
     const css = readFileSync(resolve(root, 'src/styles/globals.css'), 'utf-8')
     expect(css).toContain("--font-display: 'Cinzel'")
   })
 
-  it.skip('[1.1-UNIT-028] globals.css contains @font-face for cinzel-600.woff2', () => {
+  it('[1.1-UNIT-028] globals.css contains @font-face for cinzel-600.woff2', () => {
     const css = readFileSync(resolve(root, 'src/styles/globals.css'), 'utf-8')
     expect(css).toContain('cinzel-600.woff2')
   })
 
-  it.skip('[1.1-UNIT-029] public/fonts/cinzel-600.woff2 exists', () => {
+  it('[1.1-UNIT-029] public/fonts/cinzel-600.woff2 exists', () => {
     expect(existsSync(resolve(root, 'public/fonts/cinzel-600.woff2'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-030] public/fonts/cinzel-700.woff2 exists', () => {
+  it('[1.1-UNIT-030] public/fonts/cinzel-700.woff2 exists', () => {
     expect(existsSync(resolve(root, 'public/fonts/cinzel-700.woff2'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-031] public/fonts/inter-400.woff2 exists', () => {
+  it('[1.1-UNIT-031] public/fonts/inter-400.woff2 exists', () => {
     expect(existsSync(resolve(root, 'public/fonts/inter-400.woff2'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-032] public/fonts/inter-500.woff2 exists', () => {
+  it('[1.1-UNIT-032] public/fonts/inter-500.woff2 exists', () => {
     expect(existsSync(resolve(root, 'public/fonts/inter-500.woff2'))).toBe(true)
   })
 
-  it.skip('[1.1-UNIT-033] public/fonts/inter-700.woff2 exists', () => {
+  it('[1.1-UNIT-033] public/fonts/inter-700.woff2 exists', () => {
     expect(existsSync(resolve(root, 'public/fonts/inter-700.woff2'))).toBe(true)
   })
 })

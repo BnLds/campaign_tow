@@ -1,23 +1,16 @@
-# OS
+node_modules
 .DS_Store
-Thumbs.db
-
-# Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Claude Code (outil local)
-.claude/
-
-# Logs & temp
-*.log
-*.tmp
-*.bak
-
-# Environment
+dist
+dist-ssr
+*.local
 .env
-.env.local
-
+.nitro
+.tanstack
+.wrangler
+.output
+.vinxi
+__unconfig*
+todos.json
 .ignore
+.vscode
+.claude

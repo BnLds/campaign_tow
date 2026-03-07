@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* === Fonts === */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('/fonts/cinzel-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cinzel';
+  src: url('/fonts/cinzel-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* === Palette tokens === */
+:root {
+  /* Backgrounds */
+  --color-bg: #f1eade;
+  --color-surface: #fffbf5;
+  --color-border: #e0d5c8;
+  --color-separator: #dfd1bf;
+
+  /* Text */
+  --color-text-primary: #171310;
+  --color-text-secondary: #6b5f52;
+  --color-text-muted: #9a8d7f;
+  --color-section-label: #938677;
+
+  /* Brand / UI */
+  --color-brand: #334155;
+  --color-brand-dark: #1e293b;
+  --color-tab-active-bg: #dfe8f4;
+
+  /* Semantic — XP tiers / highlights */
+  --color-gold: #d4a843;
+  --color-bronze: #cd7f32;
+  --color-silver: #9aa0a6;
+  --color-neutral: #9ca3af;
+
+  /* Semantic — results / deltas */
+  --color-bonus: #2d7a3a;
+  --color-bonus-bg: #edf8ef;
+  --color-bonus-border: #bfe0c6;
+  --color-malus: #b82c2c;
+  --color-malus-bg: #fdf0f0;
+  --color-malus-border: #efc2c2;
+
+  /* Semantic — match outcomes */
+  --color-victory-bg: #edf8ef;
+  --color-victory-text: #2d7a3a;
+  --color-victory-border: #bfe0c6;
+  --color-defeat-bg: #fdf0f0;
+  --color-defeat-text: #b82c2c;
+  --color-defeat-border: #efc2c2;
+  --color-draw-bg: #f8f2e3;
+  --color-draw-text: #8a6a10;
+  --color-draw-border: #ead9a8;
+
+  /* Semantic — info / invitations */
+  --color-info: #2a5ab8;
+
+  /* Stats bar background */
+  --color-stats-bg: #f3ebdf;
+
+  /* Font families */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+}
