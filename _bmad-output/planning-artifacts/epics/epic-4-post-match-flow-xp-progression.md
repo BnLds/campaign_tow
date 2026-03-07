@@ -26,6 +26,10 @@ So that my army's progression is recorded after every game.
 **When** the wizard completes,
 **Then** all XP values are saved and the match is marked as evolutions-entered for my army
 
+**Given** I have entered XP for all units and characters,
+**When** the wizard completes and all XP values are saved,
+**Then** `match_participants.evolutionsEnteredAt` is set to the current timestamp for my army, and the corresponding ActionChip disappears from the Campaign view
+
 **Given** I want to enter evolutions retroactively for an older match,
 **When** I access that match from the timeline,
 **Then** the PostMatchWizard launches identically regardless of when the match took place (FR29)

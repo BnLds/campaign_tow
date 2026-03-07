@@ -64,6 +64,7 @@ NFR11: App available during gaming sessions (best-effort — no formal SLA)
 - Campaign stat changes stored in `stat_modifiers` (per-stat numeric deltas, source tracking)
 - Campaign non-stat changes stored in `unit_gains` (abilities, text-based, active/inactive)
 - OWB import data in `sub_profiles` never mutated — all changes in `stat_modifiers` + `unit_gains`
+- `match_participants.evolutionsEnteredAt TIMESTAMP NULL` — tracks when a player completed the post-match flow for a given match; NULL = pending, timestamp = complete (used to dismiss ActionChips)
 
 **Architecture — Auth:**
 - Server-side HTTP-only signed cookie sessions + `sessions` table in PostgreSQL

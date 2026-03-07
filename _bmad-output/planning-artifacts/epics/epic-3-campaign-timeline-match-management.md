@@ -30,7 +30,11 @@ So that I can read the full campaign history at a glance.
 **When** I view my timeline,
 **Then** an appropriate empty state is displayed
 
-*Tables created by this story: `matches` (id, date, createdByPlayerId), `match_participants` (id, matchId, armyId, result)*
+**Given** a match exists but evolutions have not yet been entered for my army,
+**When** I view the timeline,
+**Then** the TimelineEntry is displayed without an evolution summary (no XP, tier-ups, or injuries shown)
+
+*Tables created by this story: `matches` (id, date, createdByPlayerId), `match_participants` (id, matchId, armyId, result, evolutionsEnteredAt)*
 
 ---
 
@@ -45,6 +49,10 @@ So that the campaign history stays up to date and I know what actions need my at
 **Given** I am logged in and tap the CreateMatchFab,
 **When** the match creation form opens,
 **Then** I see a list of all other campaign players to select as opponent (FR17)
+
+**Given** the match creation form is open,
+**When** I select an opponent,
+**Then** I can optionally enter a match date (defaults to today if left blank)
 
 **Given** I select an opponent and confirm,
 **When** the match is created,
