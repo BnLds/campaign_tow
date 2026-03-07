@@ -99,6 +99,36 @@ Loaders (read operations) return data directly and throw on error — caught by 
 - After mutations, invalidate relevant TanStack Query keys
 - Pattern: `queryClient.invalidateQueries({ queryKey: ['armies', armyId] })`
 
+## TanStack CLI — Developer Commands
+
+The TanStack CLI provides documentation search commands that ALL dev agents MUST use to get up-to-date information on TanStack libraries (which are still in RC/active development).
+
+**Search documentation (preferred over relying on training data):**
+```bash
+# Full-text search in TanStack Start docs
+npx @tanstack/cli search-docs "server functions" --library start --framework react
+npx @tanstack/cli search-docs "middleware createMiddleware" --library start --framework react
+npx @tanstack/cli search-docs "loaders" --library router --framework react --json
+
+# Fetch a specific documentation page
+npx @tanstack/cli doc start framework/react/guide/data-loading
+npx @tanstack/cli doc router framework/react/guide/file-based-routing
+npx @tanstack/cli doc query framework/react/overview
+
+# Explore the ecosystem (auth, database, deployment partners)
+npx @tanstack/cli ecosystem --category database
+npx @tanstack/cli ecosystem --library router --json
+
+# List all available add-ons (to check if something can be added vs manual)
+npx @tanstack/cli create --list-add-ons
+npx @tanstack/cli create --addon-details <id> --json
+```
+
+**When to use these commands:**
+- Before implementing any TanStack-specific pattern (server functions, middleware, routing) → run `search-docs` first
+- When the model is uncertain about TanStack Start API (RC status means docs may have changed) → run `doc` to get the current page
+- Before manually installing a dependency → check `--list-add-ons` to see if an add-on handles it
+
 ## Process Patterns
 
 **Auth Middleware (TanStack Start idiomatic):**

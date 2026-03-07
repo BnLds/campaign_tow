@@ -34,8 +34,28 @@ Full-stack web application (SPA mobile-first + server functions + relational DB)
 **Initialization Command:**
 
 ```bash
-npx @tanstack/cli create campaign_tow --add-ons drizzle,shadcn,tanstack-query --package-manager pnpm
+npx @tanstack/cli create campaign_tow --add-ons drizzle,shadcn,tanstack-query,form,eslint,railway --package-manager pnpm
 ```
+
+**Add-ons included and what they auto-configure:**
+
+| Add-on | Auto-configured | Remaining manual steps |
+|---|---|---|
+| `drizzle` | `drizzle.config.ts`, `src/db/schema.ts`, `src/db/index.ts` | Add `drizzle-zod`, define tables (story 1.2+) |
+| `shadcn` | `src/components/ui/`, Tailwind CSS v4 | Add components via `npx shadcn@latest add <component>` |
+| `tanstack-query` | `QueryClientProvider` in `__root.tsx` | — |
+| `form` | `@tanstack/react-form` + **zod v4** installed | Verify `drizzle-zod` compat with zod v4 (see warning below) |
+| `eslint` | ESLint + Prettier, `lint`/`format`/`check` scripts, `eslint.config.js`, `prettier.config.js` | — |
+| `railway` | `nixpacks.toml`, `start` script (`node .output/server/index.mjs`) | Connect GitHub repo in Railway dashboard |
+
+**Not available as add-ons (manual installation required):**
+- Vitest — `pnpm add -D vitest @vitejs/plugin-react` + `vitest.config.ts`
+- Playwright — `pnpm add -D @playwright/test && npx playwright install` + `playwright.config.ts`
+
+**⚠ Zod v4 compatibility warning:**
+The `form` add-on installs `zod: "^4.3.6"` (zod v4). Before adding `drizzle-zod`, verify it supports zod v4:
+- If compatible: `pnpm add drizzle-zod` only
+- If incompatible: `pnpm add zod@^3` (downgrade) + `pnpm add @tanstack/zod-form-adapter` manually
 
 **Architectural Decisions Provided by Starter:**
 
