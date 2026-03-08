@@ -42,7 +42,7 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   epic-1: in-progress
   1-1-project-scaffolding-deployment-pipeline: review
-  1-2-player-login-session-management: backlog
+  1-2-player-login-session-management: ready-for-dev
   1-3-first-login-welcome-modal-display-name: backlog
   1-4-admin-player-account-creation: backlog
   epic-1-retrospective: optional
