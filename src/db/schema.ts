@@ -1,7 +1,4 @@
-import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core'
-
-export const todos = pgTable('todos', {
-  id: serial().primaryKey(),
-  title: text().notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-})
+// Campaign TOW — Database Schema
+// Tables are defined in story 1.2+
+// This is the single source of all Drizzle table definitions.
+export {}
