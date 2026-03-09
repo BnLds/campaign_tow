@@ -99,10 +99,10 @@ describe('[AC2][AC3][P0] Login route — src/routes/login.tsx', () => {
     expect(login).toContain('Identifiant ou mot de passe incorrect')
   })
 
-  it('[1.2-INT-014] loginFn uses bcryptjs compare (not string equality) for password verification', () => {
-    const login = readFileSync(resolve(root, 'src/routes/login.tsx'), 'utf-8')
+  it('[1.2-INT-014] auth.ts uses bcryptjs compare (not string equality) for password verification', () => {
+    const auth = readFileSync(resolve(root, 'src/lib/auth.ts'), 'utf-8')
     // compare must be imported from bcryptjs specifically — not from another source
-    expect(login).toMatch(/import\s*\{[^}]*compare[^}]*\}\s*from\s*['"]bcryptjs['"]/)
+    expect(auth).toMatch(/import\s*\{[^}]*compare[^}]*\}\s*from\s*['"]bcryptjs['"]/)
   })
 
   it('[1.2-INT-015] src/lib/validators.ts exports loginSchema', () => {
