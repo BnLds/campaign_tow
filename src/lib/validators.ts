@@ -15,3 +15,10 @@ export const updateDisplayNameSchema = z.object({
   displayName: z.string().trim().min(1, 'Display name is required').max(100, 'Display name must be 100 characters or less'),
 })
 export type UpdateDisplayNameInput = z.infer<typeof updateDisplayNameSchema>
+
+// Admin — Create player account (story 1.4)
+export const createPlayerSchema = z.object({
+  username: z.string().trim().min(2, 'Username must be at least 2 characters').max(50, 'Username must be 50 characters or less'),
+  tempPassword: z.string().min(6, 'Password must be at least 6 characters').max(100, 'Password must be 100 characters or less'),
+})
+export type CreatePlayerInput = z.infer<typeof createPlayerSchema>

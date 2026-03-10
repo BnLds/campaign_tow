@@ -12,3 +12,31 @@ export async function markPlayerWelcomeSeen(playerId: string): Promise<void> {
 export async function updatePlayerDisplayName(playerId: string, displayName: string): Promise<void> {
   await db.update(players).set({ displayName }).where(eq(players.id, playerId))
 }
+
+// Story 1.4 — Admin: player account creation
+
+export async function checkUsernameExists(username: string): Promise<boolean> {
+  const existing = await db
+    .select({ id: players.id })
+    .from(players)
+    .where(eq(players.username, username))
+    .limit(1)
+  return existing.length > 0
+}
+
+export async function createPlayer(
+  username: string,
+  passwordHash: string,
+): Promise<{ id: string; username: string; displayName: string }> {
+  const [player] = await db
+    .insert(players)
+    .values({
+      username,
+      passwordHash,
+      displayName: username,
+      isAdmin: false,
+      hasSeenWelcome: false,
+    })
+    .returning({ id: players.id, username: players.username, displayName: players.displayName })
+  return player
+}

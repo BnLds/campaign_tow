@@ -1,4 +1,4 @@
-import { createFileRoute, useRouteContext, useRouter } from '@tanstack/react-router'
+import { Link, createFileRoute, useRouteContext, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { WelcomeModal } from '../components/welcome-modal'
@@ -57,6 +57,11 @@ function CampaignView() {
       <main style={{ padding: '2rem' }}>
         <h1>Campaign TOW</h1>
         <p>Campaign view — story 1.3+</p>
+        {session?.isAdmin && (
+          <Link to="/admin" style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+            Administration
+          </Link>
+        )}
       </main>
     </>
   )

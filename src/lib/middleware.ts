@@ -19,6 +19,17 @@ export const authMiddleware = createMiddleware({ type: 'function' }).server(asyn
   return next({ context: { session } })
 })
 
+// adminMiddleware: verifies session and admin flag. Chains authMiddleware so session is already populated.
+// Throws FORBIDDEN if isAdmin is false — used on admin-only server functions and routes.
+export const adminMiddleware = createMiddleware({ type: 'function' })
+  .middleware([authMiddleware])
+  .server(async ({ next, context }) => {
+    if (!context.session.isAdmin) {
+      throw new Error('FORBIDDEN')
+    }
+    return next({ context })
+  })
+
 // armyOwnerMiddleware: verifies army ownership (pass-through scaffold — fully implemented in Epic 2)
 // Depends on authMiddleware to ensure session is available in context.
 // In Epic 2: will query armies table and check army.playerId === session.playerId (or isAdmin bypass)

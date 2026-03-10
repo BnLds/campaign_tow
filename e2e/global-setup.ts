@@ -15,7 +15,7 @@ import type { FullConfig } from '@playwright/test'
 import { chromium } from '@playwright/test'
 import { hash } from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import fs from 'fs'
+import fs from 'node:fs'
 import * as schema from '../src/db/schema.ts'
 import { closeTestDb, getTestDb } from './helpers/db.ts'
 
@@ -34,6 +34,13 @@ export const TEST_USERS = {
     displayName: 'E2E Joueur Existant',
     hasSeenWelcome: true as const,
   },
+  admin: {
+    username: 'e2e_admin',
+    password: 'E2eAdminPwd1!',
+    displayName: 'E2E Admin',
+    hasSeenWelcome: true as const,
+    isAdmin: true as const,
+  },
 } as const
 
 async function upsertTestUser(
@@ -41,6 +48,7 @@ async function upsertTestUser(
   passwordHash: string,
   displayName: string,
   hasSeenWelcome: boolean,
+  isAdmin = false,
 ): Promise<void> {
   const db = getTestDb()
   const existing = await db.query.players.findFirst({
@@ -50,7 +58,7 @@ async function upsertTestUser(
   if (existing) {
     await db
       .update(schema.players)
-      .set({ hasSeenWelcome, displayName })
+      .set({ hasSeenWelcome, displayName, isAdmin })
       .where(eq(schema.players.username, username))
   } else {
     await db.insert(schema.players).values({
@@ -58,7 +66,7 @@ async function upsertTestUser(
       passwordHash,
       displayName,
       hasSeenWelcome,
-      isAdmin: false,
+      isAdmin,
     })
   }
 }
@@ -139,6 +147,15 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     TEST_USERS.returning.hasSeenWelcome,
   )
 
+  const adminHash = await hash(TEST_USERS.admin.password, 10)
+  await upsertTestUser(
+    TEST_USERS.admin.username,
+    adminHash,
+    TEST_USERS.admin.displayName,
+    TEST_USERS.admin.hasSeenWelcome,
+    TEST_USERS.admin.isAdmin,
+  )
+
   await closeTestDb()
 
   await saveAuthState(
@@ -150,6 +167,11 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     TEST_USERS.returning.username,
     TEST_USERS.returning.password,
     '.auth/returning.json',
+  )
+  await saveAuthState(
+    TEST_USERS.admin.username,
+    TEST_USERS.admin.password,
+    '.auth/admin.json',
   )
 
   console.log('[E2E] Global setup: test users ready, auth states saved')

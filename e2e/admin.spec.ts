@@ -25,7 +25,7 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
   test.describe('AC1: admin route', () => {
     test.use({ storageState: ADMIN_STATE })
 
-    test.skip('[1.4-E2E-001][P0][AC1] admin navigates to /admin and sees create-player form', async ({
+    test('[1.4-E2E-001][P0][AC1] admin navigates to /admin and sees create-player form', async ({
       page,
     }) => {
       // THIS TEST WILL FAIL — /admin route not implemented yet
@@ -55,7 +55,7 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
   test.describe('AC2: player creation', () => {
     test.use({ storageState: ADMIN_STATE })
 
-    test.skip('[1.4-E2E-002][P0][AC2] admin submits valid form — player created, success message shown', async ({
+    test('[1.4-E2E-002][P0][AC2] admin submits valid form — player created, success message shown', async ({
       page,
     }) => {
       // THIS TEST WILL FAIL — /admin route not implemented yet
@@ -86,7 +86,7 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
   test.describe('AC4: non-admin access denied', () => {
     test.use({ storageState: NON_ADMIN_STATE })
 
-    test.skip('[1.4-E2E-003][P0][AC4] non-admin user is redirected from /admin to /', async ({
+    test('[1.4-E2E-003][P0][AC4] non-admin user is redirected from /admin to /', async ({
       page,
     }) => {
       // THIS TEST WILL FAIL — /admin route not implemented yet
@@ -107,7 +107,7 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
   test.describe('AC5: duplicate username validation', () => {
     test.use({ storageState: ADMIN_STATE })
 
-    test.skip('[1.4-E2E-004][P1][AC5] submitting a duplicate username shows validation error', async ({
+    test('[1.4-E2E-004][P1][AC5] submitting a duplicate username shows validation error', async ({
       page,
     }) => {
       // THIS TEST WILL FAIL — /admin route not implemented yet
@@ -138,7 +138,7 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
     // Note: This test requires fresh player creation + login — requires admin auth for setup.
     // The test itself uses a fresh browser context (no storageState) to login as new player.
 
-    test.skip('[1.4-E2E-005][P2][AC3] newly created player logs in and sees WelcomeModal', async ({
+    test('[1.4-E2E-005][P2][AC3] newly created player logs in and sees WelcomeModal', async ({
       browser,
     }) => {
       // THIS TEST WILL FAIL — /admin route not implemented yet
