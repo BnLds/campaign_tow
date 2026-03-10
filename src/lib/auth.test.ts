@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { getSession, createSession, deleteSession } from './auth'
 import type { SessionData } from './auth'
-import { authMiddleware, armyOwnerMiddleware } from './middleware'
+import { authMiddleware, armyOwnerMiddleware, adminMiddleware } from './middleware'
 
 // ---------------------------------------------------------------------------
 // AC4 — auth.ts public contract
@@ -36,6 +36,11 @@ describe('[AC4][P0] auth.ts public API contract', () => {
 
   it('[1.2-UNIT-012] exports armyOwnerMiddleware (TanStack Start middleware)', () => {
     expect(armyOwnerMiddleware).toBeDefined()
+  })
+
+  // Story 1.4 — adminMiddleware (RED: fails until adminMiddleware is exported from middleware.ts)
+  it('[1.4-UNIT-011] exports adminMiddleware (TanStack Start middleware for admin routes)', () => {
+    expect(adminMiddleware).toBeDefined()
   })
 })
 
