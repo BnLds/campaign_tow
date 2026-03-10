@@ -8,15 +8,12 @@ import { createServerFn } from '@tanstack/react-start'
 import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
 import { deleteSession, loginPlayer } from '../lib/auth'
+import type { ServerResult } from '../lib/types'
 import { loginSchema } from '../lib/validators'
 
 // ---------------------------------------------------------------------------
 // Server functions
 // ---------------------------------------------------------------------------
-
-type ServerResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: { code: string; message: string } }
 
 export const loginFn = createServerFn({ method: 'POST' })
   .inputValidator(loginSchema)

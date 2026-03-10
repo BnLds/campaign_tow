@@ -72,10 +72,10 @@ describe('[AC4][P0] Auth module — src/lib/auth.ts', () => {
     expect(auth).toContain('httpOnly: true')
   })
 
-  it('[1.2-INT-010] auth.ts exports authMiddleware using createMiddleware', () => {
-    const auth = readFileSync(resolve(root, 'src/lib/auth.ts'), 'utf-8')
-    // Both must appear on the same declaration line — not in separate places
-    expect(auth).toMatch(/export const authMiddleware\s*=\s*createMiddleware/)
+  it('[1.2-INT-010] middleware.ts exports authMiddleware using createMiddleware (moved from auth.ts in story 1.3)', () => {
+    const middleware = readFileSync(resolve(root, 'src/lib/middleware.ts'), 'utf-8')
+    // Both must appear on the same declaration — not in separate places
+    expect(middleware).toMatch(/export const authMiddleware\s*=\s*createMiddleware/)
   })
 })
 
@@ -155,13 +155,13 @@ describe('[AC2][P1] Admin seed script — src/db/seed-admin.ts', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC5][P2] Army ownership middleware — scaffolded in story 1.2', () => {
-  it('[1.2-INT-021] auth.ts exports armyOwnerMiddleware', () => {
-    const auth = readFileSync(resolve(root, 'src/lib/auth.ts'), 'utf-8')
-    expect(auth).toContain('export const armyOwnerMiddleware')
+  it('[1.2-INT-021] middleware.ts exports armyOwnerMiddleware (moved from auth.ts in story 1.3)', () => {
+    const middleware = readFileSync(resolve(root, 'src/lib/middleware.ts'), 'utf-8')
+    expect(middleware).toContain('export const armyOwnerMiddleware')
   })
 
   it('[1.2-INT-022] armyOwnerMiddleware references FORBIDDEN error code', () => {
-    const auth = readFileSync(resolve(root, 'src/lib/auth.ts'), 'utf-8')
-    expect(auth).toContain('FORBIDDEN')
+    const middleware = readFileSync(resolve(root, 'src/lib/middleware.ts'), 'utf-8')
+    expect(middleware).toContain('FORBIDDEN')
   })
 })

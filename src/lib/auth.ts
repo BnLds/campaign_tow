@@ -1,8 +1,7 @@
 // Campaign TOW — Auth module
-// Single source of truth for session management and auth middleware.
-// Architecture boundary: this is the ONLY module that reads/writes sessions and cookies.
+// Single source of truth for session management (getSession, createSession, deleteSession, loginPlayer).
+// Middleware (authMiddleware, armyOwnerMiddleware) lives in src/lib/middleware.ts.
 
-import { createMiddleware } from '@tanstack/react-start'
 import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server'
 import { compare } from 'bcryptjs'
 import { eq, and, gt } from 'drizzle-orm'
@@ -16,6 +15,7 @@ export type SessionData = {
   playerId: string
   isAdmin: boolean
   displayName: string
+  hasSeenWelcome: boolean
 }
 
 export async function getSession(): Promise<SessionData | null> {
@@ -30,6 +30,7 @@ export async function getSession(): Promise<SessionData | null> {
       expiresAt: sessions.expiresAt,
       isAdmin: players.isAdmin,
       displayName: players.displayName,
+      hasSeenWelcome: players.hasSeenWelcome,
     })
     .from(sessions)
     .innerJoin(players, eq(sessions.playerId, players.id))
@@ -43,6 +44,7 @@ export async function getSession(): Promise<SessionData | null> {
     playerId: row.playerId,
     isAdmin: row.isAdmin,
     displayName: row.displayName,
+    hasSeenWelcome: row.hasSeenWelcome,
   }
 }
 
@@ -88,27 +90,4 @@ export async function loginPlayer(username: string, password: string): Promise<b
   return true
 }
 
-// authMiddleware: validates session and injects it into server function context
-export const authMiddleware = createMiddleware({ type: 'function' }).server(
-  async ({ next }) => {
-    const session = await getSession()
-    if (!session) throw new Error('UNAUTHORIZED')
-    return next({ context: { session } })
-  },
-)
 
-// armyOwnerMiddleware: verifies army ownership (pass-through scaffold — fully implemented in Epic 2)
-// Depends on authMiddleware to ensure session is available in context.
-// In Epic 2: will query armies table and check army.playerId === session.playerId (or isAdmin bypass)
-// Throws FORBIDDEN if ownership check fails.
-export const armyOwnerMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
-  .server(async ({ next, context }) => {
-    // FORBIDDEN check will be enforced in story 2.1 when armies table exists.
-    // Pattern:
-    // const army = await db.query.armies.findFirst({ where: eq(armies.id, data.armyId) })
-    // if (!army) throw new Error('NOT_FOUND')
-    // if (army.playerId !== context.session.playerId && !context.session.isAdmin)
-    //   throw new Error('FORBIDDEN')
-    return next({ context })
-  })

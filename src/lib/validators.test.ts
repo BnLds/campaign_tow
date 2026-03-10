@@ -6,7 +6,7 @@
 // Will fail with "Cannot find module './validators'" until validators.ts is implemented.
 
 import { describe, it, expect } from 'vitest'
-import { loginSchema } from './validators'
+import { loginSchema, updateDisplayNameSchema } from './validators'
 
 // ---------------------------------------------------------------------------
 // AC2 — loginSchema accepts valid credentials
@@ -51,6 +51,44 @@ describe('[AC3][P0] loginSchema — invalid inputs', () => {
 
   it('[1.2-UNIT-007] rejects missing password field', () => {
     const result = loginSchema.safeParse({ username: 'admin' })
+    expect(result.success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AC3 / AC4 — updateDisplayNameSchema (story 1.3)
+// ---------------------------------------------------------------------------
+
+describe('[AC3][P0] updateDisplayNameSchema — valid inputs', () => {
+  it('[1.3-UNIT-001] accepts a valid display name and trims it', () => {
+    const result = updateDisplayNameSchema.parse({ displayName: 'Thomas' })
+    expect(result.displayName).toBe('Thomas')
+  })
+
+  it('[1.3-UNIT-002] trims surrounding whitespace from a valid name', () => {
+    const result = updateDisplayNameSchema.parse({ displayName: '  Thomas  ' })
+    expect(result.displayName).toBe('Thomas')
+  })
+
+  it('[1.3-UNIT-003] accepts display name at max length (100 chars)', () => {
+    const result = updateDisplayNameSchema.safeParse({ displayName: 'a'.repeat(100) })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('[AC4][P0] updateDisplayNameSchema — invalid inputs', () => {
+  it('[1.3-UNIT-004] rejects empty string', () => {
+    const result = updateDisplayNameSchema.safeParse({ displayName: '' })
+    expect(result.success).toBe(false)
+  })
+
+  it('[1.3-UNIT-005] rejects whitespace-only string (trimmed to empty)', () => {
+    const result = updateDisplayNameSchema.safeParse({ displayName: '   ' })
+    expect(result.success).toBe(false)
+  })
+
+  it('[1.3-UNIT-006] rejects display name exceeding 100 characters', () => {
+    const result = updateDisplayNameSchema.safeParse({ displayName: 'a'.repeat(101) })
     expect(result.success).toBe(false)
   })
 })

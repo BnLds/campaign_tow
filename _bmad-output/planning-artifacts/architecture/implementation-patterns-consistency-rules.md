@@ -131,22 +131,48 @@ npx @tanstack/cli create --addon-details <id> --json
 
 ## Process Patterns
 
-**Auth Middleware (TanStack Start idiomatic):**
-```typescript
-import { createMiddleware } from '@tanstack/start'
+**Auth Middleware (TanStack Start import-protection pattern):**
 
-const authMiddleware = createMiddleware().server(async ({ next }) => {
+`auth.ts` imports `@tanstack/react-start/server` (server-only). Referencing `authMiddleware` at module scope in a route (e.g. `.middleware([authMiddleware])`) prevents the bundler from tree-shaking `auth.ts` out of the client bundle. Solution: centralize middlewares in `src/lib/middleware.ts` using dynamic import.
+
+```typescript
+// src/lib/middleware.ts — safe to import statically in any route file
+import { createMiddleware } from '@tanstack/react-start'
+
+export const authMiddleware = createMiddleware({ type: 'function' }).server(async ({ next }) => {
+  const { getSession } = await import('./auth')  // dynamic → pruned from client bundle
   const session = await getSession()
   if (!session) throw new Error('UNAUTHORIZED')
   return next({ context: { session } })
 })
 
-const armyOwnerMiddleware = createMiddleware().server(async ({ next, context, data }) => {
-  const army = await db.query.armies.findFirst({ where: eq(armies.id, data.armyId) })
-  if (army.playerId !== context.session.playerId && !context.session.isAdmin)
-    throw new Error('FORBIDDEN')
-  return next({ context: { ...context, army } })
-})
+export const armyOwnerMiddleware = createMiddleware({ type: 'function' })
+  .middleware([authMiddleware])
+  .server(async ({ next, context }) => {
+    // Epic 2: query armies, check army.playerId === session.playerId || isAdmin
+    // throw new Error('FORBIDDEN') if check fails
+    return next({ context })
+  })
+```
+
+**Usage in route files:**
+```typescript
+import { authMiddleware } from '../lib/middleware'  // ✅ always import from middleware.ts
+
+const myFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => { ... })
+```
+
+**Data Access in server functions:**
+```typescript
+// ✅ Route server functions call named functions from src/db/queries.ts
+import { markPlayerWelcomeSeen } from '../db/queries'
+
+// ❌ NEVER import db/drizzle-orm directly in a route file
+// import { db } from '../db/index'        ← violation
+// import { eq } from 'drizzle-orm'        ← violation
+// import { players } from '../db/schema'  ← violation
 ```
 
 **Validation:**
@@ -193,6 +219,7 @@ Sequential, fail-fast. Playwright only runs if all previous steps pass.
 - Follow naming conventions exactly (snake_case DB, camelCase code, PascalCase components, kebab-case files)
 - Place server functions in route files, shared logic in `src/lib/`
 - Use `ServerResult<T>` for mutations, direct return + throw for loaders
-- Use `createMiddleware()` for auth — not inline checks
+- Import `authMiddleware` / `armyOwnerMiddleware` from `src/lib/middleware.ts` — **never** define them locally in a route, never import from `auth.ts`
+- Access the DB via named functions in `src/db/queries.ts` — **never** import `db`, `drizzle-orm`, or schema tables directly in a route file
 - Import domain logic from `src/lib/` — never reimplement XP/delta/tier logic locally
 - Write unit tests for any new function in `src/lib/`
