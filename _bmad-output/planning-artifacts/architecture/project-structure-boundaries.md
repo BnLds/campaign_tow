@@ -59,8 +59,10 @@ campaign_tow/
     │   ├── delta-composer.test.ts
     │   ├── owb-parser.ts          ← parseOwbExport() — isolated module
     │   ├── owb-parser.test.ts
-    │   ├── auth.ts                ← getSession(), authMiddleware, armyOwnerMiddleware
-    │   ├── validators.ts          ← Zod schemas from drizzle-zod
+    │   ├── auth.ts                ← getSession(), createSession(), deleteSession(), loginPlayer() — session/cookie ONLY
+    │   ├── middleware.ts          ← authMiddleware, armyOwnerMiddleware — import-protected (dynamic import of auth.ts)
+    │   ├── types.ts               ← Shared types: ServerResult<T>
+    │   ├── validators.ts          ← Pure Zod schemas (client-safe)
     │   └── __fixtures__/
     │       └── owb-sample.txt     ← Copy of docs/army_example.txt for tests
     └── routes/
@@ -80,13 +82,15 @@ campaign_tow/
 ## Architectural Boundaries
 
 **Auth Boundary:**
-- `src/lib/auth.ts` is the ONLY module that reads/writes sessions and cookies
-- All routes import `authMiddleware` and `armyOwnerMiddleware` from `src/lib/auth.ts`
+- `src/lib/auth.ts` is the ONLY module that reads/writes sessions and cookies (`getSession`, `createSession`, `deleteSession`, `loginPlayer`)
+- `src/lib/middleware.ts` exports `authMiddleware` and `armyOwnerMiddleware` — all routes import from here
+- `middleware.ts` uses dynamic import of `auth.ts` inside `.server()` to avoid leaking server-only imports into the client bundle (TanStack Start import-protection pattern)
+- **NEVER** import `authMiddleware` from `auth.ts` or define it locally in a route file — always import from `middleware.ts`
 - No route file directly accesses session cookies or checks ownership inline
 
 **Data Access Boundary:**
-- `src/db/` is the ONLY directory that imports from `drizzle-orm` and accesses the database
-- Simple queries: inline in route server functions via `db.query.*`
+- `src/db/` is the ONLY directory that imports `drizzle-orm` table definitions (`pgTable`, `text`, `boolean`…) or the `db` client
+- Route server functions access the DB exclusively via named functions in `src/db/queries.ts` — never by importing `db` or `drizzle-orm` directly in a route file
 - Complex/reusable queries: extracted to named functions in `src/db/queries.ts`
 - Domain logic in `src/lib/` receives data as arguments — never imports `db` directly
 
