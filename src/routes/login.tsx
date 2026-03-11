@@ -6,7 +6,8 @@
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useForm } from '@tanstack/react-form'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import {useHydrated} from '../lib/useHydrated'
 import { deleteSession, loginPlayer } from '../lib/auth'
 import type { ServerResult } from '../lib/types'
 import { loginSchema } from '../lib/validators'
@@ -50,6 +51,13 @@ function LoginPage() {
   const router = useRouter()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const hydrated = useHydrated()
+
+  useEffect(() => {
+    if(hydrated) {
+      document.documentElement.setAttribute('data-app-hydrated', 'true')
+    }
+  }, [hydrated])
 
   const form = useForm({
     defaultValues: { username: '', password: '' },

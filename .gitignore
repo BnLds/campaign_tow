@@ -16,3 +16,4 @@ todos.json
 .claude
 .auth
 test-results
+.env.local

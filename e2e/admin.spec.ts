@@ -1,18 +1,12 @@
 // e2e/admin.spec.ts
 // Story 1.4: Admin — Player Account Creation
-// Status: RED — written before implementation (TDD red phase)
 //
 // Pre-conditions (handled by global-setup.ts):
 //   - Admin user (e2e_admin) exists with isAdmin = true, auth saved to .auth/admin.json
 //   - Non-admin user auth available via .auth/first-login.json (existing)
-//
-// IMPORTANT: global-setup.ts must be updated to create e2e_admin user and save
-//            its auth state to .auth/admin.json before un-skipping these tests.
-//
-// All tests use test.skip() — TDD red phase.
-// Remove test.skip() after implementing the feature and verify green phase.
 
 import { test, expect } from '@playwright/test'
+import { waitForHydration } from './helpers/waitForHydration'
 
 const ADMIN_STATE = '.auth/admin.json'
 const NON_ADMIN_STATE = '.auth/first-login.json'
@@ -28,7 +22,6 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
     test('[1.4-E2E-001][P0][AC1] admin navigates to /admin and sees create-player form', async ({
       page,
     }) => {
-      // THIS TEST WILL FAIL — /admin route not implemented yet
       await page.goto('/admin')
 
       // Admin page title in Cinzel font
@@ -58,7 +51,6 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
     test('[1.4-E2E-002][P0][AC2] admin submits valid form — player created, success message shown', async ({
       page,
     }) => {
-      // THIS TEST WILL FAIL — /admin route not implemented yet
       await page.goto('/admin')
 
       const usernameInput = page.getByLabel(/nom d'utilisateur/i)
@@ -66,6 +58,8 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
       const submitButton = page.getByRole('button', { name: /créer le compte/i })
 
       const testUsername = `e2e_player_${Date.now()}`
+
+      await waitForHydration(page)
 
       await usernameInput.fill(testUsername)
       await passwordInput.fill('TempPass123!')
@@ -89,7 +83,6 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
     test('[1.4-E2E-003][P0][AC4] non-admin user is redirected from /admin to /', async ({
       page,
     }) => {
-      // THIS TEST WILL FAIL — /admin route not implemented yet
       await page.goto('/admin')
 
       // Must be redirected to campaign view — admin page must not be accessible
@@ -110,13 +103,14 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
     test('[1.4-E2E-004][P1][AC5] submitting a duplicate username shows validation error', async ({
       page,
     }) => {
-      // THIS TEST WILL FAIL — /admin route not implemented yet
       await page.goto('/admin')
 
       // Use a known existing username (admin user created by seed-admin)
       const usernameInput = page.getByLabel(/nom d'utilisateur/i)
       const passwordInput = page.getByLabel(/mot de passe temporaire/i)
       const submitButton = page.getByRole('button', { name: /créer le compte/i })
+
+      await waitForHydration(page)
 
       await usernameInput.fill('admin')
       await passwordInput.fill('TempPass123!')
@@ -141,8 +135,6 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
     test('[1.4-E2E-005][P2][AC3] newly created player logs in and sees WelcomeModal', async ({
       browser,
     }) => {
-      // THIS TEST WILL FAIL — /admin route not implemented yet
-      //
       // Setup: Create player via admin UI in a separate context
       const adminContext = await browser.newContext({
         storageState: ADMIN_STATE,
@@ -152,6 +144,8 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
 
       const testUsername = `e2e_new_player_${Date.now()}`
       const testPassword = 'TempPass456!'
+
+      await waitForHydration(adminPage)
 
       await adminPage.getByLabel(/nom d'utilisateur/i).fill(testUsername)
       await adminPage.getByLabel(/mot de passe temporaire/i).fill(testPassword)
@@ -166,6 +160,9 @@ test.describe('[Story 1.4] Admin Player Account Creation — E2E (ATDD)', () => 
       const playerPage = await playerContext.newPage()
 
       await playerPage.goto('/login')
+
+      await waitForHydration(playerPage)
+
       await playerPage.getByTestId('login-username-input').fill(testUsername)
       await playerPage.getByTestId('login-password-input').fill(testPassword)
       await playerPage.getByTestId('login-submit-button').click()

@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import { db } from './index'
 import { players } from './schema'
 
-const username = process.argv[2] ?? process.env.ADMIN_USERNAME ?? 'admin'
+const username = (process.argv[2] as string | undefined) ?? process.env.ADMIN_USERNAME ?? 'admin'
 
 async function resetWelcome() {
   const result = await db

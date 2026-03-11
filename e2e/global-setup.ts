@@ -18,6 +18,7 @@ import { eq } from 'drizzle-orm'
 import fs from 'node:fs'
 import * as schema from '../src/db/schema.ts'
 import { closeTestDb, getTestDb } from './helpers/db.ts'
+import { waitForHydration } from './helpers/waitForHydration.ts'
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'
 
@@ -84,17 +85,7 @@ async function saveAuthState(
 
   // Wait for React hydration — networkidle fails on Vite dev server (HMR WebSocket).
   // Check for React fiber internals on the submit button: only present after hydration.
-  await page.waitForFunction(
-    () => {
-      const btn = document.querySelector('[data-testid="login-submit-button"]')
-      if (!btn) return false
-      return Object.keys(btn).some(
-        (k) => k.startsWith('__reactFiber') || k.startsWith('__reactInternals'),
-      )
-    },
-    undefined,
-    { timeout: 15000 },
-  )
+  await waitForHydration(page)
 
   await page.getByTestId('login-username-input').fill(username)
   await page.getByTestId('login-password-input').fill(password)

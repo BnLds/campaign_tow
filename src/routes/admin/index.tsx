@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { checkUsernameExists, createPlayer } from '../../db/queries'
 import { adminMiddleware } from '../../lib/middleware'
 import type { ServerResult } from '../../lib/types'
@@ -9,6 +9,8 @@ import { createPlayerSchema } from '../../lib/validators'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import {useHydrated} from '../../lib/useHydrated'
+
 
 const createPlayerFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
@@ -27,9 +29,16 @@ const createPlayerFn = createServerFn({ method: 'POST' })
 
     // AC2 — Hash password and create player
     const passwordHash = await bcryptjs.hash(data.tempPassword, 12)
-    const player = await createPlayer(data.username, passwordHash)
-
-    return { success: true, data: player }
+    try {
+      const player = await createPlayer(data.username, passwordHash)
+      return { success: true, data: player }
+    } catch {
+      // Unique constraint violation (race condition between check and insert)
+      return {
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: "Ce nom d'utilisateur existe déjà" },
+      }
+    }
   })
 
 export const Route = createFileRoute('/admin/')({
@@ -45,12 +54,20 @@ export const Route = createFileRoute('/admin/')({
 function AdminPage() {
   const [createdPlayer, setCreatedPlayer] = useState<{ username: string } | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
+  const hydrated = useHydrated()
+
+  useEffect(() => {
+    if(hydrated) {
+      document.documentElement.setAttribute('data-app-hydrated', 'true')
+    }
+  }, [hydrated])
 
   const form = useForm({
     defaultValues: { username: '', tempPassword: '' },
     validators: { onSubmit: createPlayerSchema },
     onSubmit: async ({ value }) => {
       setServerError(null)
+      setCreatedPlayer(null)
       const result = await createPlayerFn({ data: value })
       if (result.success) {
         setCreatedPlayer({ username: result.data.username })
