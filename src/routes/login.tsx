@@ -3,12 +3,11 @@
 // AC2: successful login creates session cookie + redirects to /
 // AC3: failed login shows inline error message
 
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useForm } from '@tanstack/react-form'
 import { useState, useEffect } from 'react'
 import {useHydrated} from '../lib/useHydrated'
-import { deleteSession, loginPlayer } from '../lib/auth'
 import type { ServerResult } from '../lib/types'
 import { loginSchema } from '../lib/validators'
 
@@ -16,7 +15,7 @@ import { loginSchema } from '../lib/validators'
 // Server functions
 // ---------------------------------------------------------------------------
 
-export const guestLoginFn = createServerFn({ method: 'POST' }).handler(async () => {
+const guestLoginFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { ensureGhostPlayer } = await import('../db/queries')
   const { createSession } = await import('../lib/auth')
   const ghostId = await ensureGhostPlayer()
@@ -24,9 +23,10 @@ export const guestLoginFn = createServerFn({ method: 'POST' }).handler(async () 
   return { success: true }
 })
 
-export const loginFn = createServerFn({ method: 'POST' })
+const loginFn = createServerFn({ method: 'POST' })
   .inputValidator(loginSchema)
   .handler(async ({ data }): Promise<ServerResult<{ redirect: string }>> => {
+    const { loginPlayer } = await import('../lib/auth')
     // Same error message for wrong user + wrong password — prevents username enumeration (AC3)
     const success = await loginPlayer(data.username, data.password)
     if (!success) {
@@ -37,11 +37,6 @@ export const loginFn = createServerFn({ method: 'POST' })
     }
     return { success: true, data: { redirect: '/' } }
   })
-
-export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
-  await deleteSession()
-  throw redirect({ to: '/login' })
-})
 
 // ---------------------------------------------------------------------------
 // Route definition

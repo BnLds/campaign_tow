@@ -1,5 +1,4 @@
 // Campaign TOW — Validators (client-safe, pure Zod)
-// Server-only schemas (drizzle-zod dependent) live in validators.server.ts
 
 import { z } from 'zod'
 

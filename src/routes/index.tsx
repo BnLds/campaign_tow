@@ -3,7 +3,6 @@ import { createServerFn } from '@tanstack/react-start'
 import { useState, useEffect } from 'react'
 import { useHydrated } from '../lib/useHydrated'
 import { WelcomeModal } from '../components/welcome-modal'
-import { markPlayerWelcomeSeen, updatePlayerDisplayName } from '../db/queries'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
 import { updateDisplayNameSchema } from '../lib/validators'
@@ -12,6 +11,7 @@ const markWelcomeSeenFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<void> => {
     if (context.session.isGuest) throw new Error('UNAUTHORIZED')
+    const { markPlayerWelcomeSeen } = await import('../db/queries')
     await markPlayerWelcomeSeen(context.session.playerId)
   })
 
@@ -20,6 +20,7 @@ const updateDisplayNameFn = createServerFn({ method: 'POST' })
   .inputValidator(updateDisplayNameSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ displayName: string }>> => {
     if (context.session.isGuest) throw new Error('UNAUTHORIZED')
+    const { updatePlayerDisplayName } = await import('../db/queries')
     await updatePlayerDisplayName(context.session.playerId, data.displayName)
     return { success: true, data: { displayName: data.displayName } }
   })
