@@ -16,6 +16,14 @@ import { loginSchema } from '../lib/validators'
 // Server functions
 // ---------------------------------------------------------------------------
 
+export const guestLoginFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const { ensureGhostPlayer } = await import('../db/queries')
+  const { createSession } = await import('../lib/auth')
+  const ghostId = await ensureGhostPlayer()
+  await createSession(ghostId)
+  return { success: true }
+})
+
 export const loginFn = createServerFn({ method: 'POST' })
   .inputValidator(loginSchema)
   .handler(async ({ data }): Promise<ServerResult<{ redirect: string }>> => {
@@ -58,6 +66,19 @@ function LoginPage() {
       document.documentElement.setAttribute('data-app-hydrated', 'true')
     }
   }, [hydrated])
+
+  const handleGuestLogin = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    setErrorMessage(null)
+    try {
+      await guestLoginFn()
+      await router.navigate({ to: '/' })
+    } catch {
+      setErrorMessage('Erreur lors de la connexion invité')
+      setIsSubmitting(false)
+    }
+  }
 
   const form = useForm({
     defaultValues: { username: '', password: '' },
@@ -210,6 +231,26 @@ function LoginPage() {
             {isSubmitting ? 'Connexion…' : 'Se connecter'}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={handleGuestLogin}
+          disabled={isSubmitting}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--color-info)',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            fontSize: '0.875rem',
+            marginTop: '1rem',
+            textAlign: 'center',
+            width: '100%',
+            opacity: isSubmitting ? 0.7 : 1,
+          }}
+          data-testid="guest-login-link"
+        >
+          Continuer en tant qu'invité
+        </button>
       </div>
     </div>
   )

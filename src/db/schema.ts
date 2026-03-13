@@ -9,6 +9,7 @@ export const players = pgTable('players', {
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name').notNull(),
   isAdmin: boolean('is_admin').notNull().default(false),
+  isGuest: boolean('is_guest').notNull().default(false),
   hasSeenWelcome: boolean('has_seen_welcome').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })

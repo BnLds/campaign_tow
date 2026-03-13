@@ -11,6 +11,7 @@ import { updateDisplayNameSchema } from '../lib/validators'
 const markWelcomeSeenFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<void> => {
+    if (context.session.isGuest) throw new Error('UNAUTHORIZED')
     await markPlayerWelcomeSeen(context.session.playerId)
   })
 
@@ -18,6 +19,7 @@ const updateDisplayNameFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator(updateDisplayNameSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ displayName: string }>> => {
+    if (context.session.isGuest) throw new Error('UNAUTHORIZED')
     await updatePlayerDisplayName(context.session.playerId, data.displayName)
     return { success: true, data: { displayName: data.displayName } }
   })
@@ -55,12 +57,14 @@ function CampaignView() {
 
   return (
     <>
-      <WelcomeModal
-        open={modalOpen}
-        displayName={session?.displayName ?? ''}
-        onDismiss={handleDismiss}
-        onUpdateDisplayName={handleUpdateDisplayName}
-      />
+      {!session?.isGuest && (
+        <WelcomeModal
+          open={modalOpen}
+          displayName={session?.displayName ?? ''}
+          onDismiss={handleDismiss}
+          onUpdateDisplayName={handleUpdateDisplayName}
+        />
+      )}
       <main style={{ padding: '2rem' }}>
         <h1>Campaign TOW</h1>
         <p>Campaign view — story 1.3+</p>

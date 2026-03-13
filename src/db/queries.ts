@@ -53,9 +53,40 @@ export async function getAllPlayers() {
       createdAt: players.createdAt,
     })
     .from(players)
+    .where(eq(players.isGuest, false))
     .orderBy(players.createdAt)
 }
 
 export async function deletePlayer(playerId: string): Promise<void> {
   await db.delete(players).where(eq(players.id, playerId))
+}
+
+// Story 1.7 — Ghost player for guest access
+
+export async function ensureGhostPlayer(): Promise<string> {
+  await db.insert(players).values({
+    username: '__guest__',
+    passwordHash: '!no-login!',
+    displayName: 'Invité',
+    isGuest: true,
+    isAdmin: false,
+    hasSeenWelcome: true,
+  }).onConflictDoNothing({ target: players.username })
+
+  const result = await db
+    .select({ id: players.id })
+    .from(players)
+    .where(eq(players.username, '__guest__'))
+    .limit(1)
+
+  return result[0].id
+}
+
+export async function getGhostPlayerId(): Promise<string | null> {
+  const result = await db
+    .select({ id: players.id })
+    .from(players)
+    .where(eq(players.username, '__guest__'))
+    .limit(1)
+  return result.length > 0 ? result[0].id : null
 }
