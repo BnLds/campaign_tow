@@ -40,3 +40,22 @@ export async function createPlayer(
     .returning({ id: players.id, username: players.username, displayName: players.displayName })
   return player
 }
+
+// Story 1.6 — Admin: player account list & delete
+
+export async function getAllPlayers() {
+  return db
+    .select({
+      id: players.id,
+      username: players.username,
+      displayName: players.displayName,
+      isAdmin: players.isAdmin,
+      createdAt: players.createdAt,
+    })
+    .from(players)
+    .orderBy(players.createdAt)
+}
+
+export async function deletePlayer(playerId: string): Promise<void> {
+  await db.delete(players).where(eq(players.id, playerId))
+}

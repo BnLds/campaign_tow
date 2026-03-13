@@ -98,22 +98,30 @@ function AppHeader({ session }: { session: SessionData }) {
       <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
         {session.isAdmin ? 'Admin' : session.displayName}
       </span>
-      <button
-        data-testid="logout-button"
-        onClick={handleLogout}
-        disabled={loggingOut}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: 'var(--color-brand)',
-          cursor: loggingOut ? 'not-allowed' : 'pointer',
-          fontSize: '0.875rem',
-          padding: '0.5rem',
-          opacity: loggingOut ? 0.7 : 1,
-        }}
-      >
-        {loggingOut ? 'Déconnexion…' : 'Se déconnecter'}
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+        <button
+          data-testid="logout-button"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--color-brand)',
+            cursor: loggingOut ? 'not-allowed' : 'pointer',
+            fontSize: '0.875rem',
+            padding: '0.5rem',
+            opacity: loggingOut ? 0.7 : 1,
+          }}
+        >
+          {loggingOut ? 'Déconnexion…' : 'Se déconnecter'}
+        </button>
+        {session.isAdmin && (
+          <a href="/admin" data-testid="admin-link"
+            onClick={(e) => { e.preventDefault(); router.navigate({ to: '/admin' }) }}
+            style={{ color: 'var(--color-brand)', fontSize: '0.875rem', textDecoration: 'none' }}
+          >Administration</a>
+        )}
+      </div>
     </header>
   )
 }

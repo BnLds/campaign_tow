@@ -46,7 +46,7 @@ development_status:
   1-3-first-login-welcome-modal-display-name: done
   1-4-admin-player-account-creation: done
   1-5-player-logout: done
-  1-6-admin-player-account-list-delete: backlog
+  1-6-admin-player-account-list-delete: done
   1-7-guest-access-read-only: backlog
   epic-1-retrospective: done
 

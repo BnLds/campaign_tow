@@ -1,22 +1,23 @@
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouteContext } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState, useEffect } from 'react'
-import { checkUsernameExists, createPlayer } from '../../db/queries'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { z } from 'zod'
 import { adminMiddleware } from '../../lib/middleware'
 import type { ServerResult } from '../../lib/types'
 import { createPlayerSchema } from '../../lib/validators'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import {useHydrated} from '../../lib/useHydrated'
-
+import { useHydrated } from '../../lib/useHydrated'
 
 const createPlayerFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
   .inputValidator(createPlayerSchema)
   .handler(async ({ data }): Promise<ServerResult<{ id: string; username: string; displayName: string }>> => {
     const bcryptjs = await import('bcryptjs')
+    const { checkUsernameExists, createPlayer } = await import('../../db/queries')
 
     // AC5 — Duplicate username check
     const exists = await checkUsernameExists(data.username)
@@ -41,6 +42,27 @@ const createPlayerFn = createServerFn({ method: 'POST' })
     }
   })
 
+// Story 1.6 — listPlayersFn: GET loader, returns all players (no ServerResult wrapper)
+const listPlayersFn = createServerFn({ method: 'GET' })
+  .middleware([adminMiddleware])
+  .handler(async () => {
+    const { getAllPlayers } = await import('../../db/queries')
+    return getAllPlayers()
+  })
+
+// Story 1.6 — deletePlayerFn: POST mutation, returns ServerResult<null>
+const deletePlayerFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(z.object({ playerId: z.string() }))
+  .handler(async ({ context, data }): Promise<ServerResult<null>> => {
+    if (data.playerId === context.session.playerId) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Impossible de supprimer votre propre compte' } }
+    }
+    const { deletePlayer } = await import('../../db/queries')
+    await deletePlayer(data.playerId)
+    return { success: true, data: null }
+  })
+
 export const Route = createFileRoute('/admin/')({
   beforeLoad: ({ context }) => {
     const { session } = context
@@ -52,15 +74,24 @@ export const Route = createFileRoute('/admin/')({
 })
 
 function AdminPage() {
+  const context = useRouteContext({ from: '__root__' })
+  const { session } = context
+  const queryClient = useQueryClient()
   const [createdPlayer, setCreatedPlayer] = useState<{ username: string } | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const hydrated = useHydrated()
 
   useEffect(() => {
-    if(hydrated) {
+    if (hydrated) {
       document.documentElement.setAttribute('data-app-hydrated', 'true')
     }
   }, [hydrated])
+
+  const playersQuery = useQuery({
+    queryKey: ['admin', 'players'],
+    queryFn: () => listPlayersFn(),
+  })
 
   const form = useForm({
     defaultValues: { username: '', tempPassword: '' },
@@ -72,11 +103,24 @@ function AdminPage() {
       if (result.success) {
         setCreatedPlayer({ username: result.data.username })
         form.reset()
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'players'] })
       } else {
         setServerError(result.error.message)
       }
     },
   })
+
+  const handleDelete = async (playerId: string, username: string) => {
+    if (!window.confirm(`Supprimer le compte de ${username} ? Cette action est irréversible.`)) return
+    setDeleteError(null)
+    const result = await deletePlayerFn({ data: { playerId } })
+    if (result.success) {
+      setCreatedPlayer(null)
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'players'] })
+    } else {
+      setDeleteError(result.error.message)
+    }
+  }
 
   return (
     <main style={{ padding: '1.5rem', maxWidth: '480px', margin: '0 auto' }}>
@@ -177,6 +221,84 @@ function AdminPage() {
           Créer le compte
         </Button>
       </form>
+
+      <section style={{ marginTop: '2rem' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
+          Joueurs
+        </h2>
+
+        {(deleteError || playersQuery.error) && (
+          <div
+            style={{
+              background: 'var(--color-malus-bg)',
+              border: '1px solid var(--color-malus)',
+              padding: '0.75rem',
+              borderRadius: '0.5rem',
+              marginBottom: '1rem',
+              color: 'var(--color-malus)',
+            }}
+          >
+            {[playersQuery.error ? 'Impossible de charger la liste des joueurs' : null, deleteError].filter(Boolean).join(' — ')}
+          </div>
+        )}
+
+        {playersQuery.isPending ? (
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>Chargement…</p>
+        ) : <div>
+          {(playersQuery.data ?? []).map((player) => (
+            <div
+              key={player.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.625rem 0',
+                borderBottom: '1px solid var(--color-border)',
+              }}
+            >
+              <span style={{ fontWeight: 600, fontFamily: 'monospace', minWidth: '8rem' }}>
+                {player.username}
+              </span>
+              <span style={{ color: 'var(--color-text-secondary)', flex: 1 }}>
+                {player.displayName || '—'}
+              </span>
+              {player.isAdmin && (
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '0.125rem 0.375rem',
+                    borderRadius: '0.25rem',
+                    background: 'var(--color-brand)',
+                    color: 'white',
+                  }}
+                >
+                  Admin
+                </span>
+              )}
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                {new Date(player.createdAt).toLocaleDateString('fr-FR')}
+              </span>
+              {player.id !== session?.playerId && (
+                <button
+                  data-testid={`delete-player-${player.id}`}
+                  onClick={() => handleDelete(player.id, player.username)}
+                  style={{
+                    background: 'none',
+                    border: '1px solid var(--color-malus)',
+                    color: 'var(--color-malus)',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '0.25rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  Supprimer
+                </button>
+              )}
+            </div>
+          ))}
+        </div>}
+      </section>
     </main>
   )
 }

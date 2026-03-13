@@ -191,10 +191,19 @@ export const armyOwnerMiddleware = createMiddleware({ type: 'function' })
 ```typescript
 import { authMiddleware } from '../lib/middleware'  // ✅ always import from middleware.ts
 
+// Without input validation:
 const myFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .handler(async ({ context }) => { ... })
+
+// With input validation — ALWAYS use .inputValidator() NOT .validator():
+const myFnWithInput = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ playerId: z.string() }))  // ✅ .inputValidator() — NOT .validator()
+  .handler(async ({ context, data }) => { ... })
 ```
+
+> **⚠ CRITICAL:** `.inputValidator()` is the correct method name — never `.validator()`. Always verify with `npx @tanstack/cli search-docs "createServerFn inputValidator" --library start --framework react` if unsure.
 
 **Data Access in server functions:**
 ```typescript
@@ -209,7 +218,7 @@ import { markPlayerWelcomeSeen } from '../db/queries'
 
 **Validation:**
 - Always validated server-side in server functions via Zod
-- Client-side: TanStack Form with same Zod schema (via adapter) for immediate UX feedback
+- Client-side: TanStack Form with same Zod schema — native Zod v4 support, NO adapter: `useForm({ validators: { onSubmit: mySchema } })`
 - Server is source of truth — never trust client
 
 **Error UI:**
