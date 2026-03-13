@@ -43,7 +43,7 @@ const createPlayerFn = createServerFn({ method: 'POST' })
 
 export const Route = createFileRoute('/admin/')({
   beforeLoad: ({ context }) => {
-    const session = 'session' in context ? context.session : null
+    const { session } = context
     if (!session?.isAdmin) {
       throw redirect({ to: '/' })
     }

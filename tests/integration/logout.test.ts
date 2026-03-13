@@ -1,8 +1,6 @@
 // tests/integration/logout.test.ts
 // Story 1.5: Player Logout
-// Status: RED — written before implementation (ATDD)
-//
-// Tests that FAIL until story 1.5 is implemented:
+// Tests:
 //   [1.5-INT-001] logoutFn = createServerFn({ method: 'POST' }) in __root.tsx
 //   [1.5-INT-002] logoutFn uses dynamic import-protection for deleteSession from auth.ts
 //   [1.5-INT-003] Route assigns component: RootLayout

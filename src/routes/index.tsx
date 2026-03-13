@@ -1,9 +1,9 @@
 import { Link, createFileRoute, useRouteContext, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useHydrated } from '../lib/useHydrated'
 import { WelcomeModal } from '../components/welcome-modal'
 import { markPlayerWelcomeSeen, updatePlayerDisplayName } from '../db/queries'
-import type { SessionData } from '../lib/auth'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
 import { updateDisplayNameSchema } from '../lib/validators'
@@ -27,8 +27,15 @@ export const Route = createFileRoute('/')({ component: CampaignView })
 function CampaignView() {
   const router = useRouter()
   const context = useRouteContext({ from: '__root__' })
-  const session: SessionData | null = 'session' in context ? context.session : null
+  const { session } = context
   const [modalOpen, setModalOpen] = useState(session?.hasSeenWelcome === false)
+  const hydrated = useHydrated()
+
+  useEffect(() => {
+    if (hydrated) {
+      document.documentElement.setAttribute('data-app-hydrated', 'true')
+    }
+  }, [hydrated])
 
   const handleDismiss = async () => {
     try {

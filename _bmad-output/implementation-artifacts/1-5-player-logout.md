@@ -1,6 +1,6 @@
 # Story 1.5: Player Logout
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -43,17 +43,17 @@ Then my guest session is cleared and I am redirected to /login.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Add logout/login button to root layout (AC1, AC4)
-  - [ ] 1.1 — In `src/routes/__root.tsx`, add session-aware action button in the top-right header area
-  - [ ] 1.2 — [DEFERRED TO 1.7] Guest "Se connecter" button — only add `isGuest?: boolean` to `SessionData` type (default `false`). Do NOT implement guest UI logic. All authenticated users see "Se déconnecter" for now.
-  - [ ] 1.3 — If authenticated (non-guest): show "Se déconnecter" (AC1)
-  - [ ] 1.4 — Wire both buttons to call `logoutFn` (already exists in `login.tsx` line 33)
+- [x] Task 1 — Add logout/login button to root layout (AC1, AC4)
+  - [x] 1.1 — In `src/routes/__root.tsx`, add session-aware action button in the top-right header area
+  - [x] 1.2 — [DEFERRED TO 1.7] Guest "Se connecter" button — only add `isGuest?: boolean` to `SessionData` type (default `false`). Do NOT implement guest UI logic. All authenticated users see "Se déconnecter" for now.
+  - [x] 1.3 — If authenticated (non-guest): show "Se déconnecter" (AC1)
+  - [x] 1.4 — Wire both buttons to call `logoutFn` (already exists in `login.tsx` line 33)
 
-- [ ] Task 2 — Refactor `logoutFn` to be importable from any route (AC2, AC5)
-  - [ ] 2.1 — `logoutFn` is currently defined in `src/routes/login.tsx` — it uses `deleteSession()` from `auth.ts` and `throw redirect({ to: '/login' })`
-  - [ ] 2.2 — Move `logoutFn` to a new server function in `src/routes/__root.tsx` OR keep importing from `login.tsx` (it's already exported). Evaluate which approach avoids circular imports.
-  - [ ] 2.3 — **Preferred approach:** Create a dedicated `logoutFn` as a server function in `__root.tsx` using the same dynamic import pattern. This avoids importing from a sibling route file which can cause bundler issues.
-  - [ ] 2.4 — Pattern:
+- [x] Task 2 — Refactor `logoutFn` to be importable from any route (AC2, AC5)
+  - [x] 2.1 — `logoutFn` is currently defined in `src/routes/login.tsx` — it uses `deleteSession()` from `auth.ts` and `throw redirect({ to: '/login' })`
+  - [x] 2.2 — Move `logoutFn` to a new server function in `src/routes/__root.tsx` OR keep importing from `login.tsx` (it's already exported). Evaluate which approach avoids circular imports.
+  - [x] 2.3 — **Preferred approach:** Create a dedicated `logoutFn` as a server function in `__root.tsx` using the same dynamic import pattern. This avoids importing from a sibling route file which can cause bundler issues.
+  - [x] 2.4 — Pattern:
     ```typescript
     const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
       const { deleteSession } = await import('../lib/auth')
@@ -62,27 +62,27 @@ Then my guest session is cleared and I am redirected to /login.
     ```
     Note: Do NOT `throw redirect()` from the server function — let the client handle navigation after the call returns, using `router.navigate({ to: '/login' })`. This is cleaner and avoids SSR redirect issues.
 
-- [ ] Task 3 — Add `Outlet` component for child route rendering (AC1)
-  - [ ] 3.1 — `__root.tsx` currently uses `shellComponent: RootDocument` which wraps `{children}` — verify that the logout button renders on ALL pages (Campaign, Admin, Armies, References) by placing it inside `RootDocument` before `{children}`
-  - [ ] 3.2 — The button must NOT appear on `/login` page — conditionally render based on session presence
+- [x] Task 3 — Add `Outlet` component for child route rendering (AC1)
+  - [x] 3.1 — `__root.tsx` currently uses `shellComponent: RootDocument` which wraps `{children}` — verify that the logout button renders on ALL pages (Campaign, Admin, Armies, References) by placing it inside `RootDocument` before `{children}`
+  - [x] 3.2 — The button must NOT appear on `/login` page — conditionally render based on session presence
 
-- [ ] Task 4 — Verify back-button protection (AC3)
-  - [ ] 4.1 — `__root.tsx` `beforeLoad` already checks session and redirects to `/login` if null — this should already handle AC3
-  - [ ] 4.2 — Write an integration test confirming that `beforeLoad` rejects when no session exists
-  - [ ] 4.3 — E2E test: login → logout → browser back → verify on /login
+- [x] Task 4 — Verify back-button protection (AC3)
+  - [x] 4.1 — `__root.tsx` `beforeLoad` already checks session and redirects to `/login` if null — this should already handle AC3
+  - [x] 4.2 — Write an integration test confirming that `beforeLoad` rejects when no session exists
+  - [x] 4.3 — E2E test: login → logout → browser back → verify on /login
 
-- [ ] Task 5 — Write tests (AC1–AC5)
-  - [ ] 5.1 — `tests/integration/logout.test.ts`: integration tests covering:
+- [x] Task 5 — Write tests (AC1–AC5)
+  - [x] 5.1 — `tests/integration/logout.test.ts`: integration tests covering:
     - `logoutFn` server function exists in `__root.tsx` (or wherever placed)
     - `logoutFn` calls `deleteSession` (verify import chain)
     - Root layout renders "Se déconnecter" button (verify in route component)
     - `beforeLoad` rejects unauthenticated access (AC3)
-  - [ ] 5.2 — `pnpm test` passes: 126 baseline + new tests — zero regressions
+  - [x] 5.2 — `pnpm test` passes: 136 total (126 baseline + 10 new) — zero regressions
 
-- [ ] Task 6 — Verify quality gates
-  - [ ] 6.1 — `pnpm typecheck` — zero errors
-  - [ ] 6.2 — `pnpm lint` — zero errors on story 1.5 files
-  - [ ] 6.3 — `pnpm build` — succeeds
+- [x] Task 6 — Verify quality gates
+  - [x] 6.1 — `pnpm typecheck` — zero errors
+  - [x] 6.2 — `pnpm lint` — zero errors on story 1.5 files
+  - [x] 6.3 — `pnpm build` — succeeds
 
 ## Dev Notes
 
@@ -178,12 +178,12 @@ Add `isGuest?: boolean` to `SessionData` type (defaults to `false`). Do NOT add 
 
 ### Architecture Boundaries — Compliance Checklist
 
-- [ ] `logoutFn` uses dynamic import of `deleteSession` from `auth.ts` (import-protection)
-- [ ] No direct DB access in route files — `deleteSession()` in `auth.ts` handles it
-- [ ] Logout button rendered from root layout, visible on ALL authenticated pages
-- [ ] Button NOT visible on `/login` page
-- [ ] Session cleared server-side (cookie + DB row) via existing `deleteSession()`
-- [ ] Client navigates to `/login` after logout — `beforeLoad` protects all routes
+- [x] `logoutFn` uses dynamic import of `deleteSession` from `auth.ts` (import-protection)
+- [x] No direct DB access in route files — `deleteSession()` in `auth.ts` handles it
+- [x] Logout button rendered from root layout, visible on ALL authenticated pages
+- [x] Button NOT visible on `/login` page
+- [x] Session cleared server-side (cookie + DB row) via existing `deleteSession()`
+- [x] Client navigates to `/login` after logout — `beforeLoad` protects all routes
 
 ### Previous Story Learnings (from Story 1.4)
 
@@ -211,8 +211,8 @@ Commit `e282d23` is the sprint change proposal that added stories 1.5–1.7 to e
 ```
 src/routes/
 ├── __root.tsx             ← MODIFIED: add RootLayout component with AppHeader + Outlet, logoutFn
-├── index.tsx              ← unchanged
-├── login.tsx              ← possibly remove logoutFn if duplicated, or keep for backward compat
+├── index.tsx              ← MODIFIED: add useHydrated + useEffect for data-app-hydrated (E2E pattern)
+├── login.tsx              ← unchanged (logoutFn kept for backward compat)
 ├── admin/
 │   └── index.tsx          ← unchanged
 ```
@@ -220,10 +220,15 @@ src/routes/
 ### Project Structure Notes
 
 - `src/routes/__root.tsx` is the ONLY file that needs significant changes
-- `src/lib/auth.ts` — NO changes (deleteSession already exists)
+- `src/lib/auth.ts` — minimal change: `isGuest?: boolean` added to `SessionData` type
 - `src/lib/middleware.ts` — NO changes
 - `src/db/schema.ts` — NO changes (no new tables, no schema migration)
 - `src/db/queries.ts` — NO changes
+
+### Learnings from Story 1.5 (for future stories)
+
+- **`data-app-hydrated` pattern:** Every route component must include `useHydrated()` + `useEffect` to set `document.documentElement.setAttribute('data-app-hydrated', 'true')`. Without it, E2E tests using `storageState` that navigate directly to that route will have `waitForHydration()` time out. Story 1.5 discovered `index.tsx` was missing this pattern.
+- **`component` vs `shellComponent` in root route:** `shellComponent` renders the HTML shell (no router context access). `component` renders persistent UI with access to `useRouteContext` — required for the AppHeader.
 
 ### Design Tokens (for header styling)
 
@@ -245,16 +250,40 @@ src/routes/
 - Architecture import-protection pattern: [Source: architecture/implementation-patterns-consistency-rules.md#Process Patterns]
 - Route protection patterns (3 session states): [Source: architecture/implementation-patterns-consistency-rules.md#Process Patterns]
 - Design tokens: [Source: src/styles/globals.css + MEMORY.md#Palette]
-- Test baseline: 126/126 (from story 1.4)
+- Test baseline: 136/136 (story 1.5 done)
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-6
 
 ### Debug Log References
 
+- **E2E tests 001-002 failing (storageState → /):** `data-app-hydrated` was not set by `index.tsx` (only `login.tsx` and `admin/index.tsx` had the pattern). Added `useHydrated()` + `useEffect` to `CampaignView` in `index.tsx`. Fix confirmed: 6/6 E2E tests pass.
+- **Lint error in `e2e/logout.spec.ts`:** `import { test, expect, type Page }` violated `import/consistent-type-specifier-style`. Fixed by splitting into two imports.
+
 ### Completion Notes List
 
+- Implemented `logoutFn` as POST `createServerFn` in `__root.tsx` with dynamic import of `deleteSession` (import-protection pattern, no server-side redirect).
+- Added `RootLayout` component to root route (`component: RootLayout`) with `session &&` guard for `AppHeader`. `Outlet` added to `@tanstack/react-router` import.
+- `AppHeader` minimal: identity indicator (displayName / "Admin") left, "Se déconnecter" button right with `data-testid="logout-button"`. Client navigates to `/login` via `router.navigate` after `logoutFn()` call.
+- Added `isGuest?: boolean` to `SessionData` type in `auth.ts` (no DB column — forward-compat for story 1.7).
+- Added `useHydrated()` + `useEffect` to `CampaignView` in `index.tsx` — required for `waitForHydration()` to work in E2E tests using `storageState`.
+- Kept existing `logoutFn` in `login.tsx` untouched.
+- **Integration tests:** 136/136 passing (126 baseline + 10 new).
+- **E2E tests:** 18/18 passing (12 existing + 6 new).
+- **Quality gates:** typecheck ✅ · lint ✅ · build ✅.
+
 ### File List
+
+- `src/routes/__root.tsx` — modified: added `logoutFn`, `RootLayout`, `AppHeader`, `Outlet` import, `component: RootLayout`
+- `src/lib/auth.ts` — modified: added `isGuest?: boolean` to `SessionData` type, explicit `isGuest: false` in `getSession()` return
+- `src/routes/index.tsx` — modified: added `useHydrated` + `useEffect` for `data-app-hydrated` E2E pattern
+- `e2e/logout.spec.ts` — new: E2E tests for story 1.5 (6 tests)
+- `tests/integration/logout.test.ts` — new: integration tests for story 1.5 (10 tests)
+- `_bmad-output/planning-artifacts/architecture/implementation-patterns-consistency-rules.md` — modified: added E2E hydration pattern documentation
+
+## Change Log
+
+- 2026-03-13: Story 1.5 implemented — logout button in root layout, `logoutFn` server function, `isGuest` forward-compat type, E2E hydration fix in `index.tsx`. 136 integration tests + 18 E2E tests passing.

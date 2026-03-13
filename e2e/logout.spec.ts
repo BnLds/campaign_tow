@@ -1,12 +1,10 @@
 // e2e/logout.spec.ts
 // Story 1.5: Player Logout
-// Status: RED — written before implementation (ATDD)
-//
 // Pre-conditions (handled by global-setup.ts):
 //   - e2e_returning user exists with hasSeenWelcome=true, auth saved to .auth/returning.json
 //   - App server running at baseURL (via playwright.config.ts webServer)
 //
-// Tests that FAIL until story 1.5 is implemented:
+// Tests:
 //   [1.5-E2E-001] "Se déconnecter" button visible on authenticated pages
 //   [1.5-E2E-002] Identity indicator (displayName) visible in header
 //   [1.5-E2E-003] Clicking "Se déconnecter" redirects to /login
@@ -19,7 +17,8 @@
 // Note: AC2/AC3 tests (003–005) perform fresh login before each test to avoid
 //       session ID conflicts after logout (storageState session row is deleted server-side).
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { waitForHydration } from './helpers/waitForHydration'
 import { TEST_USERS } from './global-setup'
 

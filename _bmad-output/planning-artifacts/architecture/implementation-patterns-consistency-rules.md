@@ -230,6 +230,32 @@ import { markPlayerWelcomeSeen } from '../db/queries'
 | Integration | Vitest + test DB | Server functions + auth middleware | MVP — critical mutations |
 | E2E | Playwright | Full user flows | MVP — 3 critical happy paths |
 
+**E2E Hydration Pattern — MANDATORY for every route component:**
+
+Every route component MUST set `data-app-hydrated="true"` on `document.documentElement` once React has hydrated. Without it, `waitForHydration()` in Playwright tests will time out when a test navigates directly to that route via `storageState`.
+
+```typescript
+// Required in EVERY route component — copy this block exactly
+import { useHydrated } from '../lib/useHydrated'
+import { useEffect } from 'react'
+
+function MyRouteComponent() {
+  const hydrated = useHydrated()
+  useEffect(() => {
+    if (hydrated) {
+      document.documentElement.setAttribute('data-app-hydrated', 'true')
+    }
+  }, [hydrated])
+  // ...
+}
+```
+
+**Why it can be missed:** Tests that do a fresh login first (e.g. `loginAsReturning()`) happen to visit `/login` which sets the attribute — so the attribute persists across SPA navigations. Tests using `storageState` skip the login page entirely and navigate straight to the target route; if that route doesn't set the attribute, `waitForHydration()` times out. The bug only surfaces for routes that lack the block.
+
+**Routes that MUST include it:** every file in `src/routes/` that has a visible component (`index.tsx`, `login.tsx`, `admin/index.tsx`, `armies/index.tsx`, `armies/$armyId.tsx`, `references.tsx`, etc.).
+
+---
+
 **E2E Scenarios (MVP):**
 1. Login → browse timeline → view unit card
 2. Create match → complete post-match flow (XP + tier-up + improvement)
