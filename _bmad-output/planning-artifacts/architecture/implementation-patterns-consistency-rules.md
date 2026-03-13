@@ -120,29 +120,20 @@ Four built-in skills provide curated TanStack guidance. **Use these first** befo
 - When implementing data fetching or cache invalidation → invoke `/tanstack-query`
 - When wiring Query + Router + Start together → invoke `/tanstack-integration`
 
-### Step 2 — TanStack CLI Commands (fallback / precision lookup)
+### Step 2 — TanStack CLI Skill (fallback precision lookup)
 
-Use these when a skill doesn't cover the specific page or API needed:
+If the four skills above don't cover the specific page or API needed, invoke the **`/tanstack-cli-docs` skill** before falling back to a web search. This skill wraps the official TanStack CLI (`npx @tanstack/cli`) and fetches exact, up-to-date documentation pages directly.
 
-```bash
-# Full-text search in TanStack Start docs
-npx @tanstack/cli search-docs "server functions" --library start --framework react
-npx @tanstack/cli search-docs "middleware createMiddleware" --library start --framework react
-npx @tanstack/cli search-docs "loaders" --library router --framework react --json
+**When to use:**
+- A specific guide page or API is not covered by the four skills above
+- You need the exact current signature of a TanStack API
+- You want to explore the TanStack ecosystem (add-ons, partners, integrations)
 
-# Fetch a specific documentation page
-npx @tanstack/cli doc start framework/react/guide/data-loading
-npx @tanstack/cli doc router framework/react/guide/file-based-routing
-npx @tanstack/cli doc query framework/react/overview
+**Invoke:** `/tanstack-cli-docs` (describe what you are looking for)
 
-# Explore the ecosystem (auth, database, deployment partners)
-npx @tanstack/cli ecosystem --category database
-npx @tanstack/cli ecosystem --library router --json
+### Step 3 — Web Search (last resort only)
 
-# List all available add-ons (to check if something can be added vs manual)
-npx @tanstack/cli create --list-add-ons
-npx @tanstack/cli create --addon-details <id> --json
-```
+Only perform a web search if both the TanStack skills (Step 1) and the `tanstack-cli-docs` skill (Step 2) have failed to answer the question. Prefer official TanStack documentation sources.
 
 ## Process Patterns
 
@@ -258,6 +249,8 @@ Sequential, fail-fast. Playwright only runs if all previous steps pass.
 
 **All AI Agents MUST:**
 - Invoke the relevant `/tanstack-*` skill before implementing any TanStack-specific pattern — never rely solely on training data
+- If the four TanStack skills don't cover the needed API or guide, invoke `/tanstack-cli-docs` **before** doing any web search
+- Web search is the last resort — only after both Step 1 (skills) and Step 2 (`/tanstack-cli-docs`) have been exhausted
 - Follow naming conventions exactly (snake_case DB, camelCase code, PascalCase components, kebab-case files)
 - Place server functions in route files, shared logic in `src/lib/`
 - Use `ServerResult<T>` for mutations, direct return + throw for loaders
