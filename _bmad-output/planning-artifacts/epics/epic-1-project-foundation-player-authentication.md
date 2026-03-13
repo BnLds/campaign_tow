@@ -122,3 +122,112 @@ So that all campaign participants can log in with their own credentials.
 **Then** a validation error is shown and no duplicate account is created
 
 ---
+
+## Story 1.5: Player Logout
+
+As a player,
+I want to log out of the app,
+So that I can end my session and return to the login page.
+
+**Acceptance Criteria:**
+
+**Given** I am authenticated,
+**When** I tap the "Se déconnecter" action (in the profile/header area),
+**Then** my session cookie is cleared, the `sessions` table row is deleted, and I am redirected to /login
+
+**Given** I am on /login after logout,
+**When** I navigate back (browser back button),
+**Then** I am redirected back to /login (session is gone, protected routes reject)
+
+**Given** I am a guest (isGuest session),
+**When** I tap "Se connecter" (same location as "Se déconnecter"),
+**Then** my guest session is cleared and I am redirected to /login
+
+*No new tables. Extends: `sessions` table (story 1.2).*
+
+---
+
+## Story 1.6: Admin — Player Account List & Delete
+
+As Ben (admin),
+I want to view all player accounts and delete them if needed,
+So that I can manage campaign participants throughout the season.
+
+**Acceptance Criteria:**
+
+**Given** I am authenticated as admin,
+**When** I open the profile/session menu (same area as "Se déconnecter"),
+**Then** an "Administration" link is rendered below "Se déconnecter"
+— this link is absent from the DOM entirely for non-admin players and guests
+
+**Given** I tap the "Administration" link,
+**When** the admin section loads,
+**Then** I see the account creation form (from story 1.4) AND a list of all players (username, displayName, isAdmin flag, created_at)
+— the ghost player (isGuest = true) is excluded from this list
+
+**Given** I am viewing the player list,
+**When** I tap "Delete" on a player account,
+**Then** a confirmation is required before deletion proceeds
+
+**Given** I confirm deletion of a player account,
+**When** the deletion is processed,
+**Then** the player row is removed from `players`, all associated `sessions` rows are deleted, and the player list refreshes
+
+**Given** I attempt to delete my own admin account,
+**Then** the action is rejected server-side with an error message (cannot self-delete)
+
+*No new tables. Extends admin section from story 1.4.
+Navigation entry point: profile/session menu, below "Se déconnecter", admin-only — absent from DOM for all other roles.*
+
+---
+
+## Story 1.7: Guest Access (Read-Only)
+
+As an unauthenticated visitor,
+I want to browse the campaign in read-only mode,
+So that I can follow the campaign without needing an account.
+
+**Acceptance Criteria:**
+
+**Given** I am on /login with no active session,
+**When** the page renders,
+**Then** a text link "Continuer en tant qu'invité" (blue, below the login form) is visible
+
+**Given** I click "Continuer en tant qu'invité",
+**When** the action is processed,
+**Then** a session is created in `sessions` pointing to the ghost player (players.isGuest = true), a session cookie is set, and I am redirected to the Campaign view (/)
+
+**Given** I have an active guest session,
+**When** I navigate the app,
+**Then** all three tabs (Campagne, Armées, Références) are accessible and the Campaign view displays an empty match history
+
+**Given** I have an active guest session,
+**When** any write action is attempted (match creation, army edit, profile update, admin),
+**Then** the action is blocked — write UI elements (FAB, edit buttons, forms) are absent from the DOM; server functions reject with 401
+
+**Given** I have an active session (any role),
+**When** any view renders,
+**Then** an identity indicator is displayed top-left:
+- player.isGuest === true → "Invité"
+- player.isAdmin === true → "Admin"
+- otherwise → player.displayName
+
+**Given** I have an active guest session,
+**When** I open the profile/session menu,
+**Then** I see "Se connecter" in place of "Se déconnecter"
+— the "Administration" link is absent from the DOM
+
+**Given** I tap "Se connecter" as a guest,
+**When** the action is processed,
+**Then** my guest session is cleared and I am redirected to /login
+
+**Given** I am on a write route (/match/new, /admin, etc.) with a guest or no session,
+**When** the route loads,
+**Then** I am redirected to /login
+
+*Schema change: `players.is_guest boolean NOT NULL DEFAULT false` added.
+Ghost player seeded at DB init (username: '__guest__', displayName: 'Invité', isGuest: true, isAdmin: false).
+sessions.player_id remains NOT NULL with FK intact — guest sessions point to the ghost player ID.
+Never use session === null as proxy for guest — always check player.isGuest.*
+
+---

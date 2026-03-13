@@ -146,6 +146,32 @@ npx @tanstack/cli create --addon-details <id> --json
 
 ## Process Patterns
 
+**Route Protection Patterns:**
+
+Three session states — check via `player.isGuest` / `player.isAdmin`:
+- `player.isGuest === true` → Guest (read-only, no write access)
+- `player.isAdmin === true` → Admin (full access + admin section)
+- otherwise → Authenticated player
+
+Route guard rules:
+- **Read-only routes** (`/`, `/armies`, `/armies/$armyId`, `/references`): Allow guest sessions. Redirect to `/login` only if no session at all.
+- **Write routes** (`/match/new`, `/match/$matchId/post-match`): Require non-guest session. Redirect to `/login` if guest or no session.
+- **Admin routes** (`/admin`): Require `player.isAdmin === true`. Reject otherwise.
+
+UI rendering rules:
+- Write UI elements (FAB, edit buttons, forms): absent from DOM when `player.isGuest === true`
+- "Administration" link: absent from DOM unless `player.isAdmin === true`
+- Identity indicator (top-left): `"Invité"` | `"Admin"` | `player.displayName`
+- Session action (profile menu): `"Se déconnecter"` (player/admin) or `"Se connecter"` (guest)
+
+Schema rule:
+- `players.is_guest boolean NOT NULL DEFAULT false`
+- Ghost player (`username: '__guest__'`) seeded at DB init — never appears in admin player list, never deletable
+- `sessions.player_id` always `NOT NULL` — guest sessions point to the ghost player ID
+- **Never** check `session === null` to determine guest status — always use `player.isGuest`
+
+---
+
 **Auth Middleware (TanStack Start import-protection pattern):**
 
 `auth.ts` imports `@tanstack/react-start/server` (server-only). Referencing `authMiddleware` at module scope in a route (e.g. `.middleware([authMiddleware])`) prevents the bundler from tree-shaking `auth.ts` out of the client bundle. Solution: centralize middlewares in `src/lib/middleware.ts` using dynamic import.
