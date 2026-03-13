@@ -99,11 +99,31 @@ Loaders (read operations) return data directly and throw on error — caught by 
 - After mutations, invalidate relevant TanStack Query keys
 - Pattern: `queryClient.invalidateQueries({ queryKey: ['armies', armyId] })`
 
-## TanStack CLI — Developer Commands
+## TanStack — Documentation Reference
 
-The TanStack CLI provides documentation search commands that ALL dev agents MUST use to get up-to-date information on TanStack libraries (which are still in RC/active development).
+TanStack libraries are in active development (RC status). ALL dev agents MUST consult up-to-date documentation before implementing any TanStack-specific pattern. **Do not rely solely on training data.**
 
-**Search documentation (preferred over relying on training data):**
+### Step 1 — Use Claude Code Skills (preferred)
+
+Four built-in skills provide curated TanStack guidance. **Use these first** before falling back to CLI commands:
+
+| Skill | Scope |
+|---|---|
+| `/tanstack-query` | Data fetching, caching, mutations, server state management |
+| `/tanstack-router` | Type-safe routing, data loading, search params, navigation |
+| `/tanstack-start` | Server functions, middleware, SSR, authentication, deployment |
+| `/tanstack-integration` | Integration patterns between Query + Router + Start, SSR, caching coordination |
+
+**When to invoke a skill:**
+- Before implementing any TanStack-specific pattern → invoke the relevant skill
+- When uncertain about an API (server functions, middleware, loaders, routing) → invoke `/tanstack-start` or `/tanstack-router`
+- When implementing data fetching or cache invalidation → invoke `/tanstack-query`
+- When wiring Query + Router + Start together → invoke `/tanstack-integration`
+
+### Step 2 — TanStack CLI Commands (fallback / precision lookup)
+
+Use these when a skill doesn't cover the specific page or API needed:
+
 ```bash
 # Full-text search in TanStack Start docs
 npx @tanstack/cli search-docs "server functions" --library start --framework react
@@ -123,11 +143,6 @@ npx @tanstack/cli ecosystem --library router --json
 npx @tanstack/cli create --list-add-ons
 npx @tanstack/cli create --addon-details <id> --json
 ```
-
-**When to use these commands:**
-- Before implementing any TanStack-specific pattern (server functions, middleware, routing) → run `search-docs` first
-- When the model is uncertain about TanStack Start API (RC status means docs may have changed) → run `doc` to get the current page
-- Before manually installing a dependency → check `--list-add-ons` to see if an add-on handles it
 
 ## Process Patterns
 
@@ -216,6 +231,7 @@ Sequential, fail-fast. Playwright only runs if all previous steps pass.
 ## Enforcement Guidelines
 
 **All AI Agents MUST:**
+- Invoke the relevant `/tanstack-*` skill before implementing any TanStack-specific pattern — never rely solely on training data
 - Follow naming conventions exactly (snake_case DB, camelCase code, PascalCase components, kebab-case files)
 - Place server functions in route files, shared logic in `src/lib/`
 - Use `ServerResult<T>` for mutations, direct return + throw for loaders
