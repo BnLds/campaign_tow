@@ -361,6 +361,7 @@ export async function getArmyWithUnits(armyId: string) {
     id: army.id,
     name: army.name,
     faction: army.faction,
+    playerId: army.playerId,
     player: playerInfo,
     units: unitRows.map((u) => ({
       ...u,
@@ -398,5 +399,93 @@ export async function getUnitDeltas(unitIds: string[]): Promise<{
   ])
 
   return { statModifiers: modRows, unitGains: gainRows }
+}
+
+// Story 2.4 — Direct edit of unit & character deltas
+
+export async function insertStatModifier(
+  unitId: string,
+  stat: string,
+  delta: number,
+  source: string,
+  temporary: boolean,
+) {
+  const rows = await db
+    .insert(statModifiers)
+    .values({ unitId, stat, delta, source, temporary })
+    .returning()
+  if (rows.length === 0) throw new Error('Insert returned no rows')
+  return rows[0]
+}
+
+export async function getStatModifierById(modifierId: string) {
+  const rows = await db
+    .select({ id: statModifiers.id, unitId: statModifiers.unitId })
+    .from(statModifiers)
+    .where(eq(statModifiers.id, modifierId))
+    .limit(1)
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function deleteStatModifier(modifierId: string): Promise<boolean> {
+  const result = await db
+    .delete(statModifiers)
+    .where(eq(statModifiers.id, modifierId))
+    .returning()
+  return result.length > 0
+}
+
+export async function insertUnitGain(
+  unitId: string,
+  description: string,
+  active: boolean,
+) {
+  const rows = await db
+    .insert(unitGains)
+    .values({ unitId, description, active })
+    .returning()
+  if (rows.length === 0) throw new Error('Insert returned no rows')
+  return rows[0]
+}
+
+export async function getUnitGainById(gainId: string) {
+  const rows = await db
+    .select({ id: unitGains.id, unitId: unitGains.unitId })
+    .from(unitGains)
+    .where(eq(unitGains.id, gainId))
+    .limit(1)
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function deleteUnitGain(gainId: string): Promise<boolean> {
+  const result = await db
+    .delete(unitGains)
+    .where(eq(unitGains.id, gainId))
+    .returning()
+  return result.length > 0
+}
+
+export async function updateUnitXp(unitId: string, xp: number): Promise<boolean> {
+  const result = await db
+    .update(units)
+    .set({ xp })
+    .where(eq(units.id, unitId))
+    .returning()
+  return result.length > 0
+}
+
+export async function getUnitById(unitId: string) {
+  const rows = await db
+    .select({
+      id: units.id,
+      armyId: units.armyId,
+      name: units.name,
+      type: units.type,
+      xp: units.xp,
+    })
+    .from(units)
+    .where(eq(units.id, unitId))
+    .limit(1)
+  return rows.length > 0 ? rows[0] : null
 }
 

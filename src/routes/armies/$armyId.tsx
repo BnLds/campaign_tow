@@ -1,13 +1,14 @@
 // Campaign TOW — /armies/$armyId route
 // Public consultation: all authenticated users (including guests) can view any army.
 
-import { createFileRoute, notFound, Link } from '@tanstack/react-router'
+import { createFileRoute, notFound, Link, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useHydrated } from '../../lib/useHydrated'
-import { authMiddleware } from '../../lib/middleware'
+import { authMiddleware, armyOwnerMiddleware } from '../../lib/middleware'
 import { UnitCard } from '../../components/UnitCard'
+import { UnitEditPanel } from '../../components/UnitEditPanel'
 import { composeUnitView } from '../../lib/delta-composer'
 import { calculateTier } from '../../lib/tier'
 import type { ComposedUnitView } from '../../lib/delta-composer'
@@ -19,7 +20,7 @@ import type { ComposedUnitView } from '../../lib/delta-composer'
 const loadArmyFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ armyId: z.string() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { getArmyWithUnits, getUnitDeltas } = await import('../../db/queries')
 
     const army = await getArmyWithUnits(data.armyId)
@@ -44,6 +45,11 @@ const loadArmyFn = createServerFn({ method: 'GET' })
       }
     })
 
+    const session = context.session
+    const isOwner =
+      !session.isGuest &&
+      (session.isAdmin || army.playerId === session.playerId)
+
     return {
       army: {
         id: army.id,
@@ -52,7 +58,175 @@ const loadArmyFn = createServerFn({ method: 'GET' })
         player: army.player,
       },
       unitCards,
+      isOwner,
     }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — fetch unit deltas (for edit panel)
+// ---------------------------------------------------------------------------
+
+const fetchUnitDeltasFn = createServerFn({ method: 'GET' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(z.object({ armyId: z.string(), unitId: z.string() }))
+  .handler(async ({ data }) => {
+    const { getUnitById, getStatModifiers, getUnitGains } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return { statModifiers: [], unitGains: [] }
+    }
+    const [statModifiers, unitGains] = await Promise.all([
+      getStatModifiers(data.unitId),
+      getUnitGains(data.unitId),
+    ])
+    return { statModifiers, unitGains }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — add stat modifier
+// ---------------------------------------------------------------------------
+
+const VALID_STATS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
+
+const addStatModifierFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(
+    z.object({
+      armyId: z.string(),
+      unitId: z.string(),
+      stat: z.enum(VALID_STATS),
+      delta: z.number().int().refine((v) => v !== 0, {
+        message: 'Le delta doit être un entier non nul',
+      }),
+      source: z.string().trim().min(1, { message: 'La source ne peut pas être vide' }).max(200),
+      temporary: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { getUnitById, insertStatModifier } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    const row = await insertStatModifier(data.unitId, data.stat, data.delta, data.source, data.temporary)
+    return { success: true as const, data: { id: row.id } }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — remove stat modifier
+// ---------------------------------------------------------------------------
+
+const removeStatModifierFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(z.object({ armyId: z.string(), modifierId: z.string() }))
+  .handler(async ({ data }) => {
+    const { getStatModifierById, getUnitById, deleteStatModifier } = await import('../../db/queries')
+    const modifier = await getStatModifierById(data.modifierId)
+    if (!modifier) {
+      return {
+        success: false as const,
+        error: { code: 'NOT_FOUND', message: 'Modificateur introuvable' },
+      }
+    }
+    const unit = await getUnitById(modifier.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'FORBIDDEN', message: "Ce modificateur n'appartient pas à cette armée" },
+      }
+    }
+    const deleted = await deleteStatModifier(data.modifierId)
+    if (!deleted) {
+      return { success: false as const, error: { code: 'NOT_FOUND', message: 'Modificateur introuvable' } }
+    }
+    return { success: true as const, data: null }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — add unit gain
+// ---------------------------------------------------------------------------
+
+const addUnitGainFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(
+    z.object({
+      armyId: z.string(),
+      unitId: z.string(),
+      description: z.string().trim().min(1, { message: 'La description ne peut pas être vide' }).max(200),
+      active: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { getUnitById, insertUnitGain } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    const row = await insertUnitGain(data.unitId, data.description, data.active)
+    return { success: true as const, data: { id: row.id } }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — remove unit gain
+// ---------------------------------------------------------------------------
+
+const removeUnitGainFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(z.object({ armyId: z.string(), gainId: z.string() }))
+  .handler(async ({ data }) => {
+    const { getUnitGainById, getUnitById, deleteUnitGain } = await import('../../db/queries')
+    const gain = await getUnitGainById(data.gainId)
+    if (!gain) {
+      return {
+        success: false as const,
+        error: { code: 'NOT_FOUND', message: 'Capacité introuvable' },
+      }
+    }
+    const unit = await getUnitById(gain.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'FORBIDDEN', message: "Cette capacité n'appartient pas à cette armée" },
+      }
+    }
+    const deleted = await deleteUnitGain(data.gainId)
+    if (!deleted) {
+      return { success: false as const, error: { code: 'NOT_FOUND', message: 'Capacité introuvable' } }
+    }
+    return { success: true as const, data: null }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — update unit XP
+// ---------------------------------------------------------------------------
+
+const updateXpFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(
+    z.object({
+      armyId: z.string(),
+      unitId: z.string(),
+      xp: z.number().int().min(0, { message: 'XP doit être >= 0' }),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { getUnitById, updateUnitXp } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    await updateUnitXp(data.unitId, data.xp)
+    const tier = calculateTier(data.xp, unit.type)
+    return { success: true as const, data: { xp: data.xp, tier } }
   })
 
 // ---------------------------------------------------------------------------
@@ -118,8 +292,10 @@ function groupUnitsByType(
 // ---------------------------------------------------------------------------
 
 function ArmyView() {
-  const { army, unitCards } = Route.useLoaderData()
+  const { army, unitCards, isOwner } = Route.useLoaderData()
   const hydrated = useHydrated()
+  const router = useRouter()
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null)
 
   useEffect(() => {
     if (hydrated) {
@@ -128,6 +304,10 @@ function ArmyView() {
   }, [hydrated])
 
   const groups = groupUnitsByType(unitCards)
+
+  const handleMutationSuccess = async () => {
+    await router.invalidate()
+  }
 
   return (
     <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
@@ -167,12 +347,54 @@ function ArmyView() {
             {type}
           </h2>
           {cards.map((card) => (
-            <UnitCard
-              key={card.unit.id}
-              unit={card.unit}
-              composedView={card.composedView}
-              tier={card.tier}
-            />
+            <div key={card.unit.id}>
+              <div style={{ position: 'relative' }}>
+                <UnitCard
+                  unit={card.unit}
+                  composedView={card.composedView}
+                  tier={card.tier}
+                />
+                {isOwner && (
+                  <button
+                    data-testid={`edit-unit-${card.unit.id}`}
+                    onClick={() =>
+                      setEditingUnitId(
+                        editingUnitId === card.unit.id ? null : card.unit.id,
+                      )
+                    }
+                    style={{
+                      position: 'absolute',
+                      top: '0.625rem',
+                      right: '0.75rem',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--color-text-secondary)',
+                      fontSize: '0.75rem',
+                      padding: '0.25rem 0.5rem',
+                    }}
+                  >
+                    ✏ Modifier
+                  </button>
+                )}
+              </div>
+              {isOwner && editingUnitId === card.unit.id && (
+                <UnitEditPanel
+                  armyId={army.id}
+                  unitId={card.unit.id}
+                  unitName={card.unit.name}
+                  currentXp={card.unit.xp}
+                  onClose={() => setEditingUnitId(null)}
+                  onMutationSuccess={handleMutationSuccess}
+                  addStatModifierFn={addStatModifierFn}
+                  removeStatModifierFn={removeStatModifierFn}
+                  addUnitGainFn={addUnitGainFn}
+                  removeUnitGainFn={removeUnitGainFn}
+                  updateXpFn={updateXpFn}
+                  fetchUnitDeltasFn={fetchUnitDeltasFn}
+                />
+              )}
+            </div>
           ))}
         </section>
       ))}

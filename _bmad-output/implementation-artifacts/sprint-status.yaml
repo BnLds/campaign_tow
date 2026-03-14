@@ -50,11 +50,11 @@ development_status:
   1-7-guest-access-read-only: done
   epic-1-retrospective: done
 
-  epic-2: in-progress
+  epic-2: done
   2-1-owb-army-import-player-assignment: done
   2-2-manual-unit-entry-post-import-correction: done
   2-3-unit-card-display-with-campaign-deltas: done
-  2-4-direct-edit-of-unit-character-deltas: backlog
+  2-4-direct-edit-of-unit-character-deltas: done
   epic-2-retrospective: optional
 
   epic-3: backlog
