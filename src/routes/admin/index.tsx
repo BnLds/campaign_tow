@@ -918,9 +918,9 @@ function AddUnitSection({
         >
           <option value="">— Choisir un type —</option>
           <option value="Personnages">Personnages</option>
-          <option value="Unites de base">Unités de base</option>
-          <option value="Unites speciales">Unités spéciales</option>
-          <option value="Unites rares">Unités rares</option>
+          <option value="Unités de base">Unités de base</option>
+          <option value="Unités spéciales">Unités spéciales</option>
+          <option value="Unités rares">Unités rares</option>
         </select>
       </div>
 

@@ -102,7 +102,7 @@ function SubProfileSection({ label, stats, showLabel }: SubProfileSectionProps) 
                   borderBottom: '1px solid var(--color-border)',
                 }}
               >
-                {key}
+                {key.toUpperCase()}
               </div>
               <StatCell statKey={key} entry={stats[key]} />
             </div>
@@ -227,7 +227,7 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
             }}
             data-delta-neutral={isNeutral ? 'true' : undefined}
           >
-            {d.stat} {prefix}{d.delta} ({d.source})
+            {d.stat.toUpperCase()} {prefix}{d.delta} ({d.source})
           </span>
         )
       })}
