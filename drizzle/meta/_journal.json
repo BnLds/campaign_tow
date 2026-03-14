@@ -8,6 +8,20 @@
       "when": 1773405120231,
       "tag": "0000_abandoned_dracula",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773413952748,
+      "tag": "0001_gorgeous_whistler",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773417574896,
+      "tag": "0002_parallel_triathlon",
+      "breakpoints": true
     }
   ]
 }

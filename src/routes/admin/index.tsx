@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { adminMiddleware } from '../../lib/middleware'
 import type { ServerResult } from '../../lib/types'
-import { createPlayerSchema } from '../../lib/validators'
+import { createPlayerSchema, importArmySchema, assignArmySchema } from '../../lib/validators'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -63,6 +63,66 @@ const deletePlayerFn = createServerFn({ method: 'POST' })
     return { success: true, data: null }
   })
 
+// Story 2.1 — importArmyFn: POST, parses OWB text and inserts army + units + sub_profiles
+const importArmyFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(importArmySchema)
+  .handler(async ({ data }): Promise<ServerResult<{ armyId: string; armyName: string; unitCount: number }>> => {
+    const { parseOwbExport } = await import('../../lib/owb-parser')
+    const { createArmyWithUnits } = await import('../../db/queries')
+
+    let parsed
+    try {
+      parsed = parseOwbExport(data.rawText)
+    } catch (err) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: err instanceof Error ? err.message : "Erreur lors de l'import",
+        },
+      }
+    }
+
+    try {
+      const { armyId, unitCount } = await createArmyWithUnits(parsed)
+      return { success: true, data: { armyId, armyName: parsed.name, unitCount } }
+    } catch {
+      return {
+        success: false,
+        error: {
+          code: 'SERVER_ERROR',
+          message: "Erreur serveur lors de l'enregistrement — veuillez réessayer",
+        },
+      }
+    }
+  })
+
+// Story 2.1 — listArmiesFn: GET, returns all armies with player info
+const listArmiesFn = createServerFn({ method: 'GET' })
+  .middleware([adminMiddleware])
+  .handler(async () => {
+    const { getAllArmies } = await import('../../db/queries')
+    return getAllArmies()
+  })
+
+// Story 2.1 — assignArmyFn: POST, assigns a player to an army
+const assignArmyFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(assignArmySchema)
+  .handler(async ({ data }): Promise<ServerResult<null>> => {
+    const { assignArmyToPlayer } = await import('../../db/queries')
+    try {
+      const assigned = await assignArmyToPlayer(data.armyId, data.playerId)
+      if (!assigned) {
+        return { success: false, error: { code: 'NOT_FOUND', message: 'Armée introuvable' } }
+      }
+      return { success: true, data: null }
+    } catch {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "Erreur lors de l'assignation — joueur invalide" } }
+    }
+  })
+
 export const Route = createFileRoute('/admin/')({
   beforeLoad: ({ context }) => {
     const { session } = context
@@ -80,6 +140,12 @@ function AdminPage() {
   const [createdPlayer, setCreatedPlayer] = useState<{ username: string } | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [assignResult, setAssignResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [owbText, setOwbText] = useState('')
+  const [importSubmitting, setImportSubmitting] = useState(false)
+  const [assigningArmyId, setAssigningArmyId] = useState<string | null>(null)
+  const [selectedPlayers, setSelectedPlayers] = useState<Record<string, string | undefined>>({})
   const hydrated = useHydrated()
 
   useEffect(() => {
@@ -91,6 +157,11 @@ function AdminPage() {
   const playersQuery = useQuery({
     queryKey: ['admin', 'players'],
     queryFn: () => listPlayersFn(),
+  })
+
+  const armiesQuery = useQuery({
+    queryKey: ['admin', 'armies'],
+    queryFn: () => listArmiesFn(),
   })
 
   const form = useForm({
@@ -120,6 +191,58 @@ function AdminPage() {
     } else {
       setDeleteError(result.error.message)
     }
+  }
+
+  const handleImport = async () => {
+    setImportResult(null)
+    setImportSubmitting(true)
+    try {
+      const result = await importArmyFn({ data: { rawText: owbText } })
+      if (result.success) {
+        setImportResult({
+          success: true,
+          message: `Armée "${result.data.armyName}" importée — ${result.data.unitCount} unité${result.data.unitCount > 1 ? 's' : ''}`,
+        })
+        setOwbText('')
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'armies'] })
+      } else {
+        setImportResult({ success: false, message: result.error.message })
+      }
+    } catch {
+      setImportResult({ success: false, message: "Erreur réseau — veuillez réessayer" })
+    } finally {
+      setImportSubmitting(false)
+    }
+  }
+
+  const handleAssign = async (armyId: string) => {
+    const playerId = selectedPlayers[armyId]
+    if (!playerId) return
+    setAssigningArmyId(armyId)
+    setAssignResult(null)
+    try {
+      const result = await assignArmyFn({ data: { armyId, playerId } })
+      if (result.success) {
+        setAssignResult({ success: true, message: 'Armée assignée avec succès' })
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'armies'] })
+      } else {
+        setAssignResult({ success: false, message: result.error.message })
+      }
+    } catch {
+      setAssignResult({ success: false, message: "Erreur réseau — veuillez réessayer" })
+    } finally {
+      setAssigningArmyId(null)
+    }
+  }
+
+  const btnStyle = {
+    background: 'var(--color-brand)',
+    color: 'white',
+    border: 'none',
+    padding: '0.375rem 0.75rem',
+    borderRadius: '0.375rem',
+    cursor: 'pointer',
+    fontSize: '0.875rem',
   }
 
   return (
@@ -298,6 +421,167 @@ function AdminPage() {
             </div>
           ))}
         </div>}
+      </section>
+
+      {/* Story 2.1 — Import OWB army */}
+      <section style={{ marginTop: '2rem' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
+          Importer une armée OWB
+        </h2>
+
+        <textarea
+          data-testid="owb-import-textarea"
+          value={owbText}
+          onChange={(e) => setOwbText(e.target.value)}
+          disabled={importSubmitting}
+          placeholder="Coller ici l'export texte Old World Builder…"
+          rows={6}
+          style={{
+            width: '100%',
+            padding: '0.625rem',
+            borderRadius: '0.375rem',
+            border: '1px solid var(--color-border)',
+            fontFamily: 'monospace',
+            fontSize: '0.8rem',
+            resize: 'vertical',
+            background: 'var(--color-surface)',
+            boxSizing: 'border-box',
+          }}
+        />
+
+        <button
+          data-testid="owb-import-submit"
+          onClick={handleImport}
+          disabled={importSubmitting || !owbText.trim()}
+          style={{ ...btnStyle, marginTop: '0.75rem', opacity: importSubmitting ? 0.6 : 1 }}
+        >
+          {importSubmitting ? 'Import en cours…' : 'Importer'}
+        </button>
+
+        {importResult && (
+          <p
+            data-testid="import-result-message"
+            style={{
+              marginTop: '0.75rem',
+              padding: '0.625rem',
+              borderRadius: '0.375rem',
+              background: importResult.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
+              color: importResult.success ? 'var(--color-bonus)' : 'var(--color-malus)',
+              border: `1px solid ${importResult.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+              fontSize: '0.875rem',
+            }}
+          >
+            {importResult.message}
+          </p>
+        )}
+      </section>
+
+      {/* Story 2.1 — Army list with player assignment */}
+      <section style={{ marginTop: '2rem' }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
+          Armées
+        </h2>
+
+        {armiesQuery.error && (
+          <div
+            style={{
+              background: 'var(--color-malus-bg)',
+              border: '1px solid var(--color-malus)',
+              padding: '0.75rem',
+              borderRadius: '0.5rem',
+              marginBottom: '1rem',
+              color: 'var(--color-malus)',
+            }}
+          >
+            Impossible de charger la liste des armées
+          </div>
+        )}
+
+        {assignResult && (
+          <p
+            data-testid="assign-result-message"
+            style={{
+              marginBottom: '1rem',
+              padding: '0.625rem',
+              borderRadius: '0.375rem',
+              background: assignResult.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
+              color: assignResult.success ? 'var(--color-bonus)' : 'var(--color-malus)',
+              border: `1px solid ${assignResult.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+              fontSize: '0.875rem',
+            }}
+          >
+            {assignResult.message}
+          </p>
+        )}
+
+        {armiesQuery.isPending ? (
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>Chargement…</p>
+        ) : (
+          <div data-testid="army-list">
+            {(armiesQuery.data ?? []).length === 0 ? (
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                Aucune armée importée.
+              </p>
+            ) : (
+              (armiesQuery.data ?? []).map((army) => (
+                <div
+                  key={army.id}
+                  data-testid={`army-row-${army.id}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap',
+                    padding: '0.75rem 0',
+                    borderBottom: '1px solid var(--color-border)',
+                  }}
+                >
+                  <span style={{ fontWeight: 600, fontFamily: 'var(--font-display)', fontSize: '0.9rem', flex: '0 0 auto' }}>
+                    {army.name}
+                  </span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem', flex: '0 0 auto' }}>
+                    {army.faction}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', flex: '0 0 auto' }}>
+                    {army.playerDisplayName ?? 'Non assignée'}
+                  </span>
+                  <select
+                    role="combobox"
+                    value={selectedPlayers[army.id] ?? army.playerId ?? ''}
+                    onChange={(e) =>
+                      setSelectedPlayers((prev) => ({ ...prev, [army.id]: e.target.value }))
+                    }
+                    style={{
+                      padding: '0.25rem 0.375rem',
+                      borderRadius: '0.25rem',
+                      border: '1px solid var(--color-border)',
+                      fontSize: '0.8rem',
+                      flex: '1 1 120px',
+                      maxWidth: '160px',
+                    }}
+                  >
+                    <option value="">— Choisir un joueur —</option>
+                    {(playersQuery.data ?? []).map((player) => (
+                      <option key={player.id} value={player.id}>
+                        {player.displayName || player.username}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => handleAssign(army.id)}
+                    disabled={assigningArmyId === army.id || !selectedPlayers[army.id]}
+                    style={{
+                      ...btnStyle,
+                      opacity: assigningArmyId === army.id || !selectedPlayers[army.id] ? 0.5 : 1,
+                    }}
+                  >
+                    Assigner
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </section>
     </main>
   )

@@ -30,18 +30,24 @@ export const adminMiddleware = createMiddleware({ type: 'function' })
     return next({ context })
   })
 
-// armyOwnerMiddleware: verifies army ownership (pass-through scaffold — fully implemented in Epic 2)
+// armyOwnerMiddleware: verifies army ownership.
 // Depends on authMiddleware to ensure session is available in context.
-// In Epic 2: will query armies table and check army.playerId === session.playerId (or isAdmin bypass)
-// Throws FORBIDDEN if ownership check fails.
+// Expects server functions to receive { armyId: string } in their input data.
+// Throws FORBIDDEN if session player doesn't own the army and is not admin.
+// Contract: injects { armyId: string } into context (lightweight — no full army object).
+// Consumers needing full army data must query getArmyById separately.
 export const armyOwnerMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
-  .server(async ({ next, context }) => {
-    // FORBIDDEN check will be enforced in story 2.1 when armies table exists.
-    // Pattern:
-    // const army = await db.query.armies.findFirst({ where: eq(armies.id, data.armyId) })
-    // if (!army) throw new Error('NOT_FOUND')
-    // if (army.playerId !== context.session.playerId && !context.session.isAdmin)
-    //   throw new Error('FORBIDDEN')
-    return next({ context })
+  .server(async ({ next, context, data }) => {
+    if (context.session.isGuest) throw new Error('UNAUTHORIZED')
+    const input = (data as unknown) as Record<string, unknown>
+    const armyId = input.armyId
+    if (typeof armyId !== 'string' || !armyId) throw new Error('BAD_REQUEST')
+    const { getArmyOwner } = await import('../db/queries')
+    const army = await getArmyOwner(armyId)
+    if (!army) throw new Error('NOT_FOUND')
+    if (army.playerId !== context.session.playerId && !context.session.isAdmin) {
+      throw new Error('FORBIDDEN')
+    }
+    return next({ context: { ...context, armyId } })
   })

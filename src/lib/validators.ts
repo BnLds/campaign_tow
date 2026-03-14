@@ -21,3 +21,15 @@ export const createPlayerSchema = z.object({
   tempPassword: z.string().min(6, 'Password must be at least 6 characters').max(100, 'Password must be 100 characters or less'),
 })
 export type CreatePlayerInput = z.infer<typeof createPlayerSchema>
+
+// Story 2.1 — Army import & player assignment
+export const importArmySchema = z.object({
+  rawText: z.string().trim().min(1),
+})
+export type ImportArmyInput = z.infer<typeof importArmySchema>
+
+export const assignArmySchema = z.object({
+  armyId: z.string().min(1),
+  playerId: z.string().min(1),
+})
+export type AssignArmyInput = z.infer<typeof assignArmySchema>
