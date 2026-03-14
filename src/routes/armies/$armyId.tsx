@@ -68,8 +68,8 @@ export const Route = createFileRoute('/armies/$armyId')({
       <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
         Armée introuvable
       </p>
-      <Link to="/admin" style={{ color: 'var(--color-brand)' }}>
-        Retour aux armées
+      <Link to="/" style={{ color: 'var(--color-brand)' }}>
+        Retour à l'accueil
       </Link>
     </main>
   ),

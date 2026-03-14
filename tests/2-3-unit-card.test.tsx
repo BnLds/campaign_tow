@@ -63,7 +63,8 @@ describe('[AC1] UnitCard — renders unit name', () => {
   it('[2.3-COMP-001] unit name "Archers" is displayed in the card', () => {
     const composedView = makeComposedView([makeSubProfile('Archers')])
     render(<UnitCard unit={makeUnit('Archers')} composedView={composedView} tier={0} />)
-    expect(screen.getByText('Archers')).toBeTruthy()
+    // With showLabel=true, 'Archers' appears in both the unit header and the sub-profile label
+    expect(screen.getAllByText('Archers').length).toBeGreaterThan(0)
   })
 })
 
@@ -210,22 +211,49 @@ describe('[AC3] UnitCard — multiple sub-profiles', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Test 11 — Sub-profile label uppercase
+// Test 11 — Sub-profile label uppercase (always shown, even with 1 sub-profile)
 // ---------------------------------------------------------------------------
 
 describe('[AC3] UnitCard — sub-profile label uppercase', () => {
-  it('[2.3-COMP-011] sub-profile label has text-transform:uppercase inline style when multiple sub-profiles', () => {
+  it('[2.3-COMP-011] sub-profile label has text-transform:uppercase inline style (always shown, even with 1 sub-profile)', () => {
+    // Fix M5: showLabel is always true — test with a single sub-profile to verify
     const sp1 = makeSubProfile('infanterie')
-    const sp2 = makeSubProfile('cavalerie')
-    const composedView = makeComposedView([sp1, sp2])
+    const composedView = makeComposedView([sp1])
     const { container } = render(
       <UnitCard unit={makeUnit()} composedView={composedView} tier={0} />
     )
 
-    // With multiple sub-profiles, showLabel=true and the label div has inline textTransform: 'uppercase'
+    // showLabel=true even with 1 sub-profile; label div has inline textTransform: 'uppercase'
     const labelElements = container.querySelectorAll('.sub-profile-label')
     expect(labelElements.length).toBeGreaterThan(0)
     const firstLabel = labelElements[0] as HTMLElement
     expect(firstLabel.style.textTransform).toBe('uppercase')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test 12 — delta=0 chip renders as neutral, not malus
+// ---------------------------------------------------------------------------
+
+describe('[AC2] UnitCard — delta=0 chip is neutral', () => {
+  it('[2.3-COMP-012] renders zero delta chip as neutral (not red malus style)', () => {
+    const subProfile = makeSubProfile('Guerriers')
+    const composedView = makeComposedView([subProfile], {
+      deltas: [{ stat: 'cc', delta: 0, source: 'Test', temporary: false }],
+    })
+    const { container } = render(
+      <UnitCard unit={makeUnit()} composedView={composedView} tier={0} />
+    )
+
+    // The chip should be rendered with neutral data attribute
+    const neutralChip = container.querySelector('[data-delta-neutral="true"]')
+    expect(neutralChip).toBeTruthy()
+
+    // The chip should NOT have malus background color
+    const chipEl = neutralChip as HTMLElement
+    expect(chipEl.style.background).not.toContain('malus')
+    // Neutral chip has gray background — browser normalizes hex to rgb
+    // #f3f4f6 = rgb(243, 244, 246)
+    expect(chipEl.style.background).toMatch(/rgb\(243,\s*244,\s*246\)|#f3f4f6/)
   })
 })

@@ -67,6 +67,8 @@ export const subProfiles = pgTable('sub_profiles', {
 })
 
 // Story 2.3 — Campaign deltas: stat modifiers and unit gains
+// Story 2-3: Run `pnpm db:generate && pnpm db:push` before first deploy.
+// Migration file: drizzle/0003_smiling_patriot.sql
 
 export const statModifiers = pgTable('stat_modifiers', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

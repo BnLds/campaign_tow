@@ -1,6 +1,7 @@
 // Campaign TOW — UnitCard component
 // Displays a unit's base stats, campaign deltas, tier pill and border.
 
+import React from 'react'
 import type { ComposedUnitView, StatDelta, UnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
 
@@ -51,6 +52,9 @@ interface SubProfileSectionProps {
 }
 
 function SubProfileSection({ label, stats, showLabel }: SubProfileSectionProps) {
+  // Fix E1: fallback for empty sub-profile label
+  const displayLabel = label?.trim() || 'Profil'
+
   return (
     <div>
       {showLabel && (
@@ -67,7 +71,7 @@ function SubProfileSection({ label, stats, showLabel }: SubProfileSectionProps) 
             fontFamily: 'var(--font-body)',
           }}
         >
-          {label}
+          {displayLabel}
         </div>
       )}
       <div
@@ -127,8 +131,9 @@ function StatCell({ entry }: StatCellProps) {
     )
   }
 
+  // Fix E2: delta=0 with modified=true shows neutral (no color change)
   const isBonus = entry.modified && entry.delta !== null && entry.delta > 0
-  const isPenalty = entry.modified && entry.delta !== null && entry.delta < 0
+  const isMalus = entry.modified && entry.delta !== null && entry.delta < 0
 
   const cellStyle: React.CSSProperties = {
     padding: '0.25rem 0',
@@ -136,12 +141,12 @@ function StatCell({ entry }: StatCellProps) {
     fontWeight: entry.modified ? 700 : 400,
     color: isBonus
       ? 'var(--color-bonus)'
-      : isPenalty
+      : isMalus
         ? 'var(--color-malus)'
         : 'var(--color-text-primary)',
     background: isBonus
       ? 'var(--color-bonus-bg)'
-      : isPenalty
+      : isMalus
         ? 'var(--color-malus-bg)'
         : undefined,
   }
@@ -154,7 +159,7 @@ function StatCell({ entry }: StatCellProps) {
     )
   }
 
-  if (isPenalty) {
+  if (isMalus) {
     return (
       <div className="pen" style={cellStyle} data-stat-modified="true" data-delta-positive="false">
         {entry.value}
@@ -183,27 +188,52 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
         fontSize: '0.75rem',
       }}
     >
-      {deltas.map((d) => {
+      {/* Fix C3 + M3: delta=0 neutral style, index-based key to avoid collisions */}
+      {deltas.map((d, idx) => {
         const isBonus = d.delta > 0
+        const isMalus = d.delta < 0
+        const isNeutral = d.delta === 0
+
+        const chipStyle: React.CSSProperties = isBonus
+          ? {
+              background: 'var(--color-bonus-bg)',
+              color: 'var(--color-bonus)',
+              border: '1px solid var(--color-bonus-border)',
+            }
+          : isMalus
+            ? {
+                background: 'var(--color-malus-bg)',
+                color: 'var(--color-malus)',
+                border: '1px solid var(--color-malus-border)',
+              }
+            : {
+                // isNeutral (delta === 0)
+                background: '#f3f4f6',
+                color: '#6b7280',
+                border: '1px solid #d1d5db',
+              }
+
+        // Fix C3: prefix logic — negative already has '-' sign from the number itself
+        const prefix = d.delta > 0 ? '+' : d.delta === 0 ? '±' : ''
+
         return (
           <span
-            key={`${d.stat}-${d.delta}-${d.source}`}
+            key={`${d.stat}-${d.delta}-${d.source}-${idx}`}
             style={{
               padding: '0.125rem 0.5rem',
               borderRadius: '9999px',
-              background: isBonus ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
-              color: isBonus ? 'var(--color-bonus)' : 'var(--color-malus)',
-              border: `1px solid ${isBonus ? 'var(--color-bonus-border)' : 'var(--color-malus-border)'}`,
               fontWeight: 600,
+              ...chipStyle,
             }}
+            data-delta-neutral={isNeutral ? 'true' : undefined}
           >
-            {d.stat} {d.delta > 0 ? '+' : ''}{d.delta} ({d.source})
+            {d.stat} {prefix}{d.delta} ({d.source})
           </span>
         )
       })}
-      {gains.map((g) => (
+      {gains.map((g, idx) => (
         <span
-          key={g.id}
+          key={`${g.id}-${idx}`}
           style={{
             padding: '0.125rem 0.5rem',
             borderRadius: '9999px',
@@ -223,8 +253,6 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
 // ---------------------------------------------------------------------------
 // Main UnitCard component
 // ---------------------------------------------------------------------------
-
-import React from 'react'
 
 export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
   const tierLabel = getTierLabel(tier)
@@ -276,13 +304,13 @@ export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
         )}
       </div>
 
-      {/* Sub-profile sections */}
+      {/* Sub-profile sections — Fix M5: showLabel always true */}
       {composedView.subProfiles.map((sp, idx) => (
         <SubProfileSection
           key={sp.label + idx}
           label={sp.label}
           stats={sp.stats}
-          showLabel={composedView.subProfiles.length > 1}
+          showLabel={true}
         />
       ))}
 
