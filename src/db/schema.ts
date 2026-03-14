@@ -65,3 +65,21 @@ export const subProfiles = pgTable('sub_profiles', {
   a: text('a'),
   cd: text('cd'),
 })
+
+// Story 2.3 — Campaign deltas: stat modifiers and unit gains
+
+export const statModifiers = pgTable('stat_modifiers', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
+  stat: text('stat').notNull(),
+  delta: integer('delta').notNull(),
+  source: text('source').notNull(),
+  temporary: boolean('temporary').notNull().default(false),
+})
+
+export const unitGains = pgTable('unit_gains', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
+  description: text('description').notNull(),
+  active: boolean('active').notNull().default(true),
+})

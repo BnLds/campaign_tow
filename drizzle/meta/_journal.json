@@ -22,6 +22,13 @@
       "when": 1773417574896,
       "tag": "0002_parallel_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773481589442,
+      "tag": "0003_smiling_patriot",
+      "breakpoints": true
     }
   ]
 }
