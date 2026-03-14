@@ -52,8 +52,8 @@ development_status:
 
   epic-2: in-progress
   2-1-owb-army-import-player-assignment: done
-  2-2-manual-unit-entry-post-import-correction: backlog
-  2-3-unit-card-display-with-campaign-deltas: backlog
+  2-2-manual-unit-entry-post-import-correction: done
+  2-3-unit-card-display-with-campaign-deltas: done
   2-4-direct-edit-of-unit-character-deltas: backlog
   epic-2-retrospective: optional
 
