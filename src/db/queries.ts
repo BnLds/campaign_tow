@@ -3,7 +3,7 @@
 
 import { eq, inArray } from 'drizzle-orm'
 import { db } from './index'
-import { players, armies, units, subProfiles } from './schema'
+import { players, armies, units, subProfiles, statModifiers, unitGains } from './schema'
 import type { ParsedArmy } from '../lib/owb-parser'
 
 export async function markPlayerWelcomeSeen(playerId: string): Promise<void> {
@@ -212,5 +212,191 @@ export async function getAllArmies() {
     .from(armies)
     .leftJoin(players, eq(armies.playerId, players.id))
     .orderBy(armies.createdAt)
+}
+
+// Story 2.2 — Manual unit entry & post-import correction
+
+type StatFields = {
+  m: string
+  cc: string
+  ct: string
+  f: string
+  e: string
+  pv: string
+  i: string
+  a: string
+  cd: string
+}
+
+export async function insertUnit(
+  armyId: string,
+  name: string,
+  type: string,
+  stats: StatFields,
+): Promise<{ unitId: string; subProfileId: string }> {
+  return db.transaction(async (tx) => {
+    const [insertedUnit] = await tx
+      .insert(units)
+      .values({
+        armyId,
+        name,
+        type,
+        xp: 0,
+      })
+      .returning({ id: units.id })
+
+    const [insertedSubProfile] = await tx
+      .insert(subProfiles)
+      .values({
+        unitId: insertedUnit.id,
+        sortOrder: 0,
+        label: name,
+        m: stats.m || null,
+        cc: stats.cc || null,
+        ct: stats.ct || null,
+        f: stats.f || null,
+        e: stats.e || null,
+        pv: stats.pv || null,
+        i: stats.i || null,
+        a: stats.a || null,
+        cd: stats.cd || null,
+      })
+      .returning({ id: subProfiles.id })
+
+    return { unitId: insertedUnit.id, subProfileId: insertedSubProfile.id }
+  })
+}
+
+export async function updateSubProfileStats(
+  subProfileId: string,
+  stats: StatFields,
+): Promise<boolean> {
+  const result = await db
+    .update(subProfiles)
+    .set({
+      m: stats.m || null,
+      cc: stats.cc || null,
+      ct: stats.ct || null,
+      f: stats.f || null,
+      e: stats.e || null,
+      pv: stats.pv || null,
+      i: stats.i || null,
+      a: stats.a || null,
+      cd: stats.cd || null,
+    })
+    .where(eq(subProfiles.id, subProfileId))
+    .returning()
+  return result.length > 0
+}
+
+export async function getUnitsForArmy(armyId: string) {
+  const unitRows = await db
+    .select()
+    .from(units)
+    .where(eq(units.armyId, armyId))
+    .orderBy(units.createdAt)
+
+  const unitIds = unitRows.map((u) => u.id)
+  const spRows =
+    unitIds.length > 0
+      ? await db
+          .select()
+          .from(subProfiles)
+          .where(inArray(subProfiles.unitId, unitIds))
+          .orderBy(subProfiles.unitId, subProfiles.sortOrder)
+      : []
+
+  return unitRows.map((u) => ({
+    ...u,
+    subProfiles: spRows.filter((sp) => sp.unitId === u.id),
+  }))
+}
+
+// Story 2.3 — Army consultation with units + sub_profiles
+
+export async function getArmyWithUnits(armyId: string) {
+  const armyRows = await db
+    .select({
+      id: armies.id,
+      name: armies.name,
+      faction: armies.faction,
+      playerId: armies.playerId,
+    })
+    .from(armies)
+    .where(eq(armies.id, armyId))
+    .limit(1)
+
+  if (armyRows.length === 0) return null
+  const army = armyRows[0]
+
+  // Fetch player info if assigned
+  let playerInfo: { displayName: string } | null = null
+  if (army.playerId) {
+    const playerRows = await db
+      .select({ displayName: players.displayName })
+      .from(players)
+      .where(eq(players.id, army.playerId))
+      .limit(1)
+    playerInfo = playerRows.length > 0 ? playerRows[0] : null
+  }
+
+  // Fetch units ordered by type then name
+  const unitRows = await db
+    .select()
+    .from(units)
+    .where(eq(units.armyId, armyId))
+    .orderBy(units.type, units.name)
+
+  const unitIds = unitRows.map((u) => u.id)
+  const spRows =
+    unitIds.length > 0
+      ? await db
+          .select()
+          .from(subProfiles)
+          .where(inArray(subProfiles.unitId, unitIds))
+          .orderBy(subProfiles.unitId, subProfiles.sortOrder)
+      : []
+
+  return {
+    id: army.id,
+    name: army.name,
+    faction: army.faction,
+    player: playerInfo,
+    units: unitRows.map((u) => ({
+      ...u,
+      subProfiles: spRows.filter((sp) => sp.unitId === u.id),
+    })),
+  }
+}
+
+export async function getStatModifiers(unitId: string) {
+  return db
+    .select()
+    .from(statModifiers)
+    .where(eq(statModifiers.unitId, unitId))
+    .orderBy(statModifiers.stat)
+}
+
+export async function getUnitGains(unitId: string) {
+  return db
+    .select()
+    .from(unitGains)
+    .where(eq(unitGains.unitId, unitId))
+}
+
+export async function getUnitDeltas(unitIds: string[]): Promise<{
+  statModifiers: typeof statModifiers.$inferSelect[]
+  unitGains: typeof unitGains.$inferSelect[]
+}> {
+  if (unitIds.length === 0) {
+    return { statModifiers: [], unitGains: [] }
+  }
+
+  const [modRows, gainRows] = await Promise.all([
+    db.select().from(statModifiers).where(inArray(statModifiers.unitId, unitIds)),
+    db.select().from(unitGains).where(inArray(unitGains.unitId, unitIds)),
+  ])
+
+  return { statModifiers: modRows, unitGains: gainRows }
 }
 

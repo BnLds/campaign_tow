@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { adminMiddleware } from '../../lib/middleware'
 import type { ServerResult } from '../../lib/types'
-import { createPlayerSchema, importArmySchema, assignArmySchema } from '../../lib/validators'
+import { createPlayerSchema, importArmySchema, assignArmySchema, addUnitSchema, updateSubProfileSchema } from '../../lib/validators'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -123,6 +123,71 @@ const assignArmyFn = createServerFn({ method: 'POST' })
     }
   })
 
+// Story 2.2 — addUnitFn: POST, manually adds a unit + sub_profile to an army
+const addUnitFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(addUnitSchema)
+  .handler(async ({ data }): Promise<ServerResult<{ unitId: string; subProfileId: string }>> => {
+    const { insertUnit } = await import('../../db/queries')
+    try {
+      const result = await insertUnit(data.armyId, data.name, data.type, {
+        m: data.m,
+        cc: data.cc,
+        ct: data.ct,
+        f: data.f,
+        e: data.e,
+        pv: data.pv,
+        i: data.i,
+        a: data.a,
+        cd: data.cd,
+      })
+      return { success: true, data: result }
+    } catch (err) {
+      // FK violation — armyId does not exist
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('foreign key') || msg.includes('violates') || msg.includes('fk') || msg.includes('army_id')) {
+        return { success: false, error: { code: 'NOT_FOUND', message: 'Armée introuvable' } }
+      }
+      return { success: false, error: { code: 'SERVER_ERROR', message: 'Erreur serveur — veuillez réessayer' } }
+    }
+  })
+
+// Story 2.2 — updateSubProfileFn: POST, updates stat fields on a sub_profile row
+const updateSubProfileFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(updateSubProfileSchema)
+  .handler(async ({ data }): Promise<ServerResult<null>> => {
+    const { updateSubProfileStats } = await import('../../db/queries')
+    try {
+      const updated = await updateSubProfileStats(data.subProfileId, {
+        m: data.m,
+        cc: data.cc,
+        ct: data.ct,
+        f: data.f,
+        e: data.e,
+        pv: data.pv,
+        i: data.i,
+        a: data.a,
+        cd: data.cd,
+      })
+      if (!updated) {
+        return { success: false, error: { code: 'NOT_FOUND', message: 'Sous-profil introuvable' } }
+      }
+      return { success: true, data: null }
+    } catch {
+      return { success: false, error: { code: 'SERVER_ERROR', message: 'Erreur serveur — veuillez réessayer' } }
+    }
+  })
+
+// Story 2.2 — getArmyUnitsFn: GET, returns units + sub_profiles for a given army
+const getArmyUnitsFn = createServerFn({ method: 'GET' })
+  .middleware([adminMiddleware])
+  .inputValidator(z.object({ armyId: z.string() }))
+  .handler(async ({ data }) => {
+    const { getUnitsForArmy } = await import('../../db/queries')
+    return getUnitsForArmy(data.armyId)
+  })
+
 export const Route = createFileRoute('/admin/')({
   beforeLoad: ({ context }) => {
     const { session } = context
@@ -146,6 +211,20 @@ function AdminPage() {
   const [importSubmitting, setImportSubmitting] = useState(false)
   const [assigningArmyId, setAssigningArmyId] = useState<string | null>(null)
   const [selectedPlayers, setSelectedPlayers] = useState<Record<string, string | undefined>>({})
+  // Story 2.2 — Add unit form state
+  const [addUnitArmyId, setAddUnitArmyId] = useState('')
+  const [addUnitName, setAddUnitName] = useState('')
+  const [addUnitType, setAddUnitType] = useState('')
+  const [addUnitStats, setAddUnitStats] = useState({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
+  const [addUnitResult, setAddUnitResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [addUnitSubmitting, setAddUnitSubmitting] = useState(false)
+  // Story 2.2 — Correction form state
+  const [corrArmyId, setCorrArmyId] = useState('')
+  const [corrUnitId, setCorrUnitId] = useState('')
+  const [corrSubProfileId, setCorrSubProfileId] = useState('')
+  const [corrStats, setCorrStats] = useState({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
+  const [corrResult, setCorrResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [corrSubmitting, setCorrSubmitting] = useState(false)
   const hydrated = useHydrated()
 
   useEffect(() => {
@@ -162,6 +241,13 @@ function AdminPage() {
   const armiesQuery = useQuery({
     queryKey: ['admin', 'armies'],
     queryFn: () => listArmiesFn(),
+  })
+
+  // Story 2.2 — fetch units for correction form when army is selected
+  const armyUnitsQuery = useQuery({
+    queryKey: ['admin', 'army-units', corrArmyId],
+    queryFn: () => getArmyUnitsFn({ data: { armyId: corrArmyId } }),
+    enabled: !!corrArmyId,
   })
 
   const form = useForm({
@@ -232,6 +318,62 @@ function AdminPage() {
       setAssignResult({ success: false, message: "Erreur réseau — veuillez réessayer" })
     } finally {
       setAssigningArmyId(null)
+    }
+  }
+
+  // Story 2.2 — selected unit and sub-profile for correction form
+  const corrUnits = armyUnitsQuery.data ?? []
+  const corrSelectedUnit = corrUnits.find((u) => u.id === corrUnitId)
+  const corrSubProfiles = corrSelectedUnit?.subProfiles ?? []
+
+  const handleAddUnit = async () => {
+    setAddUnitResult(null)
+    setAddUnitSubmitting(true)
+    try {
+      const result = await addUnitFn({
+        data: {
+          armyId: addUnitArmyId,
+          name: addUnitName,
+          type: addUnitType,
+          ...addUnitStats,
+        },
+      })
+      if (result.success) {
+        setAddUnitResult({ success: true, message: `Unité "${addUnitName}" ajoutée avec succès` })
+        setAddUnitName('')
+        setAddUnitType('')
+        setAddUnitStats({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'armies'] })
+      } else {
+        setAddUnitResult({ success: false, message: result.error.message })
+      }
+    } catch {
+      setAddUnitResult({ success: false, message: 'Erreur — veuillez réessayer' })
+    } finally {
+      setAddUnitSubmitting(false)
+    }
+  }
+
+  const handleCorrectStats = async () => {
+    setCorrResult(null)
+    setCorrSubmitting(true)
+    try {
+      const result = await updateSubProfileFn({
+        data: {
+          subProfileId: corrSubProfileId,
+          ...corrStats,
+        },
+      })
+      if (result.success) {
+        setCorrResult({ success: true, message: 'Stats mises à jour avec succès' })
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'army-units', corrArmyId] })
+      } else {
+        setCorrResult({ success: false, message: result.error.message })
+      }
+    } catch {
+      setCorrResult({ success: false, message: 'Erreur — veuillez réessayer' })
+    } finally {
+      setCorrSubmitting(false)
     }
   }
 
@@ -583,6 +725,346 @@ function AdminPage() {
           </div>
         )}
       </section>
+      {/* Story 2.2 — Add unit form (admin only) */}
+      {session?.isAdmin && <AddUnitSection
+        armies={armiesQuery.data ?? []}
+        armyId={addUnitArmyId}
+        setArmyId={setAddUnitArmyId}
+        name={addUnitName}
+        setName={setAddUnitName}
+        type={addUnitType}
+        setType={setAddUnitType}
+        stats={addUnitStats}
+        setStats={setAddUnitStats}
+        result={addUnitResult}
+        submitting={addUnitSubmitting}
+        onSubmit={handleAddUnit}
+        btnStyle={btnStyle}
+      />}
+
+      {/* Story 2.2 — Correction form (admin only) */}
+      {session?.isAdmin && <CorrectionSection
+        armies={armiesQuery.data ?? []}
+        armyId={corrArmyId}
+        setArmyId={(id) => {
+          setCorrArmyId(id)
+          setCorrUnitId('')
+          setCorrSubProfileId('')
+          setCorrStats({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
+          setCorrResult(null)
+        }}
+        units={corrUnits}
+        unitId={corrUnitId}
+        setUnitId={(id) => {
+          setCorrUnitId(id)
+          setCorrSubProfileId('')
+          setCorrStats({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
+          // If unit has exactly 1 sub-profile, auto-select
+          const unit = corrUnits.find((u) => u.id === id)
+          if (unit && unit.subProfiles.length === 1) {
+            const sp = unit.subProfiles[0]
+            setCorrSubProfileId(sp.id)
+            setCorrStats({
+              m: sp.m ?? '',
+              cc: sp.cc ?? '',
+              ct: sp.ct ?? '',
+              f: sp.f ?? '',
+              e: sp.e ?? '',
+              pv: sp.pv ?? '',
+              i: sp.i ?? '',
+              a: sp.a ?? '',
+              cd: sp.cd ?? '',
+            })
+          }
+        }}
+        subProfiles={corrSubProfiles}
+        subProfileId={corrSubProfileId}
+        setSubProfileId={(id) => {
+          setCorrSubProfileId(id)
+          const sp = corrSubProfiles.find((s) => s.id === id)
+          if (sp) {
+            setCorrStats({
+              m: sp.m ?? '',
+              cc: sp.cc ?? '',
+              ct: sp.ct ?? '',
+              f: sp.f ?? '',
+              e: sp.e ?? '',
+              pv: sp.pv ?? '',
+              i: sp.i ?? '',
+              a: sp.a ?? '',
+              cd: sp.cd ?? '',
+            })
+          }
+        }}
+        stats={corrStats}
+        setStats={setCorrStats}
+        result={corrResult}
+        submitting={corrSubmitting}
+        onSubmit={handleCorrectStats}
+        btnStyle={btnStyle}
+        unitsLoading={armyUnitsQuery.isPending && !!corrArmyId}
+        unitsError={!!armyUnitsQuery.error}
+      />}
     </main>
+  )
+}
+
+// Story 2.2 — Shared stat field grid component
+type StatFields = { m: string; cc: string; ct: string; f: string; e: string; pv: string; i: string; a: string; cd: string }
+const STAT_KEYS: (keyof StatFields)[] = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd']
+
+function StatFieldsGrid({ stats, setStats }: { stats: StatFields; setStats: (s: StatFields) => void }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+      {STAT_KEYS.map((key) => (
+        <div key={key}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', display: 'block', marginBottom: '0.125rem' }}>
+            {key.toUpperCase()}
+          </label>
+          <input
+            type="text"
+            value={stats[key]}
+            onChange={(e) => setStats({ ...stats, [key]: e.target.value })}
+            placeholder="—"
+            style={{
+              width: '100%',
+              padding: '0.25rem 0.375rem',
+              borderRadius: '0.25rem',
+              border: '1px solid var(--color-border)',
+              fontSize: '0.875rem',
+              background: 'var(--color-surface)',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Story 2.2 — Add Unit Section component
+type ArmyOption = { id: string; name: string; faction: string }
+
+function AddUnitSection({
+  armies, armyId, setArmyId, name, setName, type, setType, stats, setStats,
+  result, submitting, onSubmit, btnStyle
+}: {
+  armies: ArmyOption[]
+  armyId: string; setArmyId: (v: string) => void
+  name: string; setName: (v: string) => void
+  type: string; setType: (v: string) => void
+  stats: StatFields; setStats: (s: StatFields) => void
+  result: { success: boolean; message: string } | null
+  submitting: boolean
+  onSubmit: () => void
+  btnStyle: React.CSSProperties
+}) {
+  const canSubmit = !!armyId && !!name.trim() && !!type && !submitting
+  return (
+    <section style={{ marginTop: '2rem' }}>
+      <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
+        Ajouter une unité
+      </h2>
+
+      <div style={{ marginBottom: '0.75rem' }}>
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+          Armée
+        </label>
+        <select
+          value={armyId}
+          onChange={(e) => setArmyId(e.target.value)}
+          style={{ width: '100%', padding: '0.375rem', borderRadius: '0.25rem', border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)' }}
+        >
+          <option value="">— Choisir une armée —</option>
+          {armies.map((a) => (
+            <option key={a.id} value={a.id}>{a.name} ({a.faction})</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ marginBottom: '0.75rem' }}>
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+          Nom de l'unité
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Nom de l'unité"
+          style={{ width: '100%', padding: '0.375rem', borderRadius: '0.25rem', border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      <div style={{ marginBottom: '0.75rem' }}>
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+          Type
+        </label>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          style={{ width: '100%', padding: '0.375rem', borderRadius: '0.25rem', border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)' }}
+        >
+          <option value="">— Choisir un type —</option>
+          <option value="Personnages">Personnages</option>
+          <option value="Unites de base">Unités de base</option>
+          <option value="Unites speciales">Unités spéciales</option>
+          <option value="Unites rares">Unités rares</option>
+        </select>
+      </div>
+
+      <StatFieldsGrid stats={stats} setStats={setStats} />
+
+      <button
+        onClick={onSubmit}
+        disabled={!canSubmit}
+        style={{ ...btnStyle, opacity: canSubmit ? 1 : 0.5 }}
+      >
+        {submitting ? 'Ajout en cours…' : 'Ajouter l\'unité'}
+      </button>
+
+      {result && (
+        <p style={{
+          marginTop: '0.75rem',
+          padding: '0.625rem',
+          borderRadius: '0.375rem',
+          background: result.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
+          color: result.success ? 'var(--color-bonus)' : 'var(--color-malus)',
+          border: `1px solid ${result.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+          fontSize: '0.875rem',
+        }}>
+          {result.message}
+        </p>
+      )}
+    </section>
+  )
+}
+
+// Story 2.2 — Correction Section component
+type SubProfileOption = { id: string; label: string; m: string | null; cc: string | null; ct: string | null; f: string | null; e: string | null; pv: string | null; i: string | null; a: string | null; cd: string | null }
+type UnitWithSubProfiles = { id: string; name: string; subProfiles: SubProfileOption[] }
+
+function CorrectionSection({
+  armies, armyId, setArmyId, units, unitId, setUnitId,
+  subProfiles, subProfileId, setSubProfileId, stats, setStats,
+  result, submitting, onSubmit, btnStyle, unitsLoading, unitsError,
+}: {
+  armies: ArmyOption[]
+  armyId: string; setArmyId: (v: string) => void
+  units: UnitWithSubProfiles[]
+  unitId: string; setUnitId: (v: string) => void
+  subProfiles: SubProfileOption[]
+  subProfileId: string; setSubProfileId: (v: string) => void
+  stats: StatFields; setStats: (s: StatFields) => void
+  result: { success: boolean; message: string } | null
+  submitting: boolean
+  onSubmit: () => void
+  btnStyle: React.CSSProperties
+  unitsLoading: boolean
+  unitsError: boolean
+}) {
+  const selectedUnit = units.find((u) => u.id === unitId)
+  const hasMultipleSubProfiles = (selectedUnit?.subProfiles.length ?? 0) > 1
+  const hasNoSubProfiles = selectedUnit && selectedUnit.subProfiles.length === 0
+  const canSubmit = !!subProfileId && !submitting
+
+  return (
+    <section style={{ marginTop: '2rem' }}>
+      <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
+        Corriger les stats
+      </h2>
+
+      <div style={{ marginBottom: '0.75rem' }}>
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+          Armée
+        </label>
+        <select
+          value={armyId}
+          onChange={(e) => setArmyId(e.target.value)}
+          style={{ width: '100%', padding: '0.375rem', borderRadius: '0.25rem', border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)' }}
+        >
+          <option value="">— Choisir une armée —</option>
+          {armies.map((a) => (
+            <option key={a.id} value={a.id}>{a.name} ({a.faction})</option>
+          ))}
+        </select>
+      </div>
+
+      {armyId && (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+            Unité
+          </label>
+          {unitsLoading ? (
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Chargement des unités…</p>
+          ) : unitsError ? (
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-malus)' }}>Impossible de charger les unités</p>
+          ) : units.length === 0 ? (
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Aucune unité dans cette armée</p>
+          ) : (
+            <select
+              value={unitId}
+              onChange={(e) => setUnitId(e.target.value)}
+              style={{ width: '100%', padding: '0.375rem', borderRadius: '0.25rem', border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)' }}
+            >
+              <option value="">— Choisir une unité —</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {unitId && hasMultipleSubProfiles && (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+            Sous-profil
+          </label>
+          <select
+            value={subProfileId}
+            onChange={(e) => setSubProfileId(e.target.value)}
+            style={{ width: '100%', padding: '0.375rem', borderRadius: '0.25rem', border: '1px solid var(--color-border)', fontSize: '0.875rem', background: 'var(--color-surface)' }}
+          >
+            <option value="">— Choisir un sous-profil —</option>
+            {subProfiles.map((sp) => (
+              <option key={sp.id} value={sp.id}>{sp.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {unitId && hasNoSubProfiles && (
+        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>
+          Aucun sous-profil
+        </p>
+      )}
+
+      {subProfileId && (
+        <>
+          <StatFieldsGrid stats={stats} setStats={setStats} />
+          <button
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            style={{ ...btnStyle, opacity: canSubmit ? 1 : 0.5 }}
+          >
+            {submitting ? 'Mise à jour…' : 'Mettre à jour les stats'}
+          </button>
+        </>
+      )}
+
+      {result && (
+        <p style={{
+          marginTop: '0.75rem',
+          padding: '0.625rem',
+          borderRadius: '0.375rem',
+          background: result.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
+          color: result.success ? 'var(--color-bonus)' : 'var(--color-malus)',
+          border: `1px solid ${result.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+          fontSize: '0.875rem',
+        }}>
+          {result.message}
+        </p>
+      )}
+    </section>
   )
 }
