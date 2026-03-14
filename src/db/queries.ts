@@ -251,15 +251,15 @@ export async function insertUnit(
         unitId: insertedUnit.id,
         sortOrder: 0,
         label: name,
-        m: stats.m || null,
-        cc: stats.cc || null,
-        ct: stats.ct || null,
-        f: stats.f || null,
-        e: stats.e || null,
-        pv: stats.pv || null,
-        i: stats.i || null,
-        a: stats.a || null,
-        cd: stats.cd || null,
+        m: stats.m === '' ? null : stats.m,
+        cc: stats.cc === '' ? null : stats.cc,
+        ct: stats.ct === '' ? null : stats.ct,
+        f: stats.f === '' ? null : stats.f,
+        e: stats.e === '' ? null : stats.e,
+        pv: stats.pv === '' ? null : stats.pv,
+        i: stats.i === '' ? null : stats.i,
+        a: stats.a === '' ? null : stats.a,
+        cd: stats.cd === '' ? null : stats.cd,
       })
       .returning({ id: subProfiles.id })
 
@@ -274,15 +274,15 @@ export async function updateSubProfileStats(
   const result = await db
     .update(subProfiles)
     .set({
-      m: stats.m || null,
-      cc: stats.cc || null,
-      ct: stats.ct || null,
-      f: stats.f || null,
-      e: stats.e || null,
-      pv: stats.pv || null,
-      i: stats.i || null,
-      a: stats.a || null,
-      cd: stats.cd || null,
+      m: stats.m === '' ? null : stats.m,
+      cc: stats.cc === '' ? null : stats.cc,
+      ct: stats.ct === '' ? null : stats.ct,
+      f: stats.f === '' ? null : stats.f,
+      e: stats.e === '' ? null : stats.e,
+      pv: stats.pv === '' ? null : stats.pv,
+      i: stats.i === '' ? null : stats.i,
+      a: stats.a === '' ? null : stats.a,
+      cd: stats.cd === '' ? null : stats.cd,
     })
     .where(eq(subProfiles.id, subProfileId))
     .returning()

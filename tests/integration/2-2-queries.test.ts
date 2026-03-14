@@ -60,11 +60,10 @@ describe('[AC1][P0] DB queries — insertUnit — src/db/queries.ts', () => {
     expect(queries).toMatch(/insertUnit[\s\S]{0,1200}sortOrder[\s\S]{0,50}0/)
   })
 
-  it('[2.2-QRY-008] insertUnit returns both unitId and subProfileId (contract for server function)', () => {
+  it('[2.2-QRY-008] insertUnit returns both unitId and subProfileId in the same return expression (contract for server function)', () => {
     const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
-    // Return value must reference both ids
-    expect(queries).toMatch(/insertUnit[\s\S]{0,1500}unitId/)
-    expect(queries).toMatch(/insertUnit[\s\S]{0,1500}subProfileId/)
+    // Both ids must be returned together in the same object expression
+    expect(queries).toMatch(/insertUnit[\s\S]{0,1500}return\s*\{[^}]*unitId[^}]*subProfileId[^}]*\}|insertUnit[\s\S]{0,1500}return\s*\{[^}]*subProfileId[^}]*unitId[^}]*\}/)
   })
 
   it('[2.2-QRY-009] insertUnit does NOT verify armyId existence before insert (FK constraint handles this)', () => {

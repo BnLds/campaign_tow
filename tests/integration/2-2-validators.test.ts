@@ -256,3 +256,20 @@ describe('[AC2][P0] updateSubProfileSchema runtime validation', () => {
     expect(result.success).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Additional low-priority tests (review fixes)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][P1] addUnitSchema — additional edge cases', () => {
+  const getSchema = async () => {
+    const mod = await import('../../src/lib/validators')
+    return mod.addUnitSchema
+  }
+
+  it('[2.2-VAL-031] addUnitSchema: empty type fails validation', async () => {
+    const schema = await getSchema()
+    const result = schema.safeParse({ name: 'Test', type: '', armyId: 'army-1' })
+    expect(result.success).toBe(false)
+  })
+})

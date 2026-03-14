@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, redirect, useRouteContext } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { adminMiddleware } from '../../lib/middleware'
@@ -143,9 +143,9 @@ const addUnitFn = createServerFn({ method: 'POST' })
       })
       return { success: true, data: result }
     } catch (err) {
-      // FK violation — armyId does not exist
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('foreign key') || msg.includes('violates') || msg.includes('fk') || msg.includes('army_id')) {
+      // FK violation — armyId does not exist (PostgreSQL error code 23503)
+      const pgCode = (err as { code?: string }).code
+      if (pgCode === '23503') {
         return { success: false, error: { code: 'NOT_FOUND', message: 'Armée introuvable' } }
       }
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Erreur serveur — veuillez réessayer' } }
@@ -225,6 +225,9 @@ function AdminPage() {
   const [corrStats, setCorrStats] = useState({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
   const [corrResult, setCorrResult] = useState<{ success: boolean; message: string } | null>(null)
   const [corrSubmitting, setCorrSubmitting] = useState(false)
+  // Story 2.2 — Double-submit guards (sync refs prevent race conditions on fast double-clicks)
+  const addUnitSubmitRef = useRef(false)
+  const correctStatsSubmitRef = useRef(false)
   const hydrated = useHydrated()
 
   useEffect(() => {
@@ -327,6 +330,8 @@ function AdminPage() {
   const corrSubProfiles = corrSelectedUnit?.subProfiles ?? []
 
   const handleAddUnit = async () => {
+    if (addUnitSubmitRef.current) return
+    addUnitSubmitRef.current = true
     setAddUnitResult(null)
     setAddUnitSubmitting(true)
     try {
@@ -339,22 +344,28 @@ function AdminPage() {
         },
       })
       if (result.success) {
+        const successArmyId = addUnitArmyId
         setAddUnitResult({ success: true, message: `Unité "${addUnitName}" ajoutée avec succès` })
         setAddUnitName('')
         setAddUnitType('')
+        setAddUnitArmyId('')
         setAddUnitStats({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
         await queryClient.invalidateQueries({ queryKey: ['admin', 'armies'] })
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'army-units', successArmyId] })
       } else {
         setAddUnitResult({ success: false, message: result.error.message })
       }
     } catch {
       setAddUnitResult({ success: false, message: 'Erreur — veuillez réessayer' })
     } finally {
+      addUnitSubmitRef.current = false
       setAddUnitSubmitting(false)
     }
   }
 
   const handleCorrectStats = async () => {
+    if (correctStatsSubmitRef.current) return
+    correctStatsSubmitRef.current = true
     setCorrResult(null)
     setCorrSubmitting(true)
     try {
@@ -373,6 +384,7 @@ function AdminPage() {
     } catch {
       setCorrResult({ success: false, message: 'Erreur — veuillez réessayer' })
     } finally {
+      correctStatsSubmitRef.current = false
       setCorrSubmitting(false)
     }
   }
