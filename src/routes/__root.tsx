@@ -36,7 +36,7 @@ const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
 // Server function: loads a player's army info + win/draw/loss record.
 // Accepts playerId as input to avoid a redundant session read (beforeLoad already has it).
 const getPlayerArmyInfoFn = createServerFn({ method: 'GET' })
-  .validator(z.object({ playerId: z.string() }))
+  .inputValidator(z.object({ playerId: z.string() }))
   .handler(async ({ data: { playerId } }) => {
     const { getPlayerArmy, getArmyRecord } = await import('../db/queries')
     const army = await getPlayerArmy(playerId)
