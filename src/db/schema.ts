@@ -64,6 +64,7 @@ export const subProfiles = pgTable('sub_profiles', {
   i: text('i'),
   a: text('a'),
   cd: text('cd'),
+  isMount: boolean('is_mount').notNull().default(false),
 })
 
 // Story 2.3 — Campaign deltas: stat modifiers and unit gains

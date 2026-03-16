@@ -5,6 +5,7 @@
 
 export interface ParsedSubProfile {
   label: string
+  isMount: boolean
   m: string | null
   cc: string | null
   ct: string | null
@@ -50,6 +51,7 @@ function parseSubProfile(line: string): ParsedSubProfile | null {
   const statsSection = line.slice(line.indexOf(']') + 1)
   return {
     label,
+    isMount: false,
     m: extractStat(statsSection, 'M'),
     cc: extractStat(statsSection, 'CC'),
     ct: extractStat(statsSection, 'CT'),

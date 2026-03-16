@@ -1,0 +1,1 @@
+ALTER TABLE "sub_profiles" ADD COLUMN "is_mount" boolean DEFAULT false NOT NULL;

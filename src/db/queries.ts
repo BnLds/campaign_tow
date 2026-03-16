@@ -123,6 +123,7 @@ export async function createArmyWithUnits(
             unitId: insertedUnit.id,
             sortOrder: idx,
             label: sp.label,
+            isMount: sp.isMount,
             m: sp.m,
             cc: sp.cc,
             ct: sp.ct,
@@ -251,6 +252,7 @@ export async function insertUnit(
         unitId: insertedUnit.id,
         sortOrder: 0,
         label: name,
+        isMount: false,
         m: stats.m === '' ? null : stats.m,
         cc: stats.cc === '' ? null : stats.cc,
         ct: stats.ct === '' ? null : stats.ct,
@@ -471,6 +473,20 @@ export async function updateUnitXp(unitId: string, xp: number): Promise<boolean>
     .set({ xp })
     .where(eq(units.id, unitId))
     .returning()
+  return result.length > 0
+}
+
+export async function getSubProfileById(subProfileId: string) {
+  const rows = await db
+    .select({ id: subProfiles.id, unitId: subProfiles.unitId, isMount: subProfiles.isMount })
+    .from(subProfiles)
+    .where(eq(subProfiles.id, subProfileId))
+    .limit(1)
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function updateSubProfileIsMount(subProfileId: string, isMount: boolean): Promise<boolean> {
+  const result = await db.update(subProfiles).set({ isMount }).where(eq(subProfiles.id, subProfileId)).returning({ id: subProfiles.id })
   return result.length > 0
 }
 

@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
+import { Switch } from './ui/switch'
 import {
   Select,
   SelectContent,
@@ -67,11 +68,23 @@ type FetchUnitDeltasFn = (args: {
   data: { armyId: string; unitId: string }
 }) => Promise<{ statModifiers: StatModifierRow[]; unitGains: UnitGainRow[] }>
 
+type ToggleMountFn = (args: {
+  data: { armyId: string; subProfileId: string; isMount: boolean }
+}) => Promise<{ success: boolean; data?: null; error?: { code: string; message: string } }>
+
+interface SubProfileItem {
+  id: string
+  label: string
+  isMount: boolean
+  sortOrder: number
+}
+
 interface UnitEditPanelProps {
   armyId: string
   unitId: string
   unitName: string
   currentXp: number
+  subProfiles: SubProfileItem[]
   onClose: () => void
   onMutationSuccess: () => Promise<void>
   addStatModifierFn: AddStatModifierFn
@@ -80,6 +93,7 @@ interface UnitEditPanelProps {
   removeUnitGainFn: RemoveUnitGainFn
   updateXpFn: UpdateXpFn
   fetchUnitDeltasFn: FetchUnitDeltasFn
+  toggleMountFn: ToggleMountFn
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +145,7 @@ export function UnitEditPanel({
   unitId,
   unitName,
   currentXp,
+  subProfiles,
   onClose,
   onMutationSuccess,
   addStatModifierFn,
@@ -139,6 +154,7 @@ export function UnitEditPanel({
   removeUnitGainFn,
   updateXpFn,
   fetchUnitDeltasFn,
+  toggleMountFn,
 }: UnitEditPanelProps) {
   // Delta data state
   const [statModifiers, setStatModifiers] = useState<StatModifierRow[]>([])
@@ -165,6 +181,10 @@ export function UnitEditPanel({
   const [currentTier, setCurrentTier] = useState<0 | 1 | 2 | 3 | null>(null)
   const [confirmedXpUpdate, setConfirmedXpUpdate] = useState(false)
   const xpFeedback = useFeedback()
+
+  // Mount toggle state
+  const [togglingMountId, setTogglingMountId] = useState<string | null>(null)
+  const mountFeedback = useFeedback()
 
   // Deleting state
   const [deletingModId, setDeletingModId] = useState<string | null>(null)
@@ -388,6 +408,75 @@ export function UnitEditPanel({
           ✕
         </Button>
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section 0 — Sous-profils (mount flag toggle) */}
+      {/* Only visible for units with 2+ sub-profiles */}
+      {/* ------------------------------------------------------------------ */}
+      {subProfiles.length >= 2 && (
+        <section
+          data-testid="section-sub-profiles"
+          style={{ marginBottom: '1.5rem' }}
+        >
+          <h4
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'var(--color-section-label)',
+              marginBottom: '0.75rem',
+            }}
+          >
+            Sous-profils
+          </h4>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {subProfiles.map((sp) => (
+              <li
+                key={sp.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  fontSize: '0.8rem',
+                  padding: '0.375rem 0',
+                  borderBottom: '1px solid var(--color-separator)',
+                }}
+              >
+                <span style={{ color: 'var(--color-text-primary)' }}>{sp.label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Label htmlFor={`mount-${sp.id}`} style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                    Monture
+                  </Label>
+                  <Switch
+                    id={`mount-${sp.id}`}
+                    checked={sp.isMount}
+                    disabled={togglingMountId === sp.id}
+                    onCheckedChange={async (checked) => {
+                      setTogglingMountId(sp.id)
+                      try {
+                        const result = await toggleMountFn({ data: { armyId, subProfileId: sp.id, isMount: checked } })
+                        if (result.success) {
+                          await onMutationSuccess()
+                        } else {
+                          mountFeedback.show(result.error?.message ?? 'Erreur inconnue', true)
+                        }
+                      } catch {
+                        mountFeedback.show('Erreur lors de la mise à jour', true)
+                      } finally {
+                        setTogglingMountId(null)
+                      }
+                    }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <FeedbackMsg message={mountFeedback.message} />
+        </section>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Section 1 — Modificateurs de stats */}

@@ -60,6 +60,7 @@ interface SubProfile {
   unitId: string
   sortOrder: number
   label: string
+  isMount: boolean
   m: string | null
   cc: string | null
   ct: string | null
@@ -126,7 +127,7 @@ export function composeUnitView(
 
     for (const key of STAT_KEYS as readonly StatKey[]) {
       const baseValue = sp[key] ?? '-'
-      const mods = modsByStat.get(key) ?? []
+      const mods = sp.isMount ? [] : (modsByStat.get(key) ?? [])
 
       if (mods.length === 0) {
         stats[key] = { value: baseValue, delta: null, modified: false }

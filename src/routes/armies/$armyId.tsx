@@ -42,6 +42,12 @@ const loadArmyFn = createServerFn({ method: 'GET' })
         unit: { id: unit.id, name: unit.name, type: unit.type, xp: unit.xp },
         composedView,
         tier,
+        subProfiles: unit.subProfiles.map((sp) => ({
+          id: sp.id,
+          label: sp.label,
+          isMount: sp.isMount,
+          sortOrder: sp.sortOrder,
+        })),
       }
     })
 
@@ -203,6 +209,27 @@ const removeUnitGainFn = createServerFn({ method: 'POST' })
   })
 
 // ---------------------------------------------------------------------------
+// Server function — toggle sub-profile mount flag
+// ---------------------------------------------------------------------------
+
+const toggleMountFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(z.object({ armyId: z.string(), subProfileId: z.string(), isMount: z.boolean() }))
+  .handler(async ({ data }) => {
+    const { getSubProfileById, getUnitById, updateSubProfileIsMount } = await import('../../db/queries')
+    const sp = await getSubProfileById(data.subProfileId)
+    if (!sp) {
+      return { success: false as const, error: { code: 'NOT_FOUND', message: 'Sous-profil introuvable' } }
+    }
+    const unit = await getUnitById(sp.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return { success: false as const, error: { code: 'FORBIDDEN', message: "Ce sous-profil n'appartient pas à cette armée" } }
+    }
+    await updateSubProfileIsMount(data.subProfileId, data.isMount)
+    return { success: true as const, data: null }
+  })
+
+// ---------------------------------------------------------------------------
 // Server function — update unit XP
 // ---------------------------------------------------------------------------
 
@@ -261,6 +288,7 @@ function groupUnitsByType(
     unit: { id: string; name: string; type: string; xp: number }
     composedView: ComposedUnitView
     tier: 0 | 1 | 2 | 3
+    subProfiles: Array<{ id: string; label: string; isMount: boolean; sortOrder: number }>
   }>
 ) {
   const groups = new Map<string, typeof unitCards>()
@@ -384,6 +412,7 @@ function ArmyView() {
                   unitId={card.unit.id}
                   unitName={card.unit.name}
                   currentXp={card.unit.xp}
+                  subProfiles={card.subProfiles}
                   onClose={() => setEditingUnitId(null)}
                   onMutationSuccess={handleMutationSuccess}
                   addStatModifierFn={addStatModifierFn}
@@ -392,6 +421,7 @@ function ArmyView() {
                   removeUnitGainFn={removeUnitGainFn}
                   updateXpFn={updateXpFn}
                   fetchUnitDeltasFn={fetchUnitDeltasFn}
+                  toggleMountFn={toggleMountFn}
                 />
               )}
             </div>

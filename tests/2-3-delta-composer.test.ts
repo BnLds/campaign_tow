@@ -14,12 +14,13 @@ import type { StatModifier, UnitGain } from '../src/lib/delta-composer'
 // Helpers — minimal test fixtures
 // ---------------------------------------------------------------------------
 
-function makeSubProfile(label: string, stats: Record<string, string>) {
+function makeSubProfile(label: string, stats: Record<string, string>, isMount = false) {
   return {
     id: 'sp-1',
     unitId: 'unit-1',
     sortOrder: 0,
     label,
+    isMount,
     m: stats.m ?? null,
     cc: stats.cc ?? null,
     ct: stats.ct ?? null,
@@ -411,5 +412,60 @@ describe('[AC2] composeUnitView — dice expression base stat', () => {
     expect(aStat.value).toBe('D6')
     expect(aStat.delta).toBe(1)
     expect(aStat.modified).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test 14 — Mount sub-profile is excluded from modifier application
+// ---------------------------------------------------------------------------
+
+describe('[AC1] composeUnitView — mount sub-profile excluded from modifiers', () => {
+  it('[2.3-UNIT-014] rider(isMount=false) receives modifier, mount(isMount=true) does not', () => {
+    const rider = {
+      ...makeSubProfile('Personnage', { m: '4', cc: '5', ct: '3', f: '4', e: '4', pv: '2', i: '4', a: '3', cd: '8' }, false),
+      id: 'sp-rider',
+      sortOrder: 0,
+    }
+    const mount = {
+      ...makeSubProfile('Destrier', { m: '8', cc: '3', ct: '-', f: '4', e: '4', pv: '1', i: '3', a: '2', cd: '-' }, true),
+      id: 'sp-mount',
+      sortOrder: 1,
+    }
+    const modifier = makeModifier({ stat: 'cc', delta: 1 })
+    const result = composeUnitView([rider, mount], [modifier], [])
+
+    // Rider receives the modifier
+    expect(result.subProfiles[0].stats['cc'].modified).toBe(true)
+    expect(result.subProfiles[0].stats['cc'].delta).toBe(1)
+    // Mount does NOT receive the modifier
+    expect(result.subProfiles[1].stats['cc'].modified).toBe(false)
+    expect(result.subProfiles[1].stats['cc'].delta).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test 15 — Multi-combatant unit: both sub-profiles receive modifiers
+// ---------------------------------------------------------------------------
+
+describe('[AC2] composeUnitView — multi-combatant unit: both profiles modified', () => {
+  it('[2.3-UNIT-015] two combatant profiles (both isMount=false) both receive the modifier', () => {
+    const goblin = {
+      ...makeSubProfile('Gobelin Nocturne', { m: '4', cc: '3', ct: '3', f: '3', e: '3', pv: '1', i: '3', a: '1', cd: '5' }, false),
+      id: 'sp-goblin',
+      sortOrder: 0,
+    }
+    const squig = {
+      ...makeSubProfile('Cave Squig', { m: '3D6', cc: '4', ct: '-', f: '5', e: '4', pv: '2', i: '2', a: '3', cd: '-' }, false),
+      id: 'sp-squig',
+      sortOrder: 1,
+    }
+    const modifier = makeModifier({ stat: 'cc', delta: 1 })
+    const result = composeUnitView([goblin, squig], [modifier], [])
+
+    // Both profiles receive the modifier
+    expect(result.subProfiles[0].stats['cc'].modified).toBe(true)
+    expect(result.subProfiles[0].stats['cc'].delta).toBe(1)
+    expect(result.subProfiles[1].stats['cc'].modified).toBe(true)
+    expect(result.subProfiles[1].stats['cc'].delta).toBe(1)
   })
 })
