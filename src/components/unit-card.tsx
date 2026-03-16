@@ -13,6 +13,7 @@ interface UnitCardProps {
   unit: { id: string; name: string; type: string; xp: number }
   composedView: ComposedUnitView
   tier: 0 | 1 | 2 | 3
+  action?: React.ReactNode
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +258,7 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
 // Main UnitCard component
 // ---------------------------------------------------------------------------
 
-export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
+export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
   const tierLabel = getTierLabel(tier)
   const tierColor = getTierColor(tier)
   const borderStyle = tierBorderStyle(tier)
@@ -268,7 +269,7 @@ export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
       style={{
         background: 'var(--color-surface)',
         borderRadius: '0.5rem',
-        overflow: 'hidden',
+        overflow: 'clip',
         marginBottom: '1rem',
         ...borderStyle,
       }}
@@ -283,11 +284,17 @@ export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
         }}
       >
         <span
+          title={unit.name}
           style={{
             fontFamily: 'var(--font-display)',
             fontWeight: 700,
             fontSize: '1rem',
             color: 'var(--color-text-primary)',
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {unit.name}
@@ -300,10 +307,14 @@ export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
               fontWeight: 600,
               color: tierColor,
               fontFamily: 'var(--font-body)',
+              flexShrink: 0,
             }}
           >
             {tierLabel}
           </span>
+        )}
+        {action && (
+          <div style={{ flexShrink: 0 }}>{action}</div>
         )}
       </div>
 

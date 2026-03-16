@@ -397,13 +397,11 @@ function ArmyView() {
           </h2>
           {cards.map((card) => (
             <div key={card.unit.id}>
-              <div style={{ position: 'relative' }}>
-                <UnitCard
-                  unit={card.unit}
-                  composedView={card.composedView}
-                  tier={card.tier}
-                />
-                {isOwner && (
+              <UnitCard
+                unit={card.unit}
+                composedView={card.composedView}
+                tier={card.tier}
+                action={isOwner ? (
                   <button
                     data-testid={`edit-unit-${card.unit.id}`}
                     onClick={() =>
@@ -412,9 +410,6 @@ function ArmyView() {
                       )
                     }
                     style={{
-                      position: 'absolute',
-                      top: '0.625rem',
-                      right: '0.75rem',
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
@@ -425,8 +420,8 @@ function ArmyView() {
                   >
                     ✏ Modifier
                   </button>
-                )}
-              </div>
+                ) : undefined}
+              />
               {isOwner && editingUnitId === card.unit.id && (
                 <UnitEditPanel
                   armyId={army.id}
