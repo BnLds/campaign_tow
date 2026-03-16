@@ -1,7 +1,7 @@
 // Campaign TOW — Reusable DB query functions
 // All direct drizzle-orm and DB access for named operations lives here.
 
-import { eq, inArray, desc, and, ne } from 'drizzle-orm'
+import { eq, inArray, desc, and, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from './index'
 import { players, armies, units, subProfiles, statModifiers, unitGains, matches, matchParticipants } from './schema'
@@ -551,6 +551,45 @@ export async function createMatchWithParticipants(params: {
 
     return { matchId: inserted.id }
   })
+}
+
+// Story 3.1b — Win/draw/loss record queries
+
+export async function getArmyRecord(armyId: string): Promise<{ wins: number; draws: number; losses: number }> {
+  const rows = await db
+    .select({
+      wins: sql<string>`count(*) filter (where ${matchParticipants.result} = 'victory')`,
+      draws: sql<string>`count(*) filter (where ${matchParticipants.result} = 'draw')`,
+      losses: sql<string>`count(*) filter (where ${matchParticipants.result} = 'defeat')`,
+    })
+    .from(matchParticipants)
+    .where(eq(matchParticipants.armyId, armyId))
+  return {
+    wins: Number(rows[0]?.wins ?? 0),
+    draws: Number(rows[0]?.draws ?? 0),
+    losses: Number(rows[0]?.losses ?? 0),
+  }
+}
+
+export async function getAllArmyRecords(): Promise<Map<string, { wins: number; draws: number; losses: number }>> {
+  const rows = await db
+    .select({
+      armyId: matchParticipants.armyId,
+      wins: sql<string | null>`count(*) filter (where ${matchParticipants.result} = 'victory')`,
+      draws: sql<string | null>`count(*) filter (where ${matchParticipants.result} = 'draw')`,
+      losses: sql<string | null>`count(*) filter (where ${matchParticipants.result} = 'defeat')`,
+    })
+    .from(matchParticipants)
+    .groupBy(matchParticipants.armyId)
+  const map = new Map<string, { wins: number; draws: number; losses: number }>()
+  for (const row of rows) {
+    map.set(row.armyId, {
+      wins: Number(row.wins ?? 0),
+      draws: Number(row.draws ?? 0),
+      losses: Number(row.losses ?? 0),
+    })
+  }
+  return map
 }
 
 export async function getPlayerArmy(playerId: string): Promise<{

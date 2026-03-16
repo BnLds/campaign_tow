@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReferencesRouteImport } from './routes/references'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArmiesIndexRouteImport } from './routes/armies/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ArmiesArmyIdRouteImport } from './routes/armies/$armyId'
 
+const ReferencesRoute = ReferencesRouteImport.update({
+  id: '/references',
+  path: '/references',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -44,6 +50,7 @@ const ArmiesArmyIdRoute = ArmiesArmyIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/references': typeof ReferencesRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/admin/': typeof AdminIndexRoute
   '/armies/': typeof ArmiesIndexRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/references': typeof ReferencesRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/admin': typeof AdminIndexRoute
   '/armies': typeof ArmiesIndexRoute
@@ -59,21 +67,36 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/references': typeof ReferencesRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/admin/': typeof AdminIndexRoute
   '/armies/': typeof ArmiesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/armies/$armyId' | '/admin/' | '/armies/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/references'
+    | '/armies/$armyId'
+    | '/admin/'
+    | '/armies/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/armies/$armyId' | '/admin' | '/armies'
-  id: '__root__' | '/' | '/login' | '/armies/$armyId' | '/admin/' | '/armies/'
+  to: '/' | '/login' | '/references' | '/armies/$armyId' | '/admin' | '/armies'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/references'
+    | '/armies/$armyId'
+    | '/admin/'
+    | '/armies/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  ReferencesRoute: typeof ReferencesRoute
   ArmiesArmyIdRoute: typeof ArmiesArmyIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ArmiesIndexRoute: typeof ArmiesIndexRoute
@@ -81,6 +104,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/references': {
+      id: '/references'
+      path: '/references'
+      fullPath: '/references'
+      preLoaderRoute: typeof ReferencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -122,6 +152,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  ReferencesRoute: ReferencesRoute,
   ArmiesArmyIdRoute: ArmiesArmyIdRoute,
   AdminIndexRoute: AdminIndexRoute,
   ArmiesIndexRoute: ArmiesIndexRoute,

@@ -59,7 +59,7 @@ development_status:
 
   epic-3: in-progress
   3-1-army-timeline-view: done
-  3-1b-app-shell-tabbar-layout-navigation: backlog
+  3-1b-app-shell-tabbar-layout-navigation: done
   3-2-match-creation-pending-actions: backlog
   3-3-match-result-entry: backlog
   epic-3-retrospective: optional

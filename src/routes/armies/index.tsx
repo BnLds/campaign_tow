@@ -7,16 +7,36 @@ import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { useHydrated } from '../../lib/useHydrated'
 import { authMiddleware } from '../../lib/middleware'
+import { ArmyListItem } from '../../components/army-list-item'
+
+// ArmyListItem gold variant colors (passed via isOwn prop):
+// isOwn=true: border #ead69b, background gradient from #fff9ec to #fff6eb
+// Navigation: Link to /armies/$armyId via ArmyListItem component
 
 const loadArmiesListFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const { getAllArmies } = await import('../../db/queries')
+    const { getAllArmies, getAllArmyRecords } = await import('../../db/queries')
     const armies = await getAllArmies()
+    const recordsMap = await getAllArmyRecords()
     const { session } = context
     const currentPlayerId = session.isGuest ? null : session.playerId
+
+    const armiesWithData = armies.map((a) => ({
+      ...a,
+      isOwn: currentPlayerId !== null && a.playerId === currentPlayerId,
+      record: recordsMap.get(a.id) ?? null,
+    }))
+
+    // Sort: own army first, then alphabetically by name
+    const sorted = [...armiesWithData].sort((a, b) => {
+      if (a.isOwn && !b.isOwn) return -1
+      if (!a.isOwn && b.isOwn) return 1
+      return a.name.localeCompare(b.name)
+    })
+
     return {
-      armies: armies.map((a) => ({ ...a, isOwn: currentPlayerId !== null && a.playerId === currentPlayerId })),
+      armies: sorted,
       isGuest: session.isGuest,
     }
   })
@@ -53,52 +73,28 @@ function ArmiesListView() {
       </h1>
 
       {armies.length === 0 ? (
-        <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
-          Aucune armee dans la campagne
-        </p>
+        <div>
+          <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+            Aucune armee dans la campagne
+          </p>
+          <Link to="/" style={{ color: 'var(--color-brand)', fontSize: '0.875rem' }}>
+            Retour a la campagne
+          </Link>
+        </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div>
           {armies.map((army) => {
             const isOwn = !isGuest && army.isOwn
             return (
-              <Link
+              <ArmyListItem
                 key={army.id}
-                to="/armies/$armyId"
-                params={{ armyId: army.id }}
-                style={{
-                  display: 'block',
-                  textDecoration: 'none',
-                  padding: '0.875rem 1rem',
-                  borderRadius: '8px',
-                  border: isOwn ? '2px solid #ead69b' : '1px solid #e0d5c8',
-                  background: isOwn ? '#fff9ec' : '#fffbf5',
-                  color: 'inherit',
-                }}
-              >
-                <p
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 600,
-                    fontSize: '0.9375rem',
-                    color: 'var(--color-text-primary)',
-                    margin: 0,
-                    marginBottom: '0.125rem',
-                  }}
-                >
-                  {army.name}
-                </p>
-                <p
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.8125rem',
-                    color: 'var(--color-text-secondary)',
-                    margin: 0,
-                  }}
-                >
-                  {army.faction}
-                  {army.playerDisplayName && ` — ${army.playerDisplayName}`}
-                </p>
-              </Link>
+                id={army.id}
+                name={army.name}
+                faction={army.faction}
+                playerDisplayName={army.playerDisplayName ?? null}
+                record={army.record}
+                isOwn={isOwn}
+              />
             )
           })}
         </div>

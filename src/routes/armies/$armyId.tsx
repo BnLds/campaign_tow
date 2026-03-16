@@ -340,17 +340,39 @@ function ArmyView() {
     <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
       {/* Army header */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 700,
-            fontSize: '1.5rem',
-            color: 'var(--color-text-primary)',
-            marginBottom: '0.25rem',
-          }}
-        >
-          {army.name}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.5rem' }}>
+          <Link
+            to="/armies"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              border: '1px solid #d9cfbf',
+              background: '#fff9f2',
+              color: 'var(--color-brand)',
+              fontWeight: 800,
+              display: 'grid',
+              placeItems: 'center',
+              textDecoration: 'none',
+              flexShrink: 0,
+              fontSize: '1rem',
+            }}
+            aria-label="Retour aux armées"
+          >
+            ‹
+          </Link>
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: '1.5rem',
+              color: 'var(--color-text-primary)',
+              margin: 0,
+            }}
+          >
+            {army.name}
+          </h1>
+        </div>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
           {army.faction}
           {army.player && ` — ${army.player.displayName}`}
