@@ -542,7 +542,7 @@ export function UnitEditPanel({
                   onClick={() => handleDeleteStatModifier(mod.id)}
                   style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'var(--color-malus)' }}
                 >
-                  {deletingModId === mod.id ? '...' : '✕'}
+                  {deletingModId === mod.id ? '...' : 'supprimer'}
                 </Button>
               </li>
             ))}
@@ -688,7 +688,7 @@ export function UnitEditPanel({
                   onClick={() => handleDeleteUnitGain(gain.id)}
                   style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'var(--color-malus)' }}
                 >
-                  {deletingGainId === gain.id ? '...' : '✕'}
+                  {deletingGainId === gain.id ? '...' : 'supprimer'}
                 </Button>
               </li>
             ))}
