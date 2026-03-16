@@ -17,3 +17,20 @@ todos.json
 .auth
 test-results
 .env.local
+
+# Claude Code sandbox artifacts (empty read-only placeholder files)
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.idea
+.mcp.json
+.profile
+.ripgreprc
+.zprofile
+.zshrc
+HEAD
+config
+hooks
+objects
+refs
