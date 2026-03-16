@@ -274,47 +274,44 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
         ...borderStyle,
       }}
     >
-      {/* Header: unit name + tier pill */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.625rem 0.75rem',
-        }}
-      >
-        <span
-          title={unit.name}
+      {/* Header: unit name on top, tier pill + action below */}
+      <div style={{ padding: '0.625rem 0.75rem' }}>
+        <div
           style={{
             fontFamily: 'var(--font-display)',
             fontWeight: 700,
             fontSize: '1rem',
             color: 'var(--color-text-primary)',
-            flex: 1,
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
           }}
         >
           {unit.name}
-        </span>
-        {tier > 0 && (
-          <span
-            data-testid="tier-pill"
+        </div>
+        {(tier > 0 || action) && (
+          <div
             style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: tierColor,
-              fontFamily: 'var(--font-body)',
-              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginTop: '0.25rem',
             }}
           >
-            {tierLabel}
-          </span>
-        )}
-        {action && (
-          <div style={{ flexShrink: 0 }}>{action}</div>
+            {tier > 0 && (
+              <span
+                data-testid="tier-pill"
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: tierColor,
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                {tierLabel}
+              </span>
+            )}
+            {action && (
+              <div style={{ marginLeft: 'auto' }}>{action}</div>
+            )}
+          </div>
         )}
       </div>
 
