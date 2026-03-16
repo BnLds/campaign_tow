@@ -10,6 +10,7 @@ import { authMiddleware } from '../lib/middleware'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -276,6 +277,9 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
             >
               Nouvelle partie
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Choisir un adversaire et une date pour creer une nouvelle partie
+            </DialogDescription>
           </DialogHeader>
 
           {/* Opponent list */}
