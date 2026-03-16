@@ -1,7 +1,7 @@
 // Campaign TOW — Reusable DB query functions
 // All direct drizzle-orm and DB access for named operations lives here.
 
-import { eq, inArray, desc, and, ne, sql } from 'drizzle-orm'
+import { eq, inArray, desc, and, ne, sql, isNull, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from './index'
 import { players, armies, units, subProfiles, statModifiers, unitGains, matches, matchParticipants } from './schema'
@@ -161,24 +161,24 @@ export async function getArmyOwner(armyId: string): Promise<{ playerId: string |
   return rows.length > 0 ? rows[0] : null
 }
 
-export async function getArmyById(armyId: string) {
-  const armyRows = await db
+export async function getArmyById(armyId: string): Promise<{
+  id: string
+  name: string
+  faction: string
+  playerId: string | null
+} | null> {
+  const rows = await db
     .select({
       id: armies.id,
       name: armies.name,
       faction: armies.faction,
       playerId: armies.playerId,
-      createdAt: armies.createdAt,
     })
     .from(armies)
     .where(eq(armies.id, armyId))
     .limit(1)
 
-  if (armyRows.length === 0) return null
-  const army = armyRows[0]
-  const unitsWithProfiles = await getUnitsForArmy(armyId)
-
-  return { ...army, units: unitsWithProfiles }
+  return rows.length > 0 ? rows[0] : null
 }
 
 export async function getAllArmies() {
@@ -592,6 +592,55 @@ export async function getAllArmyRecords(): Promise<Map<string, { wins: number; d
   return map
 }
 
+// Story 3.2 — Pending matches (action chips)
+
+export type PendingMatchData = {
+  matchId: string
+  date: string // ISO 8601
+  opponentArmyName: string
+  opponentFaction: string
+  myResult: string | null
+  myEvolutionsEnteredAt: string | null
+}
+
+export async function getPendingMatches(armyId: string): Promise<PendingMatchData[]> {
+  const oppParticipant = alias(matchParticipants, 'opp')
+  const oppArmy = alias(armies, 'opp_army')
+
+  const rows = await db
+    .select({
+      matchId: matches.id,
+      date: matches.date,
+      myResult: matchParticipants.result,
+      myEvolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
+      opponentArmyName: oppArmy.name,
+      opponentFaction: oppArmy.faction,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+    .innerJoin(
+      oppParticipant,
+      and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.armyId, matchParticipants.armyId)),
+    )
+    .innerJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
+    .where(
+      and(
+        eq(matchParticipants.armyId, armyId),
+        or(isNull(matchParticipants.result), isNull(matchParticipants.evolutionsEnteredAt)),
+      ),
+    )
+    .orderBy(desc(matches.date))
+
+  return rows.map((row) => ({
+    matchId: row.matchId,
+    date: row.date.toISOString(),
+    opponentArmyName: row.opponentArmyName,
+    opponentFaction: row.opponentFaction,
+    myResult: row.myResult,
+    myEvolutionsEnteredAt: row.myEvolutionsEnteredAt ? row.myEvolutionsEnteredAt.toISOString() : null,
+  }))
+}
+
 export async function getPlayerArmy(playerId: string): Promise<{
   id: string
   name: string
@@ -613,5 +662,58 @@ export async function getPlayerArmy(playerId: string): Promise<{
     .limit(1)
 
   return rows.length > 0 ? rows[0] : null
+}
+
+// Story 3.3 — Match result entry
+
+export async function getMatchParticipantByMatchAndArmy(
+  matchId: string,
+  armyId: string,
+): Promise<{ id: string; matchId: string; armyId: string; result: string | null } | null> {
+  const rows = await db
+    .select({
+      id: matchParticipants.id,
+      matchId: matchParticipants.matchId,
+      armyId: matchParticipants.armyId,
+      result: matchParticipants.result,
+    })
+    .from(matchParticipants)
+    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, armyId)))
+    .limit(1)
+
+  return rows.length > 0 ? rows[0] : null
+}
+
+export function invertResult(r: 'victory' | 'defeat' | 'draw'): 'victory' | 'defeat' | 'draw' {
+  switch (r) {
+    case 'victory': return 'defeat'
+    case 'defeat': return 'victory'
+    case 'draw': return 'draw'
+    default: throw new Error(`Unknown result: ${r satisfies never}`)
+  }
+}
+
+export async function updateMatchResults(
+  matchId: string,
+  myArmyId: string,
+  myResult: 'victory' | 'defeat' | 'draw',
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    // Update MY result
+    const mine = await tx
+      .update(matchParticipants)
+      .set({ result: myResult })
+      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, myArmyId)))
+      .returning({ id: matchParticipants.id })
+
+    // Update OPPONENT's result to inverse
+    const opp = await tx
+      .update(matchParticipants)
+      .set({ result: invertResult(myResult) })
+      .where(and(eq(matchParticipants.matchId, matchId), ne(matchParticipants.armyId, myArmyId)))
+      .returning({ id: matchParticipants.id })
+
+    return mine.length === 1 && opp.length === 1
+  })
 }
 

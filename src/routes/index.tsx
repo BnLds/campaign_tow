@@ -4,17 +4,11 @@ import { useState, useEffect } from 'react'
 import { useHydrated } from '../lib/useHydrated'
 import { WelcomeModal } from '../components/welcome-modal'
 import { TimelineEntry } from '../components/timeline-entry'
+import { ActionChip } from '../components/action-chip'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
-import type { TimelineEntryData } from '../db/queries'
-import { updateDisplayNameSchema } from '../lib/validators'
-
-const VALID_RESULTS = new Set(['victory', 'defeat', 'draw'] as const)
-type ValidResult = 'victory' | 'defeat' | 'draw'
-function toValidResult(r: string | null): ValidResult | null {
-  if (r && VALID_RESULTS.has(r as ValidResult)) return r as ValidResult
-  return null
-}
+import type { TimelineEntryData, PendingMatchData } from '../db/queries'
+import { updateDisplayNameSchema, submitMatchResultSchema, toValidResult } from '../lib/validators'
 
 const markWelcomeSeenFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -34,19 +28,53 @@ const updateDisplayNameFn = createServerFn({ method: 'POST' })
     return { success: true, data: { displayName: data.displayName } }
   })
 
+export const submitMatchResultFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(submitMatchResultSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<{ participantId: string; result: string }>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getPlayerArmy, getMatchParticipantByMatchAndArmy, updateMatchResults } = await import('../db/queries')
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+    }
+    const participant = await getMatchParticipantByMatchAndArmy(data.matchId, army.id)
+    if (!participant) {
+      return {
+        success: false,
+        error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
+      }
+    }
+    const updated = await updateMatchResults(data.matchId, army.id, data.result)
+    if (!updated) {
+      return { success: false, error: { code: 'SERVER_ERROR', message: 'Echec de la mise a jour du resultat' } }
+    }
+    return { success: true, data: { participantId: participant.id, result: data.result } }
+  })
+
 const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { session } = context
     if (session.isGuest) {
-      return { isGuest: true as const, army: null, timeline: [] as TimelineEntryData[] }
+      return {
+        isGuest: true as const,
+        army: null,
+        timeline: [] as TimelineEntryData[],
+        pendingMatches: [] as PendingMatchData[],
+      }
     }
-    const { getPlayerArmy, getTimelineForArmy } = await import('../db/queries')
+    const { getPlayerArmy, getTimelineForArmy, getPendingMatches } = await import('../db/queries')
     const army = await getPlayerArmy(session.playerId)
     const timeline: TimelineEntryData[] = army
       ? await getTimelineForArmy(army.id)
       : []
-    return { isGuest: false as const, army, timeline }
+    const pendingMatches: PendingMatchData[] = army
+      ? await getPendingMatches(army.id)
+      : []
+    return { isGuest: false as const, army, timeline, pendingMatches }
   })
 
 export const Route = createFileRoute('/')({
@@ -62,7 +90,7 @@ function CampaignView() {
   const { session } = context
   const [modalOpen, setModalOpen] = useState(session?.hasSeenWelcome === false)
   const hydrated = useHydrated()
-  const { isGuest, army, timeline } = Route.useLoaderData()
+  const { isGuest, army, timeline, pendingMatches } = Route.useLoaderData()
 
   useEffect(() => {
     if (hydrated) {
@@ -84,6 +112,14 @@ function CampaignView() {
     if (!result.success) {
       throw new Error(result.error.message)
     }
+  }
+
+  const handleResultSubmit = async (matchId: string, result: 'victory' | 'defeat' | 'draw') => {
+    const response = await submitMatchResultFn({ data: { matchId, result } })
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+    await router.invalidate()
   }
 
   return (
@@ -117,6 +153,49 @@ function CampaignView() {
         ) : (
           /* Logged in with an army */
           <>
+            {/* Action strip — pending matches */}
+            {pendingMatches.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 12, alignItems: 'center', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+              >
+                {pendingMatches.map((match) => {
+                  // H4 — safe date formatting: fallback to raw date string if parsing fails
+                  let formattedDate: string
+                  try {
+                    const parsed = new Date(match.date)
+                    if (isNaN(parsed.getTime())) throw new Error('invalid date')
+                    formattedDate = new Intl.DateTimeFormat('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                    }).format(parsed)
+                  } catch {
+                    formattedDate = match.date
+                  }
+
+                  const label = match.myResult === null
+                    ? `Resultat a entrer -- vs ${match.opponentArmyName} . ${formattedDate}`
+                    : `Rapport de bataille -- vs ${match.opponentArmyName} . ${formattedDate}`
+
+                  if (match.myResult === null) {
+                    return (
+                      <ActionChip
+                        key={match.matchId}
+                        label={label}
+                        // M1 — no href="#" (avoids scroll-to-top); TODO: story 3.3 -- add real route
+                      />
+                    )
+                  }
+
+                  return (
+                    <ActionChip
+                      key={match.matchId}
+                      label={label}
+                      // M1 — no href="#" (avoids scroll-to-top); TODO: epic 4 -- add real route
+                    />
+                  )
+                })}
+              </div>
+            )}
+
             {/* Timeline */}
             <section>
               <h2
@@ -151,6 +230,8 @@ function CampaignView() {
                       result={toValidResult(entry.result)}
                       date={entry.date}
                       hasEvolutions={entry.hasEvolutions}
+                      isEditable={!isGuest && army !== null}
+                      onResultSubmit={handleResultSubmit}
                     />
                   ))}
                 </div>

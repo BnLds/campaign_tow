@@ -9,9 +9,13 @@ import { useHydrated } from '../../lib/useHydrated'
 import { authMiddleware, armyOwnerMiddleware } from '../../lib/middleware'
 import { UnitCard } from '../../components/unit-card'
 import { UnitEditPanel } from '../../components/unit-edit-panel'
+import { TimelineEntry } from '../../components/timeline-entry'
 import { composeUnitView } from '../../lib/delta-composer'
 import { calculateTier } from '../../lib/tier'
 import type { ComposedUnitView } from '../../lib/delta-composer'
+import type { TimelineEntryData } from '../../db/queries'
+import { submitMatchResultFn } from '../index'
+import { toValidResult } from '../../lib/validators'
 
 // ---------------------------------------------------------------------------
 // Server function — load army with units and deltas
@@ -21,7 +25,7 @@ const loadArmyFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ armyId: z.string() }))
   .handler(async ({ data, context }) => {
-    const { getArmyWithUnits, getUnitDeltas } = await import('../../db/queries')
+    const { getArmyWithUnits, getUnitDeltas, getTimelineForArmy } = await import('../../db/queries')
 
     const army = await getArmyWithUnits(data.armyId)
     if (!army) {
@@ -56,6 +60,13 @@ const loadArmyFn = createServerFn({ method: 'GET' })
       !session.isGuest &&
       (session.isAdmin || army.playerId === session.playerId)
 
+    // H2 fix: timeline editing requires being the actual army owner (not just admin)
+    const isTimelineEditable =
+      !session.isGuest && army.playerId === session.playerId
+
+    // Load timeline for this army
+    const timeline: TimelineEntryData[] = await getTimelineForArmy(data.armyId)
+
     return {
       army: {
         id: army.id,
@@ -65,6 +76,8 @@ const loadArmyFn = createServerFn({ method: 'GET' })
       },
       unitCards,
       isOwner,
+      isTimelineEditable,
+      timeline,
     }
   })
 
@@ -318,8 +331,9 @@ function groupUnitsByType(
 // Component
 // ---------------------------------------------------------------------------
 
+
 function ArmyView() {
-  const { army, unitCards, isOwner } = Route.useLoaderData()
+  const { army, unitCards, isOwner, isTimelineEditable, timeline } = Route.useLoaderData()
   const hydrated = useHydrated()
   const router = useRouter()
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null)
@@ -333,6 +347,14 @@ function ArmyView() {
   const groups = groupUnitsByType(unitCards)
 
   const handleMutationSuccess = async () => {
+    await router.invalidate()
+  }
+
+  const handleResultSubmit = async (matchId: string, result: 'victory' | 'defeat' | 'draw') => {
+    const response = await submitMatchResultFn({ data: { matchId, result } })
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
     await router.invalidate()
   }
 
@@ -450,6 +472,48 @@ function ArmyView() {
           Cette armée ne contient aucune unité.
         </p>
       )}
+
+      {/* Timeline — Historique des parties */}
+      <section style={{ marginTop: '1.5rem' }}>
+        <h2
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--color-section-label)',
+            marginBottom: '0.75rem',
+          }}
+        >
+          Historique
+        </h2>
+
+        {timeline.length === 0 ? (
+          <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+            Aucune partie jouee pour le moment
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {timeline.map((entry) => (
+              <TimelineEntry
+                key={entry.matchId}
+                matchId={entry.matchId}
+                opponent={{
+                  name: entry.opponent.name,
+                  faction: entry.opponent.faction,
+                  playerName: entry.opponent.playerName ?? undefined,
+                }}
+                result={toValidResult(entry.result)}
+                date={entry.date}
+                hasEvolutions={entry.hasEvolutions}
+                isEditable={isTimelineEditable}
+                onResultSubmit={handleResultSubmit}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   )
 }

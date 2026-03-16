@@ -63,6 +63,21 @@ export const createMatchSchema = z.object({
 })
 export type CreateMatchInput = z.infer<typeof createMatchSchema>
 
+// Story 3.3 — Match result entry
+export const submitMatchResultSchema = z.object({
+  matchId: z.string().min(1),
+  result: z.enum(['victory', 'defeat', 'draw']),
+})
+export type SubmitMatchResultInput = z.infer<typeof submitMatchResultSchema>
+
+// Shared result validation helper
+const VALID_RESULTS = new Set(['victory', 'defeat', 'draw'] as const)
+export type ValidResult = 'victory' | 'defeat' | 'draw'
+export function toValidResult(r: string | null): ValidResult | null {
+  if (r && VALID_RESULTS.has(r as ValidResult)) return r as ValidResult
+  return null
+}
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),

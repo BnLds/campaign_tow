@@ -20,7 +20,7 @@ Components not covered by shadcn/ui — built using design system tokens.
 
 | Component | Purpose |
 |---|---|
-| `UnitCard` | Stats 9 col en barre horizontale, sous-profils, delta chips, cadre palier XP (border + glow) |
+| `UnitCard` | Tableau compact : colonne "Profil" à gauche + 9 col stats. Tous les profils empilés en lignes. Montures en dernier avec bordure gauche bleue (#2a5ab8) + annotation légende sous le tableau. Delta chips en bas. Cadre palier XP (border + glow). |
 | `TimelineEntry` | Entrée match terminé dans l'historique — un seul style (pas de variant pending) |
 | `ActionChip` | Chip item à traiter — fond bleu `#eef4ff`, bordure `#d7e1ef`. Prop `type`: `invite` ou `postmatch` |
 | `ArmyListItem` | Item joueur liste armées — avatar initiale, nom armée, faction, bilan V/D. Variant `current` (doré) |

@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import { TabBar } from '../components/tab-bar'
+import { CreateMatchFab } from '../components/create-match-fab'
 import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 import type { SessionData } from '../lib/auth'
@@ -106,6 +107,7 @@ function RootLayout() {
         flexDirection: 'column',
         height: '100dvh',
         minHeight: '100%',
+        position: 'relative',
       }}
     >
       {session && <AppHeader key={session.playerId} session={session} army={army} record={record} />}
@@ -119,6 +121,12 @@ function RootLayout() {
       >
         <Outlet />
       </div>
+      {session && !session.isGuest && (
+        <CreateMatchFab
+          session={{ playerId: session.playerId, isGuest: session.isGuest }}
+          armyId={army?.id ?? null}
+        />
+      )}
       {session && <TabBar currentPath={currentPath} />}
     </div>
   )
@@ -215,7 +223,7 @@ function AppHeader({
               params={{ armyId: army.id }}
               style={{ color: 'var(--color-brand)', fontSize: 11 }}
             >
-              Voir l'armée
+              Voir le détail
             </Link>
           </>
         ) : (
