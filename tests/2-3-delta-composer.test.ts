@@ -49,7 +49,6 @@ function makeGain(overrides: Partial<UnitGain> & { description: string }): UnitG
   return {
     id: 'gain-1',
     unitId: 'unit-1',
-    active: true,
     ...overrides,
   }
 }
@@ -299,7 +298,7 @@ describe('[AC2] composeUnitView — active unit gains included in output', () =>
       a: '1',
       cd: '7',
     })
-    const gain = makeGain({ description: 'Mur de boucliers', active: true })
+    const gain = makeGain({ description: 'Mur de boucliers' })
     const result = composeUnitView([subProfile], [], [gain])
 
     expect(result.gains).toHaveLength(1)
@@ -308,11 +307,11 @@ describe('[AC2] composeUnitView — active unit gains included in output', () =>
 })
 
 // ---------------------------------------------------------------------------
-// Test 10 — Inactive unit gains excluded from output (AC per task 3.5)
+// Test 10 — All unit gains included in output (no active filter)
 // ---------------------------------------------------------------------------
 
-describe('[AC2] composeUnitView — inactive unit gains excluded', () => {
-  it('[2.3-UNIT-010] inactive unit_gain (active=false) is NOT present in result.gains', () => {
+describe('[AC2] composeUnitView — all unit gains included', () => {
+  it('[2.3-UNIT-010] all unit_gains are present in result.gains', () => {
     const subProfile = makeSubProfile('Guerriers', {
       m: '4',
       cc: '3',
@@ -324,10 +323,11 @@ describe('[AC2] composeUnitView — inactive unit gains excluded', () => {
       a: '1',
       cd: '7',
     })
-    const gain = makeGain({ description: 'Capacité inactive', active: false })
+    const gain = makeGain({ description: 'Capacité acquise' })
     const result = composeUnitView([subProfile], [], [gain])
 
-    expect(result.gains).toHaveLength(0)
+    expect(result.gains).toHaveLength(1)
+    expect(result.gains[0].description).toBe('Capacité acquise')
   })
 })
 
@@ -467,5 +467,28 @@ describe('[AC2] composeUnitView — multi-combatant unit: both profiles modified
     expect(result.subProfiles[0].stats['cc'].delta).toBe(1)
     expect(result.subProfiles[1].stats['cc'].modified).toBe(true)
     expect(result.subProfiles[1].stats['cc'].delta).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test 16 — isMount is propagated to ComposedSubProfile
+// ---------------------------------------------------------------------------
+
+describe('[AC1] composeUnitView — isMount propagated to ComposedSubProfile', () => {
+  it('[2.3-UNIT-016] isMount=true on input sub-profile is present as true on output ComposedSubProfile', () => {
+    const rider = {
+      ...makeSubProfile('Chevalier', { m: '4', cc: '5', ct: '3', f: '4', e: '4', pv: '2', i: '4', a: '3', cd: '8' }, false),
+      id: 'sp-rider',
+      sortOrder: 0,
+    }
+    const mount = {
+      ...makeSubProfile('Destrier', { m: '8', cc: '3', ct: '-', f: '4', e: '4', pv: '1', i: '3', a: '2', cd: '-' }, true),
+      id: 'sp-mount',
+      sortOrder: 1,
+    }
+    const result = composeUnitView([rider, mount], [], [])
+
+    expect(result.subProfiles[0].isMount).toBe(false)
+    expect(result.subProfiles[1].isMount).toBe(true)
   })
 })

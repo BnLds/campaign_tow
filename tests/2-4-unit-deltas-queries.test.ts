@@ -98,9 +98,9 @@ describe('[AC3][P0] DB queries — insertUnitGain — src/db/queries.ts', () => 
     expect(queries).toContain('export async function insertUnitGain')
   })
 
-  it('[2.4-QRY-012] insertUnitGain accepts unitId, description, active parameters', () => {
+  it('[2.4-QRY-012] insertUnitGain accepts unitId, description parameters', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/insertUnitGain[\s\S]{0,400}unitId[\s\S]{0,200}description[\s\S]{0,200}active/)
+    expect(queries).toMatch(/insertUnitGain[\s\S]{0,400}unitId[\s\S]{0,200}description/)
   })
 
   it('[2.4-QRY-013] insertUnitGain inserts into unitGains table', () => {

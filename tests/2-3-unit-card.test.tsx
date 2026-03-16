@@ -27,7 +27,8 @@ function makeStatEntry(value: string, delta: number | null = null, modified = fa
 
 function makeSubProfile(
   label: string,
-  overrides: Partial<Record<(typeof STAT_KEYS)[number], { value: string; delta: number | null; modified: boolean }>> = {}
+  overrides: Partial<Record<(typeof STAT_KEYS)[number], { value: string; delta: number | null; modified: boolean }>> = {},
+  isMount = false,
 ) {
   const defaultStats = Object.fromEntries(
     STAT_KEYS.map((k) => [k, makeStatEntry('3')])
@@ -35,6 +36,7 @@ function makeSubProfile(
 
   return {
     label,
+    isMount,
     stats: { ...defaultStats, ...overrides },
   }
 }
@@ -228,6 +230,34 @@ describe('[AC3] UnitCard — sub-profile label uppercase', () => {
     expect(labelElements.length).toBeGreaterThan(0)
     const firstLabel = labelElements[0] as HTMLElement
     expect(firstLabel.style.textTransform).toBe('uppercase')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Test NEW — Mount sub-profile shows "(Monture)" indicator
+// ---------------------------------------------------------------------------
+
+describe('[AC3] UnitCard — mount sub-profile label indicator', () => {
+  it('[2.3-COMP-NEW-001] isMount=true sub-profile shows a mount indicator in its label area', () => {
+    const rider = makeSubProfile('Chevalier', {}, false)
+    const mount = makeSubProfile('Destrier', {}, true)
+    const composedView = makeComposedView([rider, mount])
+    const { container } = render(
+      <UnitCard unit={makeUnit('Seigneur de Guerre')} composedView={composedView} tier={0} />
+    )
+
+    // The mount indicator text should be present somewhere in the card
+    expect(container.textContent?.toLowerCase()).toContain('monture')
+  })
+
+  it('[2.3-COMP-NEW-002] isMount=false sub-profile does NOT show mount indicator', () => {
+    const sp = makeSubProfile('Infanterie', {}, false)
+    const composedView = makeComposedView([sp])
+    const { container } = render(
+      <UnitCard unit={makeUnit()} composedView={composedView} tier={0} />
+    )
+
+    expect(container.textContent?.toLowerCase()).not.toContain('monture')
   })
 })
 

@@ -440,11 +440,10 @@ export async function deleteStatModifier(modifierId: string): Promise<boolean> {
 export async function insertUnitGain(
   unitId: string,
   description: string,
-  active: boolean,
 ) {
   const rows = await db
     .insert(unitGains)
-    .values({ unitId, description, active })
+    .values({ unitId, description })
     .returning()
   if (rows.length === 0) throw new Error('Insert returned no rows')
   return rows[0]

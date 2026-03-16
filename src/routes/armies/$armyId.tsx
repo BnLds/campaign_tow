@@ -162,7 +162,6 @@ const addUnitGainFn = createServerFn({ method: 'POST' })
       armyId: z.string(),
       unitId: z.string(),
       description: z.string().trim().min(1, { message: 'La description ne peut pas être vide' }).max(200),
-      active: z.boolean(),
     }),
   )
   .handler(async ({ data }) => {
@@ -174,7 +173,7 @@ const addUnitGainFn = createServerFn({ method: 'POST' })
         error: { code: 'BAD_REQUEST', message: "Cette unité n'appartient pas à cette armée" },
       }
     }
-    const row = await insertUnitGain(data.unitId, data.description, data.active)
+    const row = await insertUnitGain(data.unitId, data.description)
     return { success: true as const, data: { id: row.id } }
   })
 

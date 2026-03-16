@@ -84,5 +84,4 @@ export const unitGains = pgTable('unit_gains', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
-  active: boolean('active').notNull().default(true),
 })

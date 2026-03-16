@@ -33,7 +33,6 @@ interface UnitGainRow {
   id: string
   unitId: string
   description: string
-  active: boolean
 }
 
 // Server function types (passed as props to avoid import-protection issues)
@@ -53,7 +52,7 @@ type RemoveStatModifierFn = (args: {
 }) => Promise<{ success: boolean; data?: null; error?: { code: string; message: string } }>
 
 type AddUnitGainFn = (args: {
-  data: { armyId: string; unitId: string; description: string; active: boolean }
+  data: { armyId: string; unitId: string; description: string }
 }) => Promise<{ success: boolean; data?: { id: string }; error?: { code: string; message: string } }>
 
 type RemoveUnitGainFn = (args: {
@@ -171,7 +170,6 @@ export function UnitEditPanel({
 
   // Unit gain form state
   const [gainDescription, setGainDescription] = useState('')
-  const [gainActive, setGainActive] = useState(true)
   const [addingGain, setAddingGain] = useState(false)
   const gainFeedback = useFeedback()
 
@@ -296,13 +294,11 @@ export function UnitEditPanel({
           armyId,
           unitId,
           description: gainDescription.trim(),
-          active: gainActive,
         },
       })
       if (result.success) {
         gainFeedback.show('Capacité ajoutée', false)
         setGainDescription('')
-        setGainActive(true)
         await refetchDeltas()
         await onMutationSuccess()
       } else {
@@ -685,11 +681,6 @@ export function UnitEditPanel({
                 }}
               >
                 <span style={{ flex: 1 }}>{gain.description}</span>
-                {!gain.active && (
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
-                    inactif
-                  </span>
-                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -719,23 +710,6 @@ export function UnitEditPanel({
               required
             />
           </div>
-
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={gainActive}
-              onChange={(e) => setGainActive(e.target.checked)}
-            />
-            Active
-          </label>
 
           <Button
             type="submit"

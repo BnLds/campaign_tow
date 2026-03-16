@@ -18,7 +18,6 @@ export interface UnitGain {
   id: string
   unitId: string
   description: string
-  active: boolean
 }
 
 export interface StatDelta {
@@ -36,13 +35,14 @@ export interface StatEntry {
 
 export interface ComposedSubProfile {
   label: string
+  isMount: boolean
   stats: Record<string, StatEntry>  // keys: m, cc, ct, f, e, pv, i, a, cd
 }
 
 export interface ComposedUnitView {
   subProfiles: ComposedSubProfile[]
   deltas: StatDelta[]       // Flat list of all stat modifiers (for delta chips)
-  gains: UnitGain[]         // Filtered to active=true only
+  gains: UnitGain[]
 }
 
 export interface UnitCardProps {
@@ -107,8 +107,7 @@ export function composeUnitView(
     temporary: mod.temporary,
   }))
 
-  // Filter gains to active-only
-  const gains = unitGains.filter((g) => g.active)
+  const gains = unitGains
 
   // Pre-group modifiers by stat key for O(1) lookup
   const modsByStat = new Map<string, StatModifier[]>()
@@ -142,7 +141,7 @@ export function composeUnitView(
       }
     }
 
-    return { label: sp.label, stats }
+    return { label: sp.label, isMount: sp.isMount, stats }
   })
 
   return { subProfiles: composedSubProfiles, deltas, gains }

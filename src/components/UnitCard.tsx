@@ -47,11 +47,12 @@ const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
 
 interface SubProfileSectionProps {
   label: string
+  isMount: boolean
   stats: Record<string, { value: string; delta: number | null; modified: boolean }>
   showLabel: boolean
 }
 
-function SubProfileSection({ label, stats, showLabel }: SubProfileSectionProps) {
+function SubProfileSection({ label, isMount, stats, showLabel }: SubProfileSectionProps) {
   // Fix E1: fallback for empty sub-profile label
   const displayLabel = label?.trim() || 'Profil'
 
@@ -72,6 +73,21 @@ function SubProfileSection({ label, stats, showLabel }: SubProfileSectionProps) 
           }}
         >
           {displayLabel}
+          {isMount && (
+            <span
+              style={{
+                textTransform: 'none',
+                fontStyle: 'italic',
+                fontWeight: 400,
+                color: 'var(--color-text-secondary)',
+                marginLeft: '0.375rem',
+                fontSize: '0.65rem',
+                letterSpacing: '0.02em',
+              }}
+            >
+              · Monture
+            </span>
+          )}
         </div>
       )}
       <div
@@ -309,6 +325,7 @@ export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
         <SubProfileSection
           key={sp.label + idx}
           label={sp.label}
+          isMount={sp.isMount}
           stats={sp.stats}
           showLabel={true}
         />
