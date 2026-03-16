@@ -45,12 +45,6 @@ export interface ComposedUnitView {
   gains: UnitGain[]
 }
 
-export interface UnitCardProps {
-  unit: { id: string; name: string; type: string; xp: number }
-  composedView: ComposedUnitView
-  tier: 0 | 1 | 2 | 3
-}
-
 // ---------------------------------------------------------------------------
 // SubProfile input shape (matches Drizzle schema row)
 // ---------------------------------------------------------------------------

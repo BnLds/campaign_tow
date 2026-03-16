@@ -2,7 +2,7 @@
 // Displays a unit's base stats, campaign deltas, tier pill and border.
 
 import React from 'react'
-import type { ComposedUnitView, StatDelta, UnitGain } from '../lib/delta-composer'
+import type { ComposedUnitView, ComposedSubProfile, StatDelta, UnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
 
 // ---------------------------------------------------------------------------
@@ -43,90 +43,138 @@ function tierBorderStyle(tier: 0 | 1 | 2 | 3): React.CSSProperties {
 const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
 
 // ---------------------------------------------------------------------------
-// Sub-profile section
+// Stats table (compact layout — single header, all profiles as rows)
 // ---------------------------------------------------------------------------
 
-interface SubProfileSectionProps {
-  label: string
-  isMount: boolean
-  stats: Record<string, { value: string; delta: number | null; modified: boolean }>
-  showLabel: boolean
-}
+function StatsTable({ subProfiles }: { subProfiles: ComposedSubProfile[] }) {
+  if (subProfiles.length === 0) return null
 
-function SubProfileSection({ label, isMount, stats, showLabel }: SubProfileSectionProps) {
-  // Fix E1: fallback for empty sub-profile label
-  const displayLabel = label.trim() || 'Profil'
+  // Sort: non-mount first, mount last (immutable)
+  const sorted = [...subProfiles].sort(
+    (a, b) => Number(a.isMount) - Number(b.isMount),
+  )
+  const hasMount = subProfiles.some((sp) => sp.isMount)
+
+  // Profil column width: fit longest label (ch ≈ character width) + padding
+  const maxLabelLen = Math.max(
+    'Profil'.length,
+    ...sorted.map((sp) => ((sp.label || '').trim() || 'Profil').length),
+  )
+  const profilWidth = `${maxLabelLen + 2}ch`
 
   return (
-    <div>
-      {showLabel && (
-        <div
-          className="sub-profile-label"
+    <>
+      <div style={{ overflowX: 'auto' }}>
+        <table
           style={{
-            textTransform: 'uppercase',
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            color: 'var(--color-section-label)',
-            letterSpacing: '0.08em',
-            padding: '0.375rem 0.5rem 0.25rem',
-            borderTop: '1px solid var(--color-separator)',
+            tableLayout: 'fixed',
+            width: '100%',
+            borderCollapse: 'collapse',
             fontFamily: 'var(--font-body)',
+            fontSize: '0.75rem',
           }}
         >
-          {displayLabel}
-          {isMount && (
-            <span
-              style={{
-                textTransform: 'none',
-                fontStyle: 'italic',
-                fontWeight: 400,
-                color: 'var(--color-text-secondary)',
-                marginLeft: '0.375rem',
-                fontSize: '0.65rem',
-                letterSpacing: '0.02em',
-              }}
-            >
-              · Monture
-            </span>
-          )}
-        </div>
-      )}
-      <div
-        style={{
-          display: 'flex',
-          background: 'var(--color-stats-bg)',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.75rem',
-        }}
-      >
-        {/* Header row */}
-        <div style={{ display: 'contents' }}>
-          {STAT_KEYS.map((key, idx) => (
-            <div
-              key={key}
-              style={{
-                flex: 1,
-                textAlign: 'center',
-                borderLeft: idx > 0 ? '1px solid var(--color-border)' : undefined,
-              }}
-            >
-              <div
+          <thead>
+            <tr>
+              <th
+                scope="col"
                 style={{
-                  padding: '0.2rem 0',
-                  color: 'var(--color-text-secondary)',
-                  fontWeight: 600,
+                  width: profilWidth,
+                  whiteSpace: 'nowrap',
+                  textAlign: 'left',
+                  fontFamily: 'var(--font-body)',
                   fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color: 'var(--color-text-secondary)',
+                  padding: '0.2rem 0.375rem',
                   borderBottom: '1px solid var(--color-border)',
                 }}
               >
-                {key.toUpperCase()}
-              </div>
-              <StatCell statKey={key} entry={stats[key]} />
-            </div>
-          ))}
-        </div>
+                Profil
+              </th>
+              {STAT_KEYS.map((key) => (
+                <th
+                  key={key}
+                  scope="col"
+                  style={{
+                    textAlign: 'center',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    color: 'var(--color-text-secondary)',
+                    padding: '0.2rem 0',
+                    borderBottom: '1px solid var(--color-border)',
+                  }}
+                >
+                  {key.toUpperCase()}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((sp, idx) => {
+              const displayLabel = (sp.label || '').trim() || 'Profil'
+              return (
+                <tr key={`${sp.label}-${sp.isMount}-${idx}`}>
+                  <td
+                    style={{
+                      textAlign: 'left',
+                      fontSize: '0.75rem',
+                      fontFamily: 'var(--font-body)',
+                      padding: '0.25rem 0.375rem',
+                      whiteSpace: 'nowrap',
+                      background: 'var(--color-stats-bg)',
+                      ...(idx > 0 ? { borderTop: '1px solid var(--color-border)' } : {}),
+                      ...(sp.isMount
+                        ? { borderLeft: '2px solid var(--color-info)' }
+                        : {}),
+                    }}
+                  >
+                    {displayLabel}
+                  </td>
+                  {STAT_KEYS.map((key) => (
+                    <td
+                      key={key}
+                      style={{
+                        textAlign: 'center',
+                        borderLeft: '1px solid var(--color-border)',
+                        background: 'var(--color-stats-bg)',
+                        padding: 0,
+                        ...(idx > 0 ? { borderTop: '1px solid var(--color-border)' } : {}),
+                      }}
+                    >
+                      <StatCell statKey={key} entry={sp.stats[key]} />
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
-    </div>
+      {hasMount && (
+        <div
+          style={{
+            fontSize: '0.7rem',
+            color: 'var(--color-info)',
+            padding: '0.25rem 0.5rem',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-block',
+              width: '8px',
+              height: '8px',
+              background: 'var(--color-info)',
+              marginRight: '0.375rem',
+              verticalAlign: 'middle',
+            }}
+          />
+          Monture
+        </div>
+      )}
+    </>
   )
 }
 
@@ -315,16 +363,8 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
         )}
       </div>
 
-      {/* Sub-profile sections — Fix M5: showLabel always true */}
-      {composedView.subProfiles.map((sp, idx) => (
-        <SubProfileSection
-          key={idx}
-          label={sp.label}
-          isMount={sp.isMount}
-          stats={sp.stats}
-          showLabel={true}
-        />
-      ))}
+      {/* Compact stats table — all profiles as rows under single header */}
+      <StatsTable subProfiles={composedView.subProfiles} />
 
       {/* Delta chips */}
       <DeltaChips deltas={composedView.deltas} gains={composedView.gains} />
