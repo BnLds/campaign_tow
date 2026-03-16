@@ -511,7 +511,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     .innerJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
     .leftJoin(oppPlayer, eq(oppArmy.playerId, oppPlayer.id))
     .where(eq(matchParticipants.armyId, armyId))
-    .orderBy(desc(matches.date))
+    .orderBy(desc(matches.date), desc(matches.createdAt))
 
   return rows.map((row) => ({
     matchId: row.matchId,
@@ -629,7 +629,7 @@ export async function getPendingMatches(armyId: string): Promise<PendingMatchDat
         or(isNull(matchParticipants.result), isNull(matchParticipants.evolutionsEnteredAt)),
       ),
     )
-    .orderBy(desc(matches.date))
+    .orderBy(desc(matches.date), desc(matches.createdAt))
 
   return rows.map((row) => ({
     matchId: row.matchId,
