@@ -245,7 +245,7 @@ Application web monopage (SPA) responsive, déployée derrière authentification
 
 - **FR11 :** Un joueur peut consulter la fiche d'une unité de son armée (XP actuel, palier atteint, deltas de campagne)
 - **FR12 :** Un joueur peut consulter les fiches d'unité de n'importe quelle armée
-- **FR13 :** Un joueur peut éditer directement les bonus, malus et blessures d'une unité de sa propre armée sans passer par le flow post-match
+- **FR13 :** Un joueur peut éditer directement les bonus, malus et blessures d'une unité de sa propre armée sans passer par le flow post-match. Les modificateurs ne s'appliquent qu'aux profils combattants — les sous-profils marqués comme montures conservent leurs stats de base.
 - **FR14 :** Un joueur peut éditer directement les bonus, malus et blessures d'un personnage de sa propre armée sans passer par le flow post-match
 
 ### Timeline & Parties
