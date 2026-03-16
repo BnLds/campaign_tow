@@ -105,7 +105,7 @@ function RootLayout() {
         display: 'flex',
         flexDirection: 'column',
         height: '100dvh',
-        minHeight: '100vh',
+        minHeight: '100%',
       }}
     >
       {session && <AppHeader key={session.playerId} session={session} army={army} record={record} />}
