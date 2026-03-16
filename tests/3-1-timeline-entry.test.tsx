@@ -37,7 +37,8 @@ describe('[AC3][P0] TimelineEntry — renders opponent name, faction, and format
         hasEvolutions={false}
       />
     )
-    expect(screen.getByText('Alice - Armée Elfique')).toBeTruthy()
+    expect(screen.getByText('Armée Elfique')).toBeTruthy()
+    expect(screen.getByText('Hauts Elfes · Alice')).toBeTruthy()
   })
 
   it('[3.1-COMP-002] renders opponent faction', () => {
@@ -243,7 +244,8 @@ describe('[AC6][P0] TimelineEntry — null result (pending)', () => {
         hasEvolutions={false}
       />
     )
-    expect(screen.getByText('Alice - Armée Elfique')).toBeTruthy()
+    expect(screen.getByText('Armée Elfique')).toBeTruthy()
+    expect(screen.getByText('Hauts Elfes · Alice')).toBeTruthy()
   })
 })
 
