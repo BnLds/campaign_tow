@@ -149,7 +149,7 @@ export function TimelineEntry({
               whiteSpace: 'nowrap',
             }}
           >
-            {opponent.name}
+            {opponent.playerName?.trim() ? `${opponent.playerName.trim()} - ${opponent.name}` : opponent.name}
           </p>
           <p
             style={{
