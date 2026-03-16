@@ -12,7 +12,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { UnitCard } from '../src/components/UnitCard'
+import { UnitCard } from '../src/components/unit-card'
 import type { ComposedUnitView } from '../src/lib/delta-composer'
 
 // ---------------------------------------------------------------------------
@@ -261,29 +261,3 @@ describe('[AC3] UnitCard — mount sub-profile label indicator', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// Test 12 — delta=0 chip renders as neutral, not malus
-// ---------------------------------------------------------------------------
-
-describe('[AC2] UnitCard — delta=0 chip is neutral', () => {
-  it('[2.3-COMP-012] renders zero delta chip as neutral (not red malus style)', () => {
-    const subProfile = makeSubProfile('Guerriers')
-    const composedView = makeComposedView([subProfile], {
-      deltas: [{ stat: 'cc', delta: 0, source: 'Test', temporary: false }],
-    })
-    const { container } = render(
-      <UnitCard unit={makeUnit()} composedView={composedView} tier={0} />
-    )
-
-    // The chip should be rendered with neutral data attribute
-    const neutralChip = container.querySelector('[data-delta-neutral="true"]')
-    expect(neutralChip).toBeTruthy()
-
-    // The chip should NOT have malus background color
-    const chipEl = neutralChip as HTMLElement
-    expect(chipEl.style.background).not.toContain('malus')
-    // Neutral chip has gray background — browser normalizes hex to rgb
-    // #f3f4f6 = rgb(243, 244, 246)
-    expect(chipEl.style.background).toMatch(/rgb\(243,\s*244,\s*246\)|#f3f4f6/)
-  })
-})

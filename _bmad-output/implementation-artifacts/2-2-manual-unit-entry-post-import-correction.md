@@ -1,6 +1,6 @@
 # Story 2.2: Manual Unit Entry & Post-Import Correction
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -270,6 +270,8 @@ claude-sonnet-4-6
 - `src/lib/validators.ts` — added `addUnitSchema`, `AddUnitInput`, `updateSubProfileSchema`, `UpdateSubProfileInput`
 - `src/db/queries.ts` — added `insertUnit`, `updateSubProfileStats`, `getUnitsForArmy`
 - `src/routes/admin/index.tsx` — added `addUnitFn`, `updateSubProfileFn`, `getArmyUnitsFn` server functions; `AddUnitSection` and `CorrectionSection` components; `StatFieldsGrid` shared component; associated state + handlers in `AdminPage`
+- `tests/integration/2-2-queries.test.ts` — integration tests for `insertUnit`, `updateSubProfileStats`, `getUnitsForArmy` DB queries
+- `tests/integration/2-2-validators.test.ts` — unit tests for `addUnitSchema` and `updateSubProfileSchema` validators
 
 ## Change Log
 

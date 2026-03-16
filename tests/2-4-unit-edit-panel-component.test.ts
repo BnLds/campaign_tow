@@ -13,7 +13,7 @@ import { resolve } from 'node:path'
 const root = resolve(__dirname, '..')
 
 function getComponent() {
-  return readFileSync(resolve(root, 'src/components/UnitEditPanel.tsx'), 'utf-8')
+  return readFileSync(resolve(root, 'src/components/unit-edit-panel.tsx'), 'utf-8')
 }
 
 function getArmyRoute() {

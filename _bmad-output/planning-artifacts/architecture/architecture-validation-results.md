@@ -20,7 +20,7 @@
 Original data model used a single `unit_deltas` table with numeric-only columns. Campaign rules include non-numeric improvements (abilities like "veteran", "mur de bouclier"; structural options like champion/banner). Model revised to two complementary tables:
 
 - `stat_modifiers` — numeric stat changes (integer on 9 stats), summable for composition. Source tracking (tier_up, injury, destruction, direct_edit). Temporary flag for next-battle-only injuries.
-- `unit_gains` — abilities, champion, banner, magic level. Text-based entries with active/inactive state. Handles gains AND losses (banner destroyed, champion killed in duel).
+- `unit_gains` — abilities, champion, banner, magic level. Text-based entries. To remove a gain, delete the row (no active/inactive flag). Handles gains AND losses (banner destroyed, champion killed in duel).
 
 **Updated `delta-composer.ts` contract:**
 ```typescript

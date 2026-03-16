@@ -1,6 +1,6 @@
 # Story 2.3: Unit Card Display with Campaign Deltas
 
-Status: review
+Status: done
 
 ## Story
 
@@ -34,13 +34,13 @@ Then all armies are visible without restriction (FR12).
 
 - [x] Task 1 — Schema: add `stat_modifiers` and `unit_gains` tables to `src/db/schema.ts` (AC: 2)
   - [x] 1.1 — `statModifiers` table: `id` (text PK, UUID default), `unitId` (text NOT NULL FK → units.id ON DELETE CASCADE), `stat` (text NOT NULL), `delta` (integer NOT NULL), `source` (text NOT NULL), `temporary` (boolean NOT NULL DEFAULT false)
-  - [x] 1.2 — `unitGains` table: `id` (text PK, UUID default), `unitId` (text NOT NULL FK → units.id ON DELETE CASCADE), `description` (text NOT NULL), `active` (boolean NOT NULL DEFAULT true)
+  - [x] 1.2 — `unitGains` table: `id` (text PK, UUID default), `unitId` (text NOT NULL FK → units.id ON DELETE CASCADE), `description` (text NOT NULL)
   - [x] 1.3 — Run `pnpm db:generate && pnpm db:push` to apply migration
   - [x] 1.4 — Verify `pnpm typecheck` passes after schema changes
 
 - [x] Task 2 — Define TypeScript types in `src/lib/delta-composer.ts` (AC: 1, 2)
   - [x] 2.1 — Export `StatModifier` type: `{ id: string; unitId: string; stat: string; delta: number; source: string; temporary: boolean }`
-  - [x] 2.2 — Export `UnitGain` type: `{ id: string; unitId: string; description: string; active: boolean }`
+  - [x] 2.2 — Export `UnitGain` type: `{ id: string; unitId: string; description: string }`
   - [x] 2.3 — Export `StatDelta` type: `{ stat: string; delta: number; source: string; temporary: boolean }`
   - [x] 2.4 — Export `ComposedSubProfile` type: `{ label: string; stats: Record<string, { value: string; delta: number | null; modified: boolean }>; }` — see "Type Contract" in Dev Notes
   - [x] 2.5 — Export `ComposedUnitView` type: `{ subProfiles: ComposedSubProfile[]; deltas: StatDelta[]; gains: UnitGain[] }` — see "Type Contract" in Dev Notes
@@ -51,7 +51,7 @@ Then all armies are visible without restriction (FR12).
   - [x] 3.2 — Returns `ComposedUnitView` with per-sub-profile computed stat values (base + sum of deltas per stat), delta list, gains list
   - [x] 3.3 — Handles non-numeric base stats gracefully: if base stat is not a parseable integer (e.g. `3D6`, `-`, `(+1)`, `D6`, `0`), include the delta chip but skip arithmetic modification — return original base stat string unchanged
   - [x] 3.4 — Returns unmodified base stats when both `statModifiers` and `unitGains` arrays are empty (AC1 path)
-  - [x] 3.5 — Only includes active gains (`active: true`) in the returned gains list
+  - [x] 3.5 — All gains are included in the returned gains list (no active/inactive filtering — `active` field removed by design decision)
   - [x] 3.6 — For each sub-profile, populate `stats` as `Record<string, { value, delta, modified }>` where `value` is the display string, `delta` is the net sum of all modifiers on that stat (or `null` if none), and `modified` is `true` when any modifier exists for that stat
 
 - [x] Task 4 — Add queries to `src/db/queries.ts` (AC: 1, 2, 3, 4)
@@ -63,7 +63,7 @@ Then all armies are visible without restriction (FR12).
 - [x] Task 5 — Create `UnitCard` component in `src/components/UnitCard.tsx` (AC: 1, 2, 3)
   - [x] 5.1 — 9-cell stat bar: flex row, 9 cells with internal borders, bg `var(--color-stats-bg)` / `#f3ebdf`. Stat labels in header row (m, cc, ct, f, e, pv, i, a, cd), values in data row
   - [x] 5.2 — Modified stat cell styling: bonus = green text `var(--color-bonus)` / `#2d7a3a` with bg `var(--color-bonus-bg)` / `#edf8ef`; penalty = red text `var(--color-malus)` / `#b82c2c` with bg `var(--color-malus-bg)` / `#fdf0f0`
-  - [x] 5.3 — Delta chips row at bottom of card: one chip per stat_modifier (showing stat name + delta value + source), one chip per active unit_gain (showing description). Bonus chips use bonus colors, malus chips use malus colors
+  - [x] 5.3 — Delta chips row at bottom of card: one chip per stat_modifier (showing stat name + delta value + source), one chip per unit_gain (showing description). Bonus chips use bonus colors, malus chips use malus colors
   - [x] 5.4 — Unit name displayed in Cinzel font (`var(--font-display)`), weight 600–700
   - [x] 5.5 — Tier pill inline beside unit name based on `units.xp` and `calculateTier()`:
     - Tier 3 (Vétéran): `✦ Vétéran`, gold `var(--color-gold)` / `#d4a843`
@@ -94,7 +94,7 @@ Then all armies are visible without restriction (FR12).
   - [x] 8.3 — Unit tests for `composeUnitView`: penalty modifier (negative delta) subtracts from numeric stat
   - [x] 8.4 — Unit tests for `composeUnitView`: non-numeric base stat (e.g. `3D6`, `-`) — delta chip present but stat value unchanged
   - [x] 8.5 — Unit tests for `composeUnitView`: multiple modifiers on same stat are summed
-  - [x] 8.6 — Unit tests for `composeUnitView`: inactive gains are excluded from output
+  - [x] 8.6 — Unit tests for `composeUnitView`: all gains are included in output
   - [x] 8.7 — Unit tests for `calculateTier`: returns correct tier for each XP threshold
   - [x] 8.8 — Unit tests for UnitCard render: base stats bar displays 9 stat columns correctly
   - [x] 8.9 — Unit tests for UnitCard render: delta chips appear with correct colors
@@ -137,7 +137,6 @@ Two new tables must be added to `src/db/schema.ts` before any other work:
 | id | text | PK, UUID default |
 | unit_id | text | NOT NULL, FK → units.id, ON DELETE CASCADE |
 | description | text | NOT NULL |
-| active | boolean | NOT NULL, DEFAULT true |
 
 Run `pnpm db:generate && pnpm db:push` after adding the tables. Naming conventions: `snake_case` DB columns, `camelCase` Drizzle property names (e.g., `unitId: text('unit_id')`).
 
@@ -175,7 +174,7 @@ interface ComposedSubProfile {
 interface ComposedUnitView {
   subProfiles: ComposedSubProfile[]   // One entry per sub-profile
   deltas: StatDelta[]                 // Flat list of all stat modifiers (for delta chips)
-  gains: UnitGain[]                   // Filtered to active-only
+  gains: UnitGain[]                   // All gains for this unit
 }
 
 // UnitCard receives this — no re-aggregation needed in the component

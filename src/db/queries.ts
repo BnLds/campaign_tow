@@ -175,30 +175,9 @@ export async function getArmyById(armyId: string) {
 
   if (armyRows.length === 0) return null
   const army = armyRows[0]
+  const unitsWithProfiles = await getUnitsForArmy(armyId)
 
-  const unitRows = await db
-    .select()
-    .from(units)
-    .where(eq(units.armyId, armyId))
-    .orderBy(units.createdAt)
-
-  const unitIds = unitRows.map((u) => u.id)
-  const spRows =
-    unitIds.length > 0
-      ? await db
-          .select()
-          .from(subProfiles)
-          .where(inArray(subProfiles.unitId, unitIds))
-          .orderBy(subProfiles.unitId, subProfiles.sortOrder)
-      : []
-
-  return {
-    ...army,
-    units: unitRows.map((u) => ({
-      ...u,
-      subProfiles: spRows.filter((sp) => sp.unitId === u.id),
-    })),
-  }
+  return { ...army, units: unitsWithProfiles }
 }
 
 export async function getAllArmies() {
@@ -317,30 +296,22 @@ export async function getUnitsForArmy(armyId: string) {
 // Story 2.3 — Army consultation with units + sub_profiles
 
 export async function getArmyWithUnits(armyId: string) {
+  // Single query with LEFT JOIN for player info (M3 fix — avoids extra query)
   const armyRows = await db
     .select({
       id: armies.id,
       name: armies.name,
       faction: armies.faction,
       playerId: armies.playerId,
+      playerDisplayName: players.displayName,
     })
     .from(armies)
+    .leftJoin(players, eq(armies.playerId, players.id))
     .where(eq(armies.id, armyId))
     .limit(1)
 
   if (armyRows.length === 0) return null
   const army = armyRows[0]
-
-  // Fetch player info if assigned
-  let playerInfo: { displayName: string } | null = null
-  if (army.playerId) {
-    const playerRows = await db
-      .select({ displayName: players.displayName })
-      .from(players)
-      .where(eq(players.id, army.playerId))
-      .limit(1)
-    playerInfo = playerRows.length > 0 ? playerRows[0] : null
-  }
 
   // Fetch units ordered by type then name
   const unitRows = await db
@@ -364,7 +335,7 @@ export async function getArmyWithUnits(armyId: string) {
     name: army.name,
     faction: army.faction,
     playerId: army.playerId,
-    player: playerInfo,
+    player: army.playerDisplayName ? { displayName: army.playerDisplayName } : null,
     units: unitRows.map((u) => ({
       ...u,
       subProfiles: spRows.filter((sp) => sp.unitId === u.id),

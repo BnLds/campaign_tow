@@ -285,8 +285,8 @@ describe('[AC1] composeUnitView — empty modifiers array', () => {
 // Test 9 — Active unit gains present in output
 // ---------------------------------------------------------------------------
 
-describe('[AC2] composeUnitView — active unit gains included in output', () => {
-  it('[2.3-UNIT-009] active unit_gain is present in result.gains', () => {
+describe('[AC2] composeUnitView — unit gains included in output', () => {
+  it('[2.3-UNIT-009] unit_gain is present in result.gains', () => {
     const subProfile = makeSubProfile('Boucliers', {
       m: '4',
       cc: '3',
@@ -307,7 +307,7 @@ describe('[AC2] composeUnitView — active unit gains included in output', () =>
 })
 
 // ---------------------------------------------------------------------------
-// Test 10 — All unit gains included in output (no active filter)
+// Test 10 — All unit gains included in output
 // ---------------------------------------------------------------------------
 
 describe('[AC2] composeUnitView — all unit gains included', () => {

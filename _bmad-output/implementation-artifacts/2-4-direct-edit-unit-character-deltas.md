@@ -22,7 +22,7 @@ Then the entry is saved in `stat_modifiers` and displayed as a red delta on the 
 
 **AC3 — Add unit gain:**
 Given I am logged in and viewing a unit of my army,
-When I add a unit gain (e.g. ability "Mur de boucliers", active: true),
+When I add a unit gain (e.g. ability "Mur de boucliers"),
 Then the entry is saved in `unit_gains` and displayed in the delta chips section.
 
 **AC4 — Edit unit XP:**
@@ -94,7 +94,7 @@ Story 2.4 builds ON TOP of story 2.3's read-only display by adding **write capab
 - [x] Task 1 — Add DB query functions for delta mutations in `src/db/queries.ts` (AC: 1, 2, 3, 4, 5, 7, 8)
   - [x] 1.1 — `insertStatModifier(unitId: string, stat: string, delta: number, source: string, temporary: boolean)`: inserts a row into `stat_modifiers`, returns the inserted row
   - [x] 1.2 — `deleteStatModifier(modifierId: string)`: deletes a `stat_modifiers` row by ID, returns boolean success
-  - [x] 1.3 — `insertUnitGain(unitId: string, description: string, active: boolean)`: inserts a row into `unit_gains`, returns the inserted row
+  - [x] 1.3 — `insertUnitGain(unitId: string, description: string)`: inserts a row into `unit_gains`, returns the inserted row
   - [x] 1.4 — `deleteUnitGain(gainId: string)`: deletes a `unit_gains` row by ID, returns boolean success
   - [x] 1.5 — `updateUnitXp(unitId: string, xp: number)`: updates `units.xp` for the given unit, returns boolean success
   - [x] 1.6 — `getUnitById(unitId: string)`: returns unit row with `armyId` (needed for unit-army consistency check). Check if this already exists; if not, add it
@@ -102,7 +102,7 @@ Story 2.4 builds ON TOP of story 2.3's read-only display by adding **write capab
 - [x] Task 2 — Create server mutations in the army route file `src/routes/armies/$armyId.tsx` (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9)
   - [x] 2.1 — `addStatModifierFn`: `createServerFn({ method: 'POST' })` with `armyOwnerMiddleware`. Input: `{ armyId, unitId, stat, delta, source, temporary }`. Validates stat is one of the 9 valid stat keys (m, cc, ct, f, e, pv, i, a, cd). Validates `delta` is an integer and `delta !== 0`. Verifies `unitId` belongs to `armyId` via `getUnitById()`. Calls `insertStatModifier()`. Returns `ServerResult<{ id: string }>`.
   - [x] 2.2 — `removeStatModifierFn`: `createServerFn({ method: 'POST' })` with `armyOwnerMiddleware`. Input: `{ armyId, modifierId }`. Calls `deleteStatModifier()`. Returns `ServerResult<null>`.
-  - [x] 2.3 — `addUnitGainFn`: `createServerFn({ method: 'POST' })` with `armyOwnerMiddleware`. Input: `{ armyId, unitId, description, active }`. Validates `description` is non-empty (trimmed). Verifies `unitId` belongs to `armyId` via `getUnitById()`. Calls `insertUnitGain()`. Returns `ServerResult<{ id: string }>`.
+  - [x] 2.3 — `addUnitGainFn`: `createServerFn({ method: 'POST' })` with `armyOwnerMiddleware`. Input: `{ armyId, unitId, description }`. Validates `description` is non-empty (trimmed). Verifies `unitId` belongs to `armyId` via `getUnitById()`. Calls `insertUnitGain()`. Returns `ServerResult<{ id: string }>`.
   - [x] 2.4 — `removeUnitGainFn`: `createServerFn({ method: 'POST' })` with `armyOwnerMiddleware`. Input: `{ armyId, gainId }`. Calls `deleteUnitGain()`. Returns `ServerResult<null>`.
   - [x] 2.5 — `updateXpFn`: `createServerFn({ method: 'POST' })` with `armyOwnerMiddleware`. Input: `{ armyId, unitId, xp }`. Validates `xp >= 0` and `xp` is an integer. Verifies `unitId` belongs to `armyId` via `getUnitById()`. Calls `updateUnitXp()`. Returns `ServerResult<{ xp: number; tier: 0|1|2|3 }>` (recalculates tier via `calculateTier()`).
   - [x] 2.6 — `fetchUnitDeltasFn`: `createServerFn({ method: 'GET' })` with `authMiddleware`. Input: `{ unitId }`. Calls `getStatModifiers(unitId)` and `getUnitGains(unitId)`. Returns `{ statModifiers, unitGains }`. (Used by edit panel to fetch current data for a unit.)
@@ -114,7 +114,7 @@ Story 2.4 builds ON TOP of story 2.3's read-only display by adding **write capab
   - [x] 3.1 — Create `src/components/UnitEditPanel.tsx` — a panel/sheet that opens for a specific unit, showing three sections: "Modificateurs de stats", "Capacités acquises", "Points d'expérience"
   - [x] 3.2 — **Stat modifier form:** Select for stat (dropdown of 9 stat keys with uppercase labels: M, CC, CT, F, E, PV, I, A, CD), number input for delta (positive or negative, required, rejects 0), text input for source (required, freeform — show placeholder with common values: "tier_up, injury, destruction..."), checkbox for temporary. Submit button calls `addStatModifierFn`
   - [x] 3.3 — **Existing modifiers list:** Display current stat modifiers for this unit with a delete button per row. Each row shows: stat (uppercase), delta (signed: +1 / -1), source, temporary badge. Delete calls `removeStatModifierFn`. Show confirmation before delete (simple `window.confirm` is sufficient)
-  - [x] 3.4 — **Unit gain form:** Text input for description (required, trimmed), checkbox for active (default true). Submit button calls `addUnitGainFn`
+  - [x] 3.4 — **Unit gain form:** Text input for description (required, trimmed). Submit button calls `addUnitGainFn`
   - [x] 3.5 — **Existing gains list:** Display current unit gains with a delete button per row. Delete calls `removeUnitGainFn`. Show confirmation before delete
   - [x] 3.6 — **XP edit form:** Number input showing current XP value (min=0, integer step). Submit button calls `updateXpFn`. Display recalculated tier label and color after update (using `getTierLabel` and `getTierColor`)
   - [x] 3.7 — Use shadcn primitives (Button, Input, Select, Label) for form elements
@@ -327,7 +327,7 @@ The loader already fetches `getUnitDeltas(unitIds)` for ALL units to compose the
 - Post-match guided wizard (Epic 4)
 - Bulk edit / batch operations
 - Editing `stat_modifiers.temporary` flag on existing rows (can delete and re-add)
-- Toggling `unit_gains.active` on existing rows (can delete and re-add)
+- `unit_gains.active` field was removed by design decision (no active/inactive distinction needed — gains can be deleted and re-added instead)
 - E2E tests (optional — focus on unit + component tests)
 
 ### References

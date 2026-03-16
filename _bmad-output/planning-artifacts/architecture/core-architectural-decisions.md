@@ -29,7 +29,7 @@
 | Migrations | Drizzle Kit | Built-in with Drizzle. `drizzle-kit push` in dev, generated SQL migrations for prod. |
 | Stat storage | Typed columns (text) | 9 columns per sub-profile (m, cc, ct, f, e, pv, i, a, cd) stored as text to accommodate dice expressions (3D6), modifiers ((+1)), and empty values (–). |
 | Campaign stat changes | `stat_modifiers` table | Per-stat numeric deltas (+1, -1). Source tracking (tier_up, injury, destruction, direct_edit). Temporary flag for next-battle-only injuries. Summable for composition. |
-| Campaign non-stat changes | `unit_gains` table | Abilities (vétéran, mur de bouclier...), champion, banner, magic level. Text-based entries with active/inactive state for gains and losses. |
+| Campaign non-stat changes | `unit_gains` table | Abilities (vétéran, mur de bouclier...), champion, banner, magic level. Text-based entries. To remove a gain, delete the row (no active/inactive flag). |
 | Base stat immutability | Preserved | OWB import data in `sub_profiles` never mutated. All changes stored in `stat_modifiers` + `unit_gains`. |
 
 ## Authentication & Security

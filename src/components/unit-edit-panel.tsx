@@ -270,11 +270,14 @@ export function UnitEditPanel({
     if (!window.confirm('Supprimer ce modificateur ?')) return
     setDeletingModId(modifierId)
     try {
-      await removeStatModifierFn({ data: { armyId, modifierId } })
-      await refetchDeltas()
-      await onMutationSuccess()
-    } catch (err) {
-      console.error('Error during delete operation:', err)
+      const result = await removeStatModifierFn({ data: { armyId, modifierId } })
+      if (result.success) {
+        await refetchDeltas()
+        await onMutationSuccess()
+      } else {
+        modFeedback.show(result.error?.message ?? 'Erreur lors de la suppression', true)
+      }
+    } catch {
       modFeedback.show('Erreur lors de la suppression', true)
     } finally {
       setDeletingModId(null)
@@ -315,11 +318,14 @@ export function UnitEditPanel({
     if (!window.confirm('Supprimer cette capacité ?')) return
     setDeletingGainId(gainId)
     try {
-      await removeUnitGainFn({ data: { armyId, gainId } })
-      await refetchDeltas()
-      await onMutationSuccess()
-    } catch (err) {
-      console.error('Error during delete operation:', err)
+      const result = await removeUnitGainFn({ data: { armyId, gainId } })
+      if (result.success) {
+        await refetchDeltas()
+        await onMutationSuccess()
+      } else {
+        gainFeedback.show(result.error?.message ?? 'Erreur lors de la suppression', true)
+      }
+    } catch {
       gainFeedback.show('Erreur lors de la suppression', true)
     } finally {
       setDeletingGainId(null)

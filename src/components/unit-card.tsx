@@ -204,11 +204,9 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
         fontSize: '0.75rem',
       }}
     >
-      {/* Fix C3 + M3: delta=0 neutral style, index-based key to avoid collisions */}
       {deltas.map((d, idx) => {
         const isBonus = d.delta > 0
         const isMalus = d.delta < 0
-        const isNeutral = d.delta === 0
 
         const chipStyle: React.CSSProperties = isBonus
           ? {
@@ -223,14 +221,12 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
                 border: '1px solid var(--color-malus-border)',
               }
             : {
-                // isNeutral (delta === 0)
                 background: '#f3f4f6',
                 color: '#6b7280',
                 border: '1px solid #d1d5db',
               }
 
-        // Fix C3: prefix logic — negative already has '-' sign from the number itself
-        const prefix = d.delta > 0 ? '+' : d.delta === 0 ? '±' : ''
+        const prefix = d.delta > 0 ? '+' : ''
 
         return (
           <span
@@ -241,7 +237,6 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
               fontWeight: 600,
               ...chipStyle,
             }}
-            data-delta-neutral={isNeutral ? 'true' : undefined}
           >
             {d.stat.toUpperCase()} {prefix}{d.delta} ({d.source})
           </span>
@@ -323,7 +318,7 @@ export function UnitCard({ unit, composedView, tier }: UnitCardProps) {
       {/* Sub-profile sections — Fix M5: showLabel always true */}
       {composedView.subProfiles.map((sp, idx) => (
         <SubProfileSection
-          key={sp.label + idx}
+          key={idx}
           label={sp.label}
           isMount={sp.isMount}
           stats={sp.stats}

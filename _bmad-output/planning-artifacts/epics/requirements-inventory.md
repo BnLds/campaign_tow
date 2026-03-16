@@ -62,7 +62,7 @@ NFR11: App available during gaming sessions (best-effort — no formal SLA)
 - Drizzle tables to create: `players`, `sessions`, `armies`, `units`, `sub_profiles`, `matches`, `match_participants`, `stat_modifiers`, `unit_gains`
 - Base stats stored as typed text columns (9 per sub-profile: m, cc, ct, f, e, pv, i, a, cd) to accommodate dice expressions and modifiers
 - Campaign stat changes stored in `stat_modifiers` (per-stat numeric deltas, source tracking)
-- Campaign non-stat changes stored in `unit_gains` (abilities, text-based, active/inactive)
+- Campaign non-stat changes stored in `unit_gains` (abilities, text-based; delete row to remove)
 - OWB import data in `sub_profiles` never mutated — all changes in `stat_modifiers` + `unit_gains`
 - `match_participants.evolutionsEnteredAt TIMESTAMP NULL` — tracks when a player completed the post-match flow for a given match; NULL = pending, timestamp = complete (used to dismiss ActionChips)
 
