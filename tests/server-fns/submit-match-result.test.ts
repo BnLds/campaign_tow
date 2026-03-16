@@ -186,11 +186,8 @@ describe('[AC1][AC5][P0] submitMatchResultFn — export and cross-route usage', 
     expect(route).toMatch(/export\s+(const\s+)?submitMatchResultFn/)
   })
 
-  // AC: 5 — Task 6.1: armies/$armyId.tsx imports submitMatchResultFn (from index or server-fns)
-  it('[3.3-SFN-020] armies/$armyId.tsx imports submitMatchResultFn', () => {
-    const armyRoute = getArmyRoute()
-    expect(armyRoute).toMatch(/submitMatchResultFn/)
-  })
+  // REMOVED: [3.3-SFN-020] armies/$armyId.tsx no longer imports submitMatchResultFn
+  // Timeline/result submission was removed from army detail view.
 })
 
 // ---------------------------------------------------------------------------
@@ -234,28 +231,5 @@ describe('[AC2][AC5][P0] Campaign view — result submission wiring in src/route
 // AC2, AC5 — Army detail view wiring: isOwner controls isEditable (Task 7.21)
 // ---------------------------------------------------------------------------
 
-describe('[AC2][AC5][P0] Army detail view — result submission wiring in src/routes/armies/$armyId.tsx', () => {
-  // AC: 5 — Task 7.21: Army detail has handleResultSubmit callback
-  it('[3.3-SFN-026] armies/$armyId.tsx defines handleResultSubmit function', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/handleResultSubmit/)
-  })
-
-  // AC: 5 — Task 7.21: isEditable is true only when isOwner is true
-  it('[3.3-SFN-027] armies/$armyId.tsx passes isEditable={isOwner} to TimelineEntry', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/isEditable=\{isTimelineEditable\}/)
-  })
-
-  // AC: 5 — Task 7.21: Army detail passes onResultSubmit to TimelineEntry
-  it('[3.3-SFN-028] armies/$armyId.tsx passes onResultSubmit prop to TimelineEntry', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/onResultSubmit=/)
-  })
-
-  // AC: 5 — Task 6.2: Army detail handleResultSubmit calls router.invalidate() on success
-  it('[3.3-SFN-029] armies/$armyId.tsx handleResultSubmit calls router.invalidate() on success', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/handleResultSubmit[\s\S]{0,500}router\.invalidate|router\.invalidate[\s\S]{0,500}handleResultSubmit/)
-  })
-})
+// REMOVED: [3.3-SFN-026 to 029] Army detail view result submission wiring tests.
+// Timeline/result submission was removed from army detail view.
