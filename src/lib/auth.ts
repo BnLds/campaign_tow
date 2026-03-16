@@ -16,6 +16,7 @@ export type SessionData = {
   isAdmin: boolean
   displayName: string
   hasSeenWelcome: boolean
+  isGuest: boolean
 }
 
 export async function getSession(): Promise<SessionData | null> {
@@ -29,6 +30,7 @@ export async function getSession(): Promise<SessionData | null> {
       playerId: sessions.playerId,
       expiresAt: sessions.expiresAt,
       isAdmin: players.isAdmin,
+      isGuest: players.isGuest,
       displayName: players.displayName,
       hasSeenWelcome: players.hasSeenWelcome,
     })
@@ -43,6 +45,7 @@ export async function getSession(): Promise<SessionData | null> {
   return {
     playerId: row.playerId,
     isAdmin: row.isAdmin,
+    isGuest: row.isGuest,
     displayName: row.displayName,
     hasSeenWelcome: row.hasSeenWelcome,
   }

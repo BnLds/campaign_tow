@@ -1,11 +1,10 @@
 // Campaign TOW — Validators (client-safe, pure Zod)
-// Server-only schemas (drizzle-zod dependent) live in validators.server.ts
 
 import { z } from 'zod'
 
 // Login form schema — used in loginFn and TanStack Form (AC2, AC3)
 export const loginSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
+  username: z.string().trim().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
 })
 export type LoginInput = z.infer<typeof loginSchema>
@@ -22,3 +21,58 @@ export const createPlayerSchema = z.object({
   tempPassword: z.string().min(6, 'Password must be at least 6 characters').max(100, 'Password must be 100 characters or less'),
 })
 export type CreatePlayerInput = z.infer<typeof createPlayerSchema>
+
+// Story 2.1 — Army import & player assignment
+export const importArmySchema = z.object({
+  rawText: z.string().trim().min(1),
+})
+export type ImportArmyInput = z.infer<typeof importArmySchema>
+
+export const assignArmySchema = z.object({
+  armyId: z.string().min(1),
+  playerId: z.string().min(1),
+})
+export type AssignArmyInput = z.infer<typeof assignArmySchema>
+
+// Story 2.2 — Manual unit entry & post-import correction
+
+export const addUnitSchema = z.object({
+  name: z.string().trim().min(1, 'Le nom est requis').max(200, 'Le nom ne peut pas dépasser 200 caractères'),
+  type: z.string().min(1, 'Le type est requis').trim(),
+  armyId: z.string().min(1, "L'armée est requise"),
+  m: z.string().max(20).default(''),
+  cc: z.string().max(20).default(''),
+  ct: z.string().max(20).default(''),
+  f: z.string().max(20).default(''),
+  e: z.string().max(20).default(''),
+  pv: z.string().max(20).default(''),
+  i: z.string().max(20).default(''),
+  a: z.string().max(20).default(''),
+  cd: z.string().max(20).default(''),
+})
+export type AddUnitInput = z.infer<typeof addUnitSchema>
+
+// Story 3.1 — Admin: manual match creation
+export const createMatchSchema = z.object({
+  army1Id: z.string().min(1, "L'armée 1 est requise"),
+  result1: z.enum(['victory', 'defeat', 'draw']).nullable(),
+  army2Id: z.string().min(1, "L'armée 2 est requise"),
+  result2: z.enum(['victory', 'defeat', 'draw']).nullable(),
+  date: z.string().min(1, 'La date est requise'),
+  evolutionsEntered: z.boolean(),
+})
+export type CreateMatchInput = z.infer<typeof createMatchSchema>
+
+export const updateSubProfileSchema = z.object({
+  subProfileId: z.string().min(1, 'Le sous-profil est requis'),
+  m: z.string().max(20).default(''),
+  cc: z.string().max(20).default(''),
+  ct: z.string().max(20).default(''),
+  f: z.string().max(20).default(''),
+  e: z.string().max(20).default(''),
+  pv: z.string().max(20).default(''),
+  i: z.string().max(20).default(''),
+  a: z.string().max(20).default(''),
+  cd: z.string().max(20).default(''),
+})
+export type UpdateSubProfileInput = z.infer<typeof updateSubProfileSchema>

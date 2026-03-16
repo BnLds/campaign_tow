@@ -50,7 +50,7 @@ So that the tier-up moment becomes a satisfying in-app reward.
 
 **Given** the TierUpScreen is displayed for a unit,
 **When** I select an improvement from the list,
-**Then** the improvement is saved as a `unit_gains` entry (active: true, source: tier_up) and the wizard continues
+**Then** the improvement is saved as a `unit_gains` entry and the wizard continues
 
 **Given** I enter XP for a character in the wizard,
 **When** `calculateTier(newXp)` detects a tier crossing,

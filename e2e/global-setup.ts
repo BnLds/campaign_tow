@@ -1,9 +1,11 @@
 // E2E global setup — runs once before all Playwright tests.
-// Creates two test players (idempotent) and saves their auth cookies.
+// Creates test players (idempotent) and saves their auth cookies.
 //
 // Test users:
 //   e2e_first_login  — hasSeenWelcome: false  → used for AC1/AC2/AC3/AC4 tests
 //   e2e_returning    — hasSeenWelcome: true   → used for AC5 test
+//   e2e_admin        — isAdmin: true          → used for admin tests
+//   __guest__        — isGuest: true          → used for story 1.7 guest access tests
 //
 // Key learnings:
 //   - Use waitForFunction with React fiber check instead of waitForLoadState('networkidle')
@@ -42,6 +44,9 @@ export const TEST_USERS = {
     hasSeenWelcome: true as const,
     isAdmin: true as const,
   },
+  guest: {
+    storageStatePath: '.auth/guest.json',
+  },
 } as const
 
 async function upsertTestUser(
@@ -50,6 +55,7 @@ async function upsertTestUser(
   displayName: string,
   hasSeenWelcome: boolean,
   isAdmin = false,
+  isGuest = false,
 ): Promise<void> {
   const db = getTestDb()
   const existing = await db.query.players.findFirst({
@@ -59,7 +65,7 @@ async function upsertTestUser(
   if (existing) {
     await db
       .update(schema.players)
-      .set({ hasSeenWelcome, displayName, isAdmin })
+      .set({ hasSeenWelcome, displayName, isAdmin, isGuest })
       .where(eq(schema.players.username, username))
   } else {
     await db.insert(schema.players).values({
@@ -68,6 +74,7 @@ async function upsertTestUser(
       displayName,
       hasSeenWelcome,
       isAdmin,
+      isGuest,
     })
   }
 }
@@ -118,6 +125,37 @@ async function saveAuthState(
   await browser.close()
 }
 
+// Saves guest auth state by clicking the guest link (not the login form).
+// Ghost player must exist in DB before this is called.
+async function saveGuestAuthState(filePath: string): Promise<void> {
+  const browser = await chromium.launch()
+  const context = await browser.newContext()
+  const page = await context.newPage()
+
+  await page.goto(`${BASE_URL}/login`)
+  await waitForHydration(page)
+
+  // Click the guest link — triggers guestLoginFn POST
+  await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes('/_serverFn') && res.request().method() === 'POST',
+      { timeout: 10000 },
+    ),
+    page.getByTestId('guest-login-link').click(),
+  ])
+
+  // Wait for redirect to / after guest session is created
+  try {
+    await page.waitForURL(`${BASE_URL}/`, { timeout: 15000 })
+  } catch {
+    await page.screenshot({ path: `.auth/debug-guest-login.png` })
+    throw new Error('[E2E global-setup] Guest login failed — guest link or guestLoginFn not working')
+  }
+
+  await context.storageState({ path: filePath })
+  await browser.close()
+}
+
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   fs.mkdirSync('.auth', { recursive: true })
 
@@ -147,6 +185,18 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     TEST_USERS.admin.isAdmin,
   )
 
+  // Story 1.7: Ensure ghost player exists for guest access tests.
+  // The ghost player uses an unusable password hash — it can never log in via the form.
+  // isGuest: true identifies it as the special guest identity.
+  await upsertTestUser(
+    '__guest__',
+    '!no-login!',
+    'Invité',
+    true,  // hasSeenWelcome — ghost never sees the welcome modal
+    false, // isAdmin
+    true,  // isGuest
+  )
+
   await closeTestDb()
 
   await saveAuthState(
@@ -164,6 +214,9 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     TEST_USERS.admin.password,
     '.auth/admin.json',
   )
+
+  // Story 1.7: Save guest auth state by clicking the guest link (not the login form)
+  await saveGuestAuthState(TEST_USERS.guest.storageStatePath)
 
   console.log('[E2E] Global setup: test users ready, auth states saved')
 }

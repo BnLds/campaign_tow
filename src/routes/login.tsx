@@ -3,12 +3,11 @@
 // AC2: successful login creates session cookie + redirects to /
 // AC3: failed login shows inline error message
 
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useForm } from '@tanstack/react-form'
 import { useState, useEffect } from 'react'
 import {useHydrated} from '../lib/useHydrated'
-import { deleteSession, loginPlayer } from '../lib/auth'
 import type { ServerResult } from '../lib/types'
 import { loginSchema } from '../lib/validators'
 
@@ -16,9 +15,18 @@ import { loginSchema } from '../lib/validators'
 // Server functions
 // ---------------------------------------------------------------------------
 
-export const loginFn = createServerFn({ method: 'POST' })
+const guestLoginFn = createServerFn({ method: 'POST' }).handler(async () => {
+  const { ensureGhostPlayer } = await import('../db/queries')
+  const { createSession } = await import('../lib/auth')
+  const ghostId = await ensureGhostPlayer()
+  await createSession(ghostId)
+  return { success: true }
+})
+
+const loginFn = createServerFn({ method: 'POST' })
   .inputValidator(loginSchema)
   .handler(async ({ data }): Promise<ServerResult<{ redirect: string }>> => {
+    const { loginPlayer } = await import('../lib/auth')
     // Same error message for wrong user + wrong password — prevents username enumeration (AC3)
     const success = await loginPlayer(data.username, data.password)
     if (!success) {
@@ -29,11 +37,6 @@ export const loginFn = createServerFn({ method: 'POST' })
     }
     return { success: true, data: { redirect: '/' } }
   })
-
-export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
-  await deleteSession()
-  throw redirect({ to: '/login' })
-})
 
 // ---------------------------------------------------------------------------
 // Route definition
@@ -58,6 +61,19 @@ function LoginPage() {
       document.documentElement.setAttribute('data-app-hydrated', 'true')
     }
   }, [hydrated])
+
+  const handleGuestLogin = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    setErrorMessage(null)
+    try {
+      await guestLoginFn()
+      await router.navigate({ to: '/' })
+    } catch {
+      setErrorMessage('Erreur lors de la connexion invité')
+      setIsSubmitting(false)
+    }
+  }
 
   const form = useForm({
     defaultValues: { username: '', password: '' },
@@ -210,6 +226,26 @@ function LoginPage() {
             {isSubmitting ? 'Connexion…' : 'Se connecter'}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={handleGuestLogin}
+          disabled={isSubmitting}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--color-info)',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            fontSize: '0.875rem',
+            marginTop: '1rem',
+            textAlign: 'center',
+            width: '100%',
+            opacity: isSubmitting ? 0.7 : 1,
+          }}
+          data-testid="guest-login-link"
+        >
+          Continuer en tant qu'invité
+        </button>
       </div>
     </div>
   )

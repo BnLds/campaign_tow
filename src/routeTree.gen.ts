@@ -9,10 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReferencesRouteImport } from './routes/references'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArmiesIndexRouteImport } from './routes/armies/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as ArmiesArmyIdRouteImport } from './routes/armies/$armyId'
 
+const ReferencesRoute = ReferencesRouteImport.update({
+  id: '/references',
+  path: '/references',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -23,44 +31,86 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArmiesIndexRoute = ArmiesIndexRouteImport.update({
+  id: '/armies/',
+  path: '/armies/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArmiesArmyIdRoute = ArmiesArmyIdRouteImport.update({
+  id: '/armies/$armyId',
+  path: '/armies/$armyId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/references': typeof ReferencesRoute
+  '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/armies/': typeof ArmiesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/references': typeof ReferencesRoute
+  '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/admin': typeof AdminIndexRoute
+  '/armies': typeof ArmiesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/references': typeof ReferencesRoute
+  '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/armies/': typeof ArmiesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/admin/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/references'
+    | '/armies/$armyId'
+    | '/admin/'
+    | '/armies/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/admin'
-  id: '__root__' | '/' | '/login' | '/admin/'
+  to: '/' | '/login' | '/references' | '/armies/$armyId' | '/admin' | '/armies'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/references'
+    | '/armies/$armyId'
+    | '/admin/'
+    | '/armies/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  ReferencesRoute: typeof ReferencesRoute
+  ArmiesArmyIdRoute: typeof ArmiesArmyIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  ArmiesIndexRoute: typeof ArmiesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/references': {
+      id: '/references'
+      path: '/references'
+      fullPath: '/references'
+      preLoaderRoute: typeof ReferencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -75,11 +125,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/armies/': {
+      id: '/armies/'
+      path: '/armies'
+      fullPath: '/armies/'
+      preLoaderRoute: typeof ArmiesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/armies/$armyId': {
+      id: '/armies/$armyId'
+      path: '/armies/$armyId'
+      fullPath: '/armies/$armyId'
+      preLoaderRoute: typeof ArmiesArmyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,7 +152,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  ReferencesRoute: ReferencesRoute,
+  ArmiesArmyIdRoute: ArmiesArmyIdRoute,
   AdminIndexRoute: AdminIndexRoute,
+  ArmiesIndexRoute: ArmiesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

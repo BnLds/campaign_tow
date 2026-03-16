@@ -76,7 +76,7 @@ So that I can quickly read the current state of any unit during or before a game
 **When** I navigate to any army's unit cards,
 **Then** all armies are visible without restriction (FR12)
 
-*Tables created by this story: `stat_modifiers` (id, unitId, stat, delta, source, temporary), `unit_gains` (id, unitId, description, active)*
+*Tables created by this story: `stat_modifiers` (id, unitId, stat, delta, source, temporary), `unit_gains` (id, unitId, description)*
 
 ---
 
@@ -97,7 +97,7 @@ So that I can set up my army's current state at any point in the campaign.
 **Then** the entry is saved in `stat_modifiers` and displayed as a red delta on the character card (FR14)
 
 **Given** I am logged in and viewing a unit of my army,
-**When** I add a unit gain (e.g. ability "Mur de boucliers", active: true),
+**When** I add a unit gain (e.g. ability "Mur de boucliers"),
 **Then** the entry is saved in `unit_gains` and displayed in the delta chips section
 
 **Given** I am logged in and viewing a unit of my army,

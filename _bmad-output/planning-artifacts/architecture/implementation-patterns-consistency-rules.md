@@ -99,37 +99,69 @@ Loaders (read operations) return data directly and throw on error — caught by 
 - After mutations, invalidate relevant TanStack Query keys
 - Pattern: `queryClient.invalidateQueries({ queryKey: ['armies', armyId] })`
 
-## TanStack CLI — Developer Commands
+## TanStack — Documentation Reference
 
-The TanStack CLI provides documentation search commands that ALL dev agents MUST use to get up-to-date information on TanStack libraries (which are still in RC/active development).
+TanStack libraries are in active development (RC status). ALL dev agents MUST consult up-to-date documentation before implementing any TanStack-specific pattern. **Do not rely solely on training data.**
 
-**Search documentation (preferred over relying on training data):**
-```bash
-# Full-text search in TanStack Start docs
-npx @tanstack/cli search-docs "server functions" --library start --framework react
-npx @tanstack/cli search-docs "middleware createMiddleware" --library start --framework react
-npx @tanstack/cli search-docs "loaders" --library router --framework react --json
+### Step 1 — Use Claude Code Skills (preferred)
 
-# Fetch a specific documentation page
-npx @tanstack/cli doc start framework/react/guide/data-loading
-npx @tanstack/cli doc router framework/react/guide/file-based-routing
-npx @tanstack/cli doc query framework/react/overview
+Four built-in skills provide curated TanStack guidance. **Use these first** before falling back to CLI commands:
 
-# Explore the ecosystem (auth, database, deployment partners)
-npx @tanstack/cli ecosystem --category database
-npx @tanstack/cli ecosystem --library router --json
+| Skill | Scope |
+|---|---|
+| `/tanstack-query` | Data fetching, caching, mutations, server state management |
+| `/tanstack-router` | Type-safe routing, data loading, search params, navigation |
+| `/tanstack-start` | Server functions, middleware, SSR, authentication, deployment |
+| `/tanstack-integration` | Integration patterns between Query + Router + Start, SSR, caching coordination |
 
-# List all available add-ons (to check if something can be added vs manual)
-npx @tanstack/cli create --list-add-ons
-npx @tanstack/cli create --addon-details <id> --json
-```
+**When to invoke a skill:**
+- Before implementing any TanStack-specific pattern → invoke the relevant skill
+- When uncertain about an API (server functions, middleware, loaders, routing) → invoke `/tanstack-start` or `/tanstack-router`
+- When implementing data fetching or cache invalidation → invoke `/tanstack-query`
+- When wiring Query + Router + Start together → invoke `/tanstack-integration`
 
-**When to use these commands:**
-- Before implementing any TanStack-specific pattern (server functions, middleware, routing) → run `search-docs` first
-- When the model is uncertain about TanStack Start API (RC status means docs may have changed) → run `doc` to get the current page
-- Before manually installing a dependency → check `--list-add-ons` to see if an add-on handles it
+### Step 2 — TanStack CLI Skill (fallback precision lookup)
+
+If the four skills above don't cover the specific page or API needed, invoke the **`/tanstack-cli-docs` skill** before falling back to a web search. This skill wraps the official TanStack CLI (`npx @tanstack/cli`) and fetches exact, up-to-date documentation pages directly.
+
+**When to use:**
+- A specific guide page or API is not covered by the four skills above
+- You need the exact current signature of a TanStack API
+- You want to explore the TanStack ecosystem (add-ons, partners, integrations)
+
+**Invoke:** `/tanstack-cli-docs` (describe what you are looking for)
+
+### Step 3 — Web Search (last resort only)
+
+Only perform a web search if both the TanStack skills (Step 1) and the `tanstack-cli-docs` skill (Step 2) have failed to answer the question. Prefer official TanStack documentation sources.
 
 ## Process Patterns
+
+**Route Protection Patterns:**
+
+Three session states — check via `player.isGuest` / `player.isAdmin`:
+- `player.isGuest === true` → Guest (read-only, no write access)
+- `player.isAdmin === true` → Admin (full access + admin section)
+- otherwise → Authenticated player
+
+Route guard rules:
+- **Read-only routes** (`/`, `/armies`, `/armies/$armyId`, `/references`): Allow guest sessions. Redirect to `/login` only if no session at all.
+- **Write routes** (`/match/new`, `/match/$matchId/post-match`): Require non-guest session. Redirect to `/login` if guest or no session.
+- **Admin routes** (`/admin`): Require `player.isAdmin === true`. Reject otherwise.
+
+UI rendering rules:
+- Write UI elements (FAB, edit buttons, forms): absent from DOM when `player.isGuest === true`
+- "Administration" link: absent from DOM unless `player.isAdmin === true`
+- Identity indicator (top-left): `"Invité"` | `"Admin"` | `player.displayName`
+- Session action (profile menu): `"Se déconnecter"` (player/admin) or `"Se connecter"` (guest)
+
+Schema rule:
+- `players.is_guest boolean NOT NULL DEFAULT false`
+- Ghost player (`username: '__guest__'`) seeded at DB init — never appears in admin player list, never deletable
+- `sessions.player_id` always `NOT NULL` — guest sessions point to the ghost player ID
+- **Never** check `session === null` to determine guest status — always use `player.isGuest`
+
+---
 
 **Auth Middleware (TanStack Start import-protection pattern):**
 
@@ -159,10 +191,19 @@ export const armyOwnerMiddleware = createMiddleware({ type: 'function' })
 ```typescript
 import { authMiddleware } from '../lib/middleware'  // ✅ always import from middleware.ts
 
+// Without input validation:
 const myFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .handler(async ({ context }) => { ... })
+
+// With input validation — ALWAYS use .inputValidator() NOT .validator():
+const myFnWithInput = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ playerId: z.string() }))  // ✅ .inputValidator() — NOT .validator()
+  .handler(async ({ context, data }) => { ... })
 ```
+
+> **⚠ CRITICAL:** `.inputValidator()` is the correct method name — never `.validator()`. Always verify with `npx @tanstack/cli search-docs "createServerFn inputValidator" --library start --framework react` if unsure.
 
 **Data Access in server functions:**
 ```typescript
@@ -177,7 +218,7 @@ import { markPlayerWelcomeSeen } from '../db/queries'
 
 **Validation:**
 - Always validated server-side in server functions via Zod
-- Client-side: TanStack Form with same Zod schema (via adapter) for immediate UX feedback
+- Client-side: TanStack Form with same Zod schema — native Zod v4 support, NO adapter: `useForm({ validators: { onSubmit: mySchema } })`
 - Server is source of truth — never trust client
 
 **Error UI:**
@@ -198,6 +239,32 @@ import { markPlayerWelcomeSeen } from '../db/queries'
 | Integration | Vitest + test DB | Server functions + auth middleware | MVP — critical mutations |
 | E2E | Playwright | Full user flows | MVP — 3 critical happy paths |
 
+**E2E Hydration Pattern — MANDATORY for every route component:**
+
+Every route component MUST set `data-app-hydrated="true"` on `document.documentElement` once React has hydrated. Without it, `waitForHydration()` in Playwright tests will time out when a test navigates directly to that route via `storageState`.
+
+```typescript
+// Required in EVERY route component — copy this block exactly
+import { useHydrated } from '../lib/useHydrated'
+import { useEffect } from 'react'
+
+function MyRouteComponent() {
+  const hydrated = useHydrated()
+  useEffect(() => {
+    if (hydrated) {
+      document.documentElement.setAttribute('data-app-hydrated', 'true')
+    }
+  }, [hydrated])
+  // ...
+}
+```
+
+**Why it can be missed:** Tests that do a fresh login first (e.g. `loginAsReturning()`) happen to visit `/login` which sets the attribute — so the attribute persists across SPA navigations. Tests using `storageState` skip the login page entirely and navigate straight to the target route; if that route doesn't set the attribute, `waitForHydration()` times out. The bug only surfaces for routes that lack the block.
+
+**Routes that MUST include it:** every file in `src/routes/` that has a visible component (`index.tsx`, `login.tsx`, `admin/index.tsx`, `armies/index.tsx`, `armies/$armyId.tsx`, `references.tsx`, etc.).
+
+---
+
 **E2E Scenarios (MVP):**
 1. Login → browse timeline → view unit card
 2. Create match → complete post-match flow (XP + tier-up + improvement)
@@ -216,6 +283,9 @@ Sequential, fail-fast. Playwright only runs if all previous steps pass.
 ## Enforcement Guidelines
 
 **All AI Agents MUST:**
+- Invoke the relevant `/tanstack-*` skill before implementing any TanStack-specific pattern — never rely solely on training data
+- If the four TanStack skills don't cover the needed API or guide, invoke `/tanstack-cli-docs` **before** doing any web search
+- Web search is the last resort — only after both Step 1 (skills) and Step 2 (`/tanstack-cli-docs`) have been exhausted
 - Follow naming conventions exactly (snake_case DB, camelCase code, PascalCase components, kebab-case files)
 - Place server functions in route files, shared logic in `src/lib/`
 - Use `ServerResult<T>` for mutations, direct return + throw for loaders
