@@ -215,7 +215,7 @@ function AppHeader({
               params={{ armyId: army.id }}
               style={{ color: 'var(--color-brand)', fontSize: 11 }}
             >
-              Voir le détail
+              Voir l'armée
             </Link>
           </>
         ) : (
