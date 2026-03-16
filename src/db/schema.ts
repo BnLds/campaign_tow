@@ -1,7 +1,11 @@
 // Campaign TOW — Database Schema
 // This is the single source of all Drizzle table definitions.
 
-import { pgTable, text, boolean, timestamp, integer } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, timestamp, integer, pgEnum, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import { relations } from 'drizzle-orm'
+
+// Story 3.1 — Enum for match result (enforces valid values at DB level)
+export const matchResultEnum = pgEnum('match_result', ['victory', 'defeat', 'draw'])
 
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -85,3 +89,47 @@ export const unitGains = pgTable('unit_gains', {
   unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
 })
+
+// Story 3.1 — Campaign timeline: matches and participants
+
+export const matches = pgTable('matches', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  date: timestamp('date').notNull(),
+  createdByPlayerId: text('created_by_player_id').references(() => players.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => [
+  index('idx_matches_date').on(table.date),
+])
+
+export const matchParticipants = pgTable('match_participants', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  matchId: text('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
+  armyId: text('army_id').notNull().references(() => armies.id, { onDelete: 'cascade' }),
+  result: matchResultEnum('result'), // 'victory' | 'defeat' | 'draw' | null (pending)
+  // evolutionsEnteredAt: null means evolutions not yet entered (post-match flow in epic 4)
+  // nullable timestamp — set when the post-match evolution flow is completed
+  evolutionsEnteredAt: timestamp('evolutions_entered_at'),
+  // createdAt tracks when the participant record was inserted (not the match date)
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('mp_match_army_unique').on(table.matchId, table.armyId),
+  index('idx_mp_army_id').on(table.armyId),
+  index('idx_mp_match_id').on(table.matchId),
+])
+
+// Drizzle relations — matches and matchParticipants
+
+export const matchesRelations = relations(matches, ({ many }) => ({
+  participants: many(matchParticipants),
+}))
+
+export const matchParticipantsRelations = relations(matchParticipants, ({ one }) => ({
+  match: one(matches, {
+    fields: [matchParticipants.matchId],
+    references: [matches.id],
+  }),
+  army: one(armies, {
+    fields: [matchParticipants.armyId],
+    references: [armies.id],
+  }),
+}))

@@ -11,8 +11,5 @@ export default defineConfig({
     env: {
       DATABASE_URL: 'postgresql://test:test@localhost:5432/test_campaign_tow',
     },
-    coverage: {
-      include: ['src/lib/**'],
-    },
   },
 })

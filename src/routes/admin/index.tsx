@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { adminMiddleware } from '../../lib/middleware'
 import type { ServerResult } from '../../lib/types'
-import { createPlayerSchema, importArmySchema, assignArmySchema, addUnitSchema, updateSubProfileSchema } from '../../lib/validators'
+import { createPlayerSchema, importArmySchema, assignArmySchema, addUnitSchema, updateSubProfileSchema, createMatchSchema } from '../../lib/validators'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
@@ -179,6 +179,31 @@ const updateSubProfileFn = createServerFn({ method: 'POST' })
     }
   })
 
+// Story 3.1 — createMatchFn: POST admin tool to create a match with two participants
+const createMatchFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(createMatchSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<{ matchId: string }>> => {
+    if (data.army1Id === data.army2Id) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Les deux armées doivent être différentes' } }
+    }
+    const { createMatchWithParticipants } = await import('../../db/queries')
+    const matchDate = new Date(data.date)
+    if (isNaN(matchDate.getTime())) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Date invalide' } }
+    }
+    const result = await createMatchWithParticipants({
+      army1Id: data.army1Id,
+      result1: data.result1,
+      army2Id: data.army2Id,
+      result2: data.result2,
+      matchDate,
+      evolutionsEntered: data.evolutionsEntered,
+      createdByPlayerId: context.session.playerId,
+    })
+    return { success: true, data: result }
+  })
+
 // Story 2.2 — getArmyUnitsFn: GET, returns units + sub_profiles for a given army
 const getArmyUnitsFn = createServerFn({ method: 'GET' })
   .middleware([adminMiddleware])
@@ -225,6 +250,17 @@ function AdminPage() {
   const [corrStats, setCorrStats] = useState({ m: '', cc: '', ct: '', f: '', e: '', pv: '', i: '', a: '', cd: '' })
   const [corrResult, setCorrResult] = useState<{ success: boolean; message: string } | null>(null)
   const [corrSubmitting, setCorrSubmitting] = useState(false)
+  // Story 3.1 — Create match form state
+  const today = new Date().toISOString().slice(0, 10)
+  const [matchArmy1Id, setMatchArmy1Id] = useState('')
+  const [matchResult1, setMatchResult1] = useState<'victory' | 'defeat' | 'draw' | ''>('')
+  const [matchArmy2Id, setMatchArmy2Id] = useState('')
+  const [matchResult2, setMatchResult2] = useState<'victory' | 'defeat' | 'draw' | ''>('')
+  const [matchDate, setMatchDate] = useState(today)
+  const [matchEvolutions, setMatchEvolutions] = useState(false)
+  const [matchResult, setMatchResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [matchSubmitting, setMatchSubmitting] = useState(false)
+  const matchSubmitRef = useRef(false)
   // Story 2.2 — Double-submit guards (sync refs prevent race conditions on fast double-clicks)
   const addUnitSubmitRef = useRef(false)
   const correctStatsSubmitRef = useRef(false)
@@ -328,6 +364,41 @@ function AdminPage() {
   const corrUnits = armyUnitsQuery.data ?? []
   const corrSelectedUnit = corrUnits.find((u) => u.id === corrUnitId)
   const corrSubProfiles = corrSelectedUnit?.subProfiles ?? []
+
+  const handleCreateMatch = async () => {
+    if (matchSubmitRef.current) return
+    matchSubmitRef.current = true
+    setMatchResult(null)
+    setMatchSubmitting(true)
+    try {
+      const result = await createMatchFn({
+        data: {
+          army1Id: matchArmy1Id,
+          result1: matchResult1 === '' ? null : matchResult1,
+          army2Id: matchArmy2Id,
+          result2: matchResult2 === '' ? null : matchResult2,
+          date: matchDate,
+          evolutionsEntered: matchEvolutions,
+        },
+      })
+      if (result.success) {
+        setMatchResult({ success: true, message: `Partie créée (id: ${result.data.matchId.slice(0, 8)}…)` })
+        setMatchArmy1Id('')
+        setMatchResult1('')
+        setMatchArmy2Id('')
+        setMatchResult2('')
+        setMatchDate(today)
+        setMatchEvolutions(false)
+      } else {
+        setMatchResult({ success: false, message: result.error.message })
+      }
+    } catch {
+      setMatchResult({ success: false, message: 'Erreur réseau — veuillez réessayer' })
+    } finally {
+      matchSubmitRef.current = false
+      setMatchSubmitting(false)
+    }
+  }
 
   const handleAddUnit = async () => {
     if (addUnitSubmitRef.current) return
@@ -737,6 +808,27 @@ function AdminPage() {
           </div>
         )}
       </section>
+      {/* Story 3.1 — Create match (admin only) */}
+      {session?.isAdmin && <CreateMatchSection
+        armies={armiesQuery.data ?? []}
+        army1Id={matchArmy1Id}
+        setArmy1Id={setMatchArmy1Id}
+        result1={matchResult1}
+        setResult1={setMatchResult1}
+        army2Id={matchArmy2Id}
+        setArmy2Id={setMatchArmy2Id}
+        result2={matchResult2}
+        setResult2={setMatchResult2}
+        date={matchDate}
+        setDate={setMatchDate}
+        evolutionsEntered={matchEvolutions}
+        setEvolutionsEntered={setMatchEvolutions}
+        result={matchResult}
+        submitting={matchSubmitting}
+        onSubmit={handleCreateMatch}
+        btnStyle={btnStyle}
+      />}
+
       {/* Story 2.2 — Add unit form (admin only) */}
       {session?.isAdmin && <AddUnitSection
         armies={armiesQuery.data ?? []}
@@ -818,6 +910,135 @@ function AdminPage() {
         unitsError={!!armyUnitsQuery.error}
       />}
     </main>
+  )
+}
+
+// Story 3.1 — Create Match Section component
+const RESULT_OPTIONS: { value: 'victory' | 'defeat' | 'draw' | ''; label: string }[] = [
+  { value: '', label: '— Résultat non saisi —' },
+  { value: 'victory', label: 'Victoire' },
+  { value: 'defeat', label: 'Défaite' },
+  { value: 'draw', label: 'Égalité' },
+]
+
+function CreateMatchSection({
+  armies, army1Id, setArmy1Id, result1, setResult1,
+  army2Id, setArmy2Id, result2, setResult2,
+  date, setDate, evolutionsEntered, setEvolutionsEntered,
+  result, submitting, onSubmit, btnStyle,
+}: {
+  armies: ArmyOption[]
+  army1Id: string; setArmy1Id: (v: string) => void
+  result1: 'victory' | 'defeat' | 'draw' | ''; setResult1: (v: 'victory' | 'defeat' | 'draw' | '') => void
+  army2Id: string; setArmy2Id: (v: string) => void
+  result2: 'victory' | 'defeat' | 'draw' | ''; setResult2: (v: 'victory' | 'defeat' | 'draw' | '') => void
+  date: string; setDate: (v: string) => void
+  evolutionsEntered: boolean; setEvolutionsEntered: (v: boolean) => void
+  result: { success: boolean; message: string } | null
+  submitting: boolean
+  onSubmit: () => void
+  btnStyle: React.CSSProperties
+}) {
+  const canSubmit = !!army1Id && !!army2Id && army1Id !== army2Id && !!date && !submitting
+
+  const selectStyle: React.CSSProperties = {
+    width: '100%', padding: '0.375rem', borderRadius: '0.25rem',
+    border: '1px solid var(--color-border)', fontSize: '0.875rem',
+    background: 'var(--color-surface)',
+  }
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem',
+  }
+  const rowStyle: React.CSSProperties = {
+    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem',
+  }
+
+  return (
+    <section style={{ marginTop: '2rem' }}>
+      <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>
+        Créer une partie
+      </h2>
+
+      <div style={rowStyle}>
+        <div>
+          <label style={labelStyle}>Armée 1</label>
+          <select value={army1Id} onChange={(e) => setArmy1Id(e.target.value)} style={selectStyle}>
+            <option value="">— Choisir —</option>
+            {armies.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Résultat armée 1</label>
+          <select value={result1} onChange={(e) => setResult1(e.target.value as typeof result1)} style={selectStyle}>
+            {RESULT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={rowStyle}>
+        <div>
+          <label style={labelStyle}>Armée 2</label>
+          <select value={army2Id} onChange={(e) => setArmy2Id(e.target.value)} style={selectStyle}>
+            <option value="">— Choisir —</option>
+            {armies.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Résultat armée 2</label>
+          <select value={result2} onChange={(e) => setResult2(e.target.value as typeof result2)} style={selectStyle}>
+            {RESULT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {army1Id && army2Id && army1Id === army2Id && (
+        <p style={{ fontSize: '0.875rem', color: 'var(--color-malus)', marginBottom: '0.75rem' }}>
+          Les deux armées doivent être différentes.
+        </p>
+      )}
+
+      <div style={{ marginBottom: '0.75rem' }}>
+        <label style={labelStyle}>Date de la partie</label>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          style={{ ...selectStyle, width: 'auto' }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+        <input
+          type="checkbox"
+          id="evolutions-entered"
+          checked={evolutionsEntered}
+          onChange={(e) => setEvolutionsEntered(e.target.checked)}
+        />
+        <label htmlFor="evolutions-entered" style={{ fontSize: '0.875rem', cursor: 'pointer' }}>
+          Évolutions déjà saisies
+        </label>
+      </div>
+
+      <button
+        onClick={onSubmit}
+        disabled={!canSubmit}
+        style={{ ...btnStyle, opacity: canSubmit ? 1 : 0.5 }}
+      >
+        {submitting ? 'Création…' : 'Créer la partie'}
+      </button>
+
+      {result && (
+        <p style={{
+          marginTop: '0.75rem', padding: '0.625rem', borderRadius: '0.375rem',
+          background: result.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
+          color: result.success ? 'var(--color-bonus)' : 'var(--color-malus)',
+          border: `1px solid ${result.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+          fontSize: '0.875rem',
+        }}>
+          {result.message}
+        </p>
+      )}
+    </section>
   )
 }
 

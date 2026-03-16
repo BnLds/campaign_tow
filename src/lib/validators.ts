@@ -52,6 +52,17 @@ export const addUnitSchema = z.object({
 })
 export type AddUnitInput = z.infer<typeof addUnitSchema>
 
+// Story 3.1 — Admin: manual match creation
+export const createMatchSchema = z.object({
+  army1Id: z.string().min(1, "L'armée 1 est requise"),
+  result1: z.enum(['victory', 'defeat', 'draw']).nullable(),
+  army2Id: z.string().min(1, "L'armée 2 est requise"),
+  result2: z.enum(['victory', 'defeat', 'draw']).nullable(),
+  date: z.string().min(1, 'La date est requise'),
+  evolutionsEntered: z.boolean(),
+})
+export type CreateMatchInput = z.infer<typeof createMatchSchema>
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),

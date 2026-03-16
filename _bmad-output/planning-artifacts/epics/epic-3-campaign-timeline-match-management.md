@@ -38,6 +38,50 @@ So that I can read the full campaign history at a glance.
 
 ---
 
+## Story 3.1b: App Shell — TabBar, Layout & Navigation Components
+
+As a player,
+I want the app to have proper tab-based navigation and polished view layouts,
+So that I can switch between Campaign, Armies, and References views naturally and the app feels cohesive with the validated UX design.
+
+**Acceptance Criteria:**
+
+**Given** I am logged in,
+**When** the app loads,
+**Then** a TabBar with 3 fixed tabs (Campagne 📜 / Armées 🛡 / Références 📖) is visible at the bottom of the screen, with the active tab highlighted (#dfe8f4, navy indicator top)
+
+**Given** I am on any view,
+**When** I tap a tab,
+**Then** I navigate to the corresponding route (/ → Campagne, /armies → Armées, /references → Références)
+
+**Given** I am on the Armies list view,
+**When** the page loads,
+**Then** each army is rendered using the ArmyListItem component with:
+- Avatar initiale (first letter of army name)
+- Army name (Cinzel font), faction, player display name
+- Win/draw/loss record
+- Variant "current" (gold border #ead69b, background #fff9ec) for own army
+- Own army pinned at top of the list
+
+**Given** I am on the Campaign view,
+**When** the page loads,
+**Then** the header shows: army name, faction, and win/draw/loss record
+
+**Given** I am logged in as a guest,
+**When** I view the app,
+**Then** the TabBar is still visible and functional (Armées and Références tabs accessible)
+
+*Implementation notes:*
+- *Refactor `__root.tsx` layout: keep AppHeader at top (display name, logout, admin link) + scrollable content area + TabBar fixed at bottom*
+- *The AppHeader is NOT replaced — it is preserved as-is in the top bar*
+- *Layout structure: header (existing) → main content (flex-grow, scroll) → TabBar (fixed bottom)*
+- *TabBar: state = current route only, no contextual logic*
+- *ArmyListItem: thin composition of shadcn primitives*
+- */references route: create placeholder page (content filled in Epic 5)*
+- *Ensure CreateMatchFab positioning works with TabBar (bottom: 62px) for story 3.2*
+
+---
+
 ## Story 3.2: Match Creation & Pending Actions
 
 As a player,

@@ -1,9 +1,10 @@
 // Campaign TOW — Reusable DB query functions
 // All direct drizzle-orm and DB access for named operations lives here.
 
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, desc, and, ne } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db } from './index'
-import { players, armies, units, subProfiles, statModifiers, unitGains } from './schema'
+import { players, armies, units, subProfiles, statModifiers, unitGains, matches, matchParticipants } from './schema'
 import type { ParsedArmy } from '../lib/owb-parser'
 
 export async function markPlayerWelcomeSeen(playerId: string): Promise<void> {
@@ -472,6 +473,106 @@ export async function getUnitById(unitId: string) {
     .from(units)
     .where(eq(units.id, unitId))
     .limit(1)
+  return rows.length > 0 ? rows[0] : null
+}
+
+// Story 3.1 — Timeline query functions
+
+export type TimelineEntryData = {
+  matchId: string
+  date: string // ISO 8601 string
+  result: string | null
+  hasEvolutions: boolean
+  opponent: {
+    name: string
+    faction: string
+    playerName: string | null
+  }
+}
+
+export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryData[]> {
+  const oppParticipant = alias(matchParticipants, 'opp')
+  const oppArmy = alias(armies, 'opp_army')
+  const oppPlayer = alias(players, 'opp_player')
+
+  const rows = await db
+    .select({
+      matchId: matches.id,
+      date: matches.date,
+      result: matchParticipants.result,
+      evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
+      opponentName: oppArmy.name,
+      opponentFaction: oppArmy.faction,
+      opponentPlayerName: oppPlayer.displayName,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+    .innerJoin(oppParticipant, and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.armyId, matchParticipants.armyId)))
+    .innerJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
+    .leftJoin(oppPlayer, eq(oppArmy.playerId, oppPlayer.id))
+    .where(eq(matchParticipants.armyId, armyId))
+    .orderBy(desc(matches.date))
+
+  return rows.map((row) => ({
+    matchId: row.matchId,
+    date: row.date.toISOString(),
+    result: row.result,
+    hasEvolutions: row.evolutionsEnteredAt !== null,
+    opponent: {
+      name: row.opponentName,
+      faction: row.opponentFaction,
+      playerName: row.opponentPlayerName ?? null,
+    },
+  }))
+}
+
+// Story 3.1 — Admin: create a match with two participants
+export async function createMatchWithParticipants(params: {
+  army1Id: string
+  result1: 'victory' | 'defeat' | 'draw' | null
+  army2Id: string
+  result2: 'victory' | 'defeat' | 'draw' | null
+  matchDate: Date
+  evolutionsEntered: boolean
+  createdByPlayerId: string
+}): Promise<{ matchId: string }> {
+  const evolutionsEnteredAt = params.evolutionsEntered ? params.matchDate : null
+
+  return db.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(matches)
+      .values({ date: params.matchDate, createdByPlayerId: params.createdByPlayerId })
+      .returning({ id: matches.id })
+
+    await tx.insert(matchParticipants).values([
+      { matchId: inserted.id, armyId: params.army1Id, result: params.result1, evolutionsEnteredAt },
+      { matchId: inserted.id, armyId: params.army2Id, result: params.result2, evolutionsEnteredAt },
+    ])
+
+    return { matchId: inserted.id }
+  })
+}
+
+export async function getPlayerArmy(playerId: string): Promise<{
+  id: string
+  name: string
+  faction: string
+  playerId: string | null
+  playerDisplayName: string | null
+} | null> {
+  const rows = await db
+    .select({
+      id: armies.id,
+      name: armies.name,
+      faction: armies.faction,
+      playerId: armies.playerId,
+      playerDisplayName: players.displayName,
+    })
+    .from(armies)
+    .leftJoin(players, eq(armies.playerId, players.id))
+    .where(eq(armies.playerId, playerId))
+    .limit(1)
+
   return rows.length > 0 ? rows[0] : null
 }
 

@@ -54,7 +54,7 @@ interface SubProfileSectionProps {
 
 function SubProfileSection({ label, isMount, stats, showLabel }: SubProfileSectionProps) {
   // Fix E1: fallback for empty sub-profile label
-  const displayLabel = label?.trim() || 'Profil'
+  const displayLabel = label.trim() || 'Profil'
 
   return (
     <div>
@@ -139,14 +139,6 @@ interface StatCellProps {
 }
 
 function StatCell({ entry }: StatCellProps) {
-  if (!entry) {
-    return (
-      <div style={{ padding: '0.25rem 0', textAlign: 'center', minWidth: 0 }}>
-        <span>—</span>
-      </div>
-    )
-  }
-
   // Fix E2: delta=0 with modified=true shows neutral (no color change)
   const isBonus = entry.modified && entry.delta !== null && entry.delta > 0
   const isMalus = entry.modified && entry.delta !== null && entry.delta < 0

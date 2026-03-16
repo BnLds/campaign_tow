@@ -57,8 +57,9 @@ development_status:
   2-4-direct-edit-of-unit-character-deltas: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-army-timeline-view: backlog
+  epic-3: in-progress
+  3-1-army-timeline-view: done
+  3-1b-app-shell-tabbar-layout-navigation: backlog
   3-2-match-creation-pending-actions: backlog
   3-3-match-result-entry: backlog
   epic-3-retrospective: optional
