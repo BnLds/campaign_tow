@@ -117,37 +117,6 @@ function CampaignView() {
         ) : (
           /* Logged in with an army */
           <>
-            {/* Army header */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h1
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 700,
-                  fontSize: '1.5rem',
-                  color: 'var(--color-text-primary)',
-                  marginBottom: '0.25rem',
-                }}
-              >
-                {army.name}
-              </h1>
-              <p
-                style={{
-                  color: 'var(--color-text-secondary)',
-                  fontSize: '0.875rem',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                {army.faction}
-              </p>
-              <Link
-                to="/armies/$armyId"
-                params={{ armyId: army.id }}
-                style={{ color: 'var(--color-brand)', fontSize: '0.875rem' }}
-              >
-                Voir le détail de l'armée
-              </Link>
-            </div>
-
             {/* Timeline */}
             <section>
               <h2

@@ -35,6 +35,7 @@
   /* Backgrounds */
   --color-bg: #f1eade;
   --color-surface: #fffbf5;
+  --color-header-bg: #f7f1e8;
   --color-border: #e0d5c8;
   --color-separator: #dfd1bf;
 
@@ -83,6 +84,13 @@
   /* Font families */
   --font-display: 'Cinzel', serif;
   --font-body: 'Inter', sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  overflow: hidden;
+  height: 100%;
 }
 
 body {

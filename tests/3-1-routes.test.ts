@@ -75,21 +75,20 @@ describe('[AC1][AC2][AC5][AC8][P0] Campaign view — loadCampaignTimelineFn — 
   })
 })
 
-describe('[AC1][AC2][P0] Campaign view — header with army name and army detail link', () => {
-  it('[3.1-CMP-007] index.tsx imports Link from @tanstack/react-router (for army detail navigation)', () => {
+describe('[AC1][AC2][P0] Campaign view — header with army name and army detail link (moved to __root.tsx)', () => {
+  it('[3.1-CMP-007] index.tsx imports Link from @tanstack/react-router (for guest navigation)', () => {
     const route = getCampaignRoute()
     expect(route).toMatch(/import[\s\S]{0,200}Link[\s\S]{0,100}@tanstack\/react-router/)
   })
 
-  it('[3.1-CMP-008] CampaignView renders army name (Cinzel font via var(--font-display))', () => {
-    const route = getCampaignRoute()
-    // Army name heading uses Cinzel / --font-display token
-    expect(route).toMatch(/(font-display|fontFamily[\s\S]{0,100}display)/)
+  it('[3.1-CMP-008] __root.tsx AppHeader renders army name (Cinzel font via var(--font-display))', () => {
+    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    expect(rootRoute).toMatch(/(font-display|fontFamily[\s\S]{0,100}display)/)
   })
 
-  it('[3.1-CMP-009] CampaignView has a Link to /armies/$armyId (army detail navigation — AC2)', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/Link[\s\S]{0,200}(\/armies\/\$armyId|to=.*armies.*armyId)/)
+  it('[3.1-CMP-009] __root.tsx AppHeader has a Link to /armies/$armyId (army detail navigation — AC2)', () => {
+    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    expect(rootRoute).toMatch(/Link[\s\S]{0,200}(\/armies\/\$armyId|to=.*armies.*armyId)/)
   })
 })
 
