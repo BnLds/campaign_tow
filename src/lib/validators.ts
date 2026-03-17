@@ -78,6 +78,23 @@ export function toValidResult(r: string | null): ValidResult | null {
   return null
 }
 
+// Story 4.1 — Post-match flow: XP entry and evolution completion
+export const loadPostMatchDataSchema = z.object({
+  matchId: z.string().min(1),
+})
+export type LoadPostMatchDataInput = z.infer<typeof loadPostMatchDataSchema>
+
+export const submitUnitXpSchema = z.object({
+  unitId: z.string().min(1),
+  xpGained: z.number().int().min(0).max(99),
+})
+export type SubmitUnitXpInput = z.infer<typeof submitUnitXpSchema>
+
+export const completeEvolutionsSchema = z.object({
+  matchId: z.string().min(1),
+})
+export type CompleteEvolutionsInput = z.infer<typeof completeEvolutionsSchema>
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),

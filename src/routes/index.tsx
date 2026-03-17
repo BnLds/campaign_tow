@@ -122,6 +122,10 @@ function CampaignView() {
     await router.invalidate()
   }
 
+  const handleEvolutionStart = (matchId: string) => {
+    void router.navigate({ to: '/match/$matchId/post-match', params: { matchId } })
+  }
+
   return (
     <>
       {!session?.isGuest && (
@@ -175,12 +179,13 @@ function CampaignView() {
                     ? `Resultat a entrer -- vs ${match.opponentArmyName} . ${formattedDate}`
                     : `Rapport de bataille -- vs ${match.opponentArmyName} . ${formattedDate}`
 
-                  if (match.myResult === null) {
+                  // myResult !== null → result entered, evolutions pending → navigate to post-match
+                  if (match.myResult !== null) {
                     return (
                       <ActionChip
                         key={match.matchId}
                         label={label}
-                        // M1 — no href="#" (avoids scroll-to-top); TODO: story 3.3 -- add real route
+                        href={'/match/' + match.matchId + '/post-match'}
                       />
                     )
                   }
@@ -189,7 +194,7 @@ function CampaignView() {
                     <ActionChip
                       key={match.matchId}
                       label={label}
-                      // M1 — no href="#" (avoids scroll-to-top); TODO: epic 4 -- add real route
+                      // TODO: story 3.3 -- result entry route -- no href for now (avoids scroll-to-top)
                     />
                   )
                 })}
@@ -232,6 +237,7 @@ function CampaignView() {
                       hasEvolutions={entry.hasEvolutions}
                       isEditable={!isGuest && army !== null}
                       onResultSubmit={handleResultSubmit}
+                      onEvolutionStart={handleEvolutionStart}
                     />
                   ))}
                 </div>

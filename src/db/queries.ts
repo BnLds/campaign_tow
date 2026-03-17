@@ -693,6 +693,45 @@ export function invertResult(r: 'victory' | 'defeat' | 'draw'): 'victory' | 'def
   }
 }
 
+// Story 4.1 — Post-match flow: participant check + XP increment + evolutions stamp
+
+export async function getMatchParticipantForEvolution(
+  matchId: string,
+  armyId: string,
+): Promise<{ id: string; matchId: string; armyId: string; result: string | null; evolutionsEnteredAt: Date | null } | null> {
+  const rows = await db
+    .select({
+      id: matchParticipants.id,
+      matchId: matchParticipants.matchId,
+      armyId: matchParticipants.armyId,
+      result: matchParticipants.result,
+      evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
+    })
+    .from(matchParticipants)
+    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, armyId)))
+    .limit(1)
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function incrementUnitXp(
+  unitId: string,
+  xpGained: number,
+): Promise<{ id: string; xp: number } | null> {
+  const rows = await db.update(units)
+    .set({ xp: sql`${units.xp} + ${xpGained}` })
+    .where(eq(units.id, unitId))
+    .returning({ id: units.id, xp: units.xp })
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function markEvolutionsEntered(matchParticipantId: string): Promise<boolean> {
+  const rows = await db.update(matchParticipants)
+    .set({ evolutionsEnteredAt: new Date() })
+    .where(eq(matchParticipants.id, matchParticipantId))
+    .returning({ id: matchParticipants.id })
+  return rows.length > 0 ? true : false
+}
+
 export async function updateMatchResults(
   matchId: string,
   myArmyId: string,

@@ -64,8 +64,8 @@ development_status:
   3-3-match-result-entry: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-post-match-flow-xp-entry-per-unit-character: backlog
+  epic-4: in-progress
+  4-1-post-match-flow-xp-entry-per-unit-character: done
   4-2-tier-up-detection-improvement-choice: backlog
   4-3-character-injuries-bonuses: backlog
   epic-4-retrospective: optional

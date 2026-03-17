@@ -16,6 +16,7 @@ export type TimelineEntryProps = {
   hasEvolutions: boolean
   isEditable?: boolean
   onResultSubmit?: (matchId: string, result: 'victory' | 'defeat' | 'draw') => Promise<void>
+  onEvolutionStart?: (matchId: string) => void
 }
 
 const RESULT_CONFIG = {
@@ -63,6 +64,7 @@ export function TimelineEntry({
   hasEvolutions,
   isEditable = false,
   onResultSubmit,
+  onEvolutionStart,
 }: TimelineEntryProps) {
   const resultConfig = result ? RESULT_CONFIG[result] : null
   const formattedDate = formatDate(date)
@@ -259,6 +261,26 @@ export function TimelineEntry({
         >
           Evolutions saisies
         </p>
+      )}
+
+      {/* "Saisir évolutions" link — shown when result is set, evolutions not yet entered, and editable */}
+      {isEditable && result !== null && !hasEvolutions && onEvolutionStart && (
+        <button
+          onClick={() => onEvolutionStart(matchId)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.8125rem',
+            color: '#2a5ab8',
+            textDecoration: 'underline',
+            padding: 0,
+            textAlign: 'left',
+          }}
+        >
+          Saisir évolutions
+        </button>
       )}
     </div>
   )
