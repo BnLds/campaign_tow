@@ -238,6 +238,7 @@ function CampaignView() {
                       isEditable={!isGuest && army !== null}
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}
+                      unitXpEntries={entry.unitXpEntries}
                     />
                   ))}
                 </div>

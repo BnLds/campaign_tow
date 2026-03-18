@@ -170,12 +170,13 @@ describe('[AC3][AC4][AC7][AC8][P0] submitUnitXpFn — server function contract (
     expect(code).toMatch(/submitUnitXpFn[\s\S]{0,3000}success.*true[\s\S]{0,200}(unitId|newXp)/)
   })
 
-  // 10.13 — calls incrementUnitXp even when xpGained === 0 (no special case)
-  it('[4.1-SFN-022] submitUnitXpFn always calls incrementUnitXp — no special case for xpGained === 0', () => {
+  // 10.13 — (Story 4-1b superseded this: incrementUnitXp is now conditional on delta !== 0)
+  // Original 4.1 intent: no early return for xpGained === 0 before incrementUnitXp.
+  // 4-1b replaced this with delta strategy — see [4.1b-SFN-003] for the current assertion.
+  it('[4.1-SFN-022] submitUnitXpFn does not short-circuit on raw xpGained === 0 (delta strategy handles zero case)', () => {
     const code = getPostMatchRoute()
-    // Must NOT have an early return or if(xpGained === 0) branch before incrementUnitXp
-    // The incrementUnitXp call must not be conditional on xpGained > 0
-    expect(code).not.toMatch(/submitUnitXpFn[\s\S]{0,3000}xpGained\s*===\s*0[\s\S]{0,200}return[\s\S]{0,200}incrementUnitXp/)
+    // Must NOT have an early return based on raw xpGained === 0 (delta logic handles this)
+    expect(code).not.toMatch(/submitUnitXpFn[\s\S]{0,3000}data\.xpGained\s*===\s*0[\s\S]{0,200}return/)
   })
 })
 
@@ -251,5 +252,94 @@ describe('[AC5][P0] Post-match route — already-completed state (Task 9.1)', ()
     const code = getPostMatchRoute()
     // "Evolutions deja saisies" or similar French message
     expect(code).toMatch(/(Evolutions|évolutions)[\s\S]{0,100}(saisies|deja|déjà)/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Story 4-1b — submitUnitXpFn: delta strategy (AC1, AC3, AC5)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][AC3][AC5][P0] submitUnitXpFn — delta strategy (Story 4-1b)', () => {
+  // 4.1b-SFN-001 — submitUnitXpFn must upsert the match_xp_entries row BEFORE
+  // calling incrementUnitXp so the ledger is written first.
+  it('[4.1b-SFN-001] submitUnitXpFn calls upsertMatchXpEntry before incrementUnitXp', () => {
+    const code = getPostMatchRoute()
+    expect(code).toMatch(
+      /submitUnitXpFn[\s\S]{0,3000}upsertMatchXpEntry[\s\S]{0,1500}incrementUnitXp/,
+    )
+  })
+
+  // 4.1b-SFN-002 — delta must be computed as xpGained - (previousXpGained ?? 0)
+  it('[4.1b-SFN-002] submitUnitXpFn calculates delta = xpGained - (previousXpGained ?? 0)', () => {
+    const code = getPostMatchRoute()
+    // delta and previousXpGained must appear in proximity within submitUnitXpFn
+    expect(code).toMatch(
+      /submitUnitXpFn[\s\S]{0,3000}delta[\s\S]{0,300}previousXpGained/,
+    )
+  })
+
+  // 4.1b-SFN-003 — incrementUnitXp is only called when delta !== 0
+  it('[4.1b-SFN-003] submitUnitXpFn only calls incrementUnitXp when delta !== 0', () => {
+    const code = getPostMatchRoute()
+    expect(code).toMatch(
+      /submitUnitXpFn[\s\S]{0,3000}delta\s*!==\s*0[\s\S]{0,500}incrementUnitXp/,
+    )
+  })
+
+  // 4.1b-SFN-004 — incrementUnitXp receives the delta value, NOT raw xpGained
+  it('[4.1b-SFN-004] submitUnitXpFn passes delta (not raw xpGained) to incrementUnitXp', () => {
+    const code = getPostMatchRoute()
+    // incrementUnitXp must be called with delta as argument
+    expect(code).toMatch(/incrementUnitXp\([^)]*delta/)
+    // Must NOT pass data.xpGained directly to incrementUnitXp
+    expect(code).not.toMatch(/incrementUnitXp\([^)]*data\.xpGained/)
+  })
+
+  // 4.1b-SFN-005 — when delta === 0, use getUnitById to read current XP for the response
+  it('[4.1b-SFN-005] submitUnitXpFn uses getUnitById for newXp when delta === 0', () => {
+    const code = getPostMatchRoute()
+    expect(code).toMatch(/delta\s*===\s*0[\s\S]{0,500}getUnitById/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Story 4-1b — loadPostMatchDataFn: pre-fill with previousXpGained (AC2)
+// ---------------------------------------------------------------------------
+
+describe('[AC2][P0] loadPostMatchDataFn — pre-fill with previousXpGained (Story 4-1b)', () => {
+  // 4.1b-SFN-006 — loader must call getMatchXpEntries to fetch previously saved XP
+  it('[4.1b-SFN-006] loadPostMatchDataFn calls getMatchXpEntries for pre-fill data', () => {
+    const code = getPostMatchRoute()
+    expect(code).toMatch(
+      /loadPostMatchDataFn[\s\S]{0,3000}getMatchXpEntries/,
+    )
+  })
+
+  // 4.1b-SFN-007 — units returned by the loader include previousXpGained
+  it('[4.1b-SFN-007] loadPostMatchDataFn maps units with previousXpGained field', () => {
+    const code = getPostMatchRoute()
+    expect(code).toMatch(
+      /loadPostMatchDataFn[\s\S]{0,4000}previousXpGained/,
+    )
+  })
+
+  // 4.1b-SFN-008 — PostMatchLoaderData type carries previousXpGained in its units array
+  it('[4.1b-SFN-008] PostMatchLoaderData type includes previousXpGained in units array', () => {
+    const code = getPostMatchRoute()
+    expect(code).toMatch(/PostMatchLoaderData[\s\S]{0,500}previousXpGained/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Story 4-1b — submitUnitXpFn: matchParticipantId in input (AC1)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][P0] submitUnitXpFn — matchParticipantId in input (Story 4-1b)', () => {
+  // 4.1b-SFN-009 — server function must read matchParticipantId from validated input
+  it('[4.1b-SFN-009] submitUnitXpFn accesses data.matchParticipantId', () => {
+    const code = getPostMatchRoute()
+    expect(code).toMatch(
+      /submitUnitXpFn[\s\S]{0,3000}data\.matchParticipantId/,
+    )
   })
 })

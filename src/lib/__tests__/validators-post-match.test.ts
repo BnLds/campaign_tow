@@ -76,24 +76,24 @@ describe('[AC3][AC4][AC8][P0] submitUnitXpSchema — validators.ts file contract
 // ---------------------------------------------------------------------------
 
 describe('[AC3][AC4][AC8][P0] submitUnitXpSchema — runtime validation (Task 10.8)', () => {
-  // 10.8 — accepts valid input { unitId: 'abc', xpGained: 3 }
+  // 10.8 — accepts valid input { matchParticipantId, unitId: 'abc', xpGained: 3 }
   it('[4.1-VAL-008] submitUnitXpSchema accepts valid input { unitId: "abc", xpGained: 3 }', async () => {
     const { submitUnitXpSchema } = await import('../validators')
-    const result = submitUnitXpSchema.safeParse({ unitId: 'abc', xpGained: 3 })
+    const result = submitUnitXpSchema.safeParse({ matchParticipantId: 'p-1', unitId: 'abc', xpGained: 3 })
     expect(result.success).toBe(true)
   })
 
   // 10.8 — accepts xpGained: 0 (AC8: zero XP is valid)
   it('[4.1-VAL-009] submitUnitXpSchema accepts xpGained: 0 (zero XP is valid per AC8)', async () => {
     const { submitUnitXpSchema } = await import('../validators')
-    const result = submitUnitXpSchema.safeParse({ unitId: 'unit-1', xpGained: 0 })
+    const result = submitUnitXpSchema.safeParse({ matchParticipantId: 'p-1', unitId: 'unit-1', xpGained: 0 })
     expect(result.success).toBe(true)
   })
 
   // 10.8 — accepts xpGained: 99 (max boundary)
   it('[4.1-VAL-010] submitUnitXpSchema accepts xpGained: 99 (max boundary)', async () => {
     const { submitUnitXpSchema } = await import('../validators')
-    const result = submitUnitXpSchema.safeParse({ unitId: 'unit-1', xpGained: 99 })
+    const result = submitUnitXpSchema.safeParse({ matchParticipantId: 'p-1', unitId: 'unit-1', xpGained: 99 })
     expect(result.success).toBe(true)
   })
 
@@ -128,7 +128,7 @@ describe('[AC3][AC4][AC8][P0] submitUnitXpSchema — runtime validation (Task 10
   // 10.8 — valid data parses to correct TypeScript shape
   it('[4.1-VAL-015] submitUnitXpSchema parse returns { unitId, xpGained } shape', async () => {
     const { submitUnitXpSchema } = await import('../validators')
-    const result = submitUnitXpSchema.safeParse({ unitId: 'unit-xyz', xpGained: 5 })
+    const result = submitUnitXpSchema.safeParse({ matchParticipantId: 'p-1', unitId: 'unit-xyz', xpGained: 5 })
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.unitId).toBe('unit-xyz')
@@ -202,6 +202,57 @@ describe('[AC5][P0] completeEvolutionsSchema — runtime validation (Task 10.9)'
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.matchId).toBe('match-xyz')
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Story 4-1b — submitUnitXpSchema now includes matchParticipantId (AC1, AC3)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][AC3][P0] submitUnitXpSchema — matchParticipantId structural contract (Story 4-1b)', () => {
+  // 4-1b — schema includes matchParticipantId as non-empty string
+  it('[4.1b-VAL-001] submitUnitXpSchema includes matchParticipantId: z.string().min(1)', () => {
+    const validators = getValidators()
+    expect(validators).toMatch(/submitUnitXpSchema[\s\S]{0,600}matchParticipantId[\s\S]{0,200}z\.string[\s\S]{0,100}min\(1\)/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Story 4-1b — submitUnitXpSchema runtime with matchParticipantId (AC1, AC3)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][AC3][P0] submitUnitXpSchema — matchParticipantId runtime validation (Story 4-1b)', () => {
+  // 4-1b — accepts valid input with matchParticipantId
+  it('[4.1b-VAL-002] submitUnitXpSchema accepts valid input { matchParticipantId: "p-1", unitId: "u-1", xpGained: 3 }', async () => {
+    const { submitUnitXpSchema } = await import('../validators')
+    const result = submitUnitXpSchema.safeParse({ matchParticipantId: 'p-1', unitId: 'u-1', xpGained: 3 })
+    expect(result.success).toBe(true)
+  })
+
+  // 4-1b — rejects missing matchParticipantId
+  it('[4.1b-VAL-003] submitUnitXpSchema rejects missing matchParticipantId', async () => {
+    const { submitUnitXpSchema } = await import('../validators')
+    const result = submitUnitXpSchema.safeParse({ unitId: 'u-1', xpGained: 3 })
+    expect(result.success).toBe(false)
+  })
+
+  // 4-1b — rejects empty matchParticipantId
+  it('[4.1b-VAL-004] submitUnitXpSchema rejects empty matchParticipantId', async () => {
+    const { submitUnitXpSchema } = await import('../validators')
+    const result = submitUnitXpSchema.safeParse({ matchParticipantId: '', unitId: 'u-1', xpGained: 3 })
+    expect(result.success).toBe(false)
+  })
+
+  // 4-1b — parse with matchParticipantId returns it in data shape
+  it('[4.1b-VAL-005] submitUnitXpSchema parse with matchParticipantId returns it in data shape', async () => {
+    const { submitUnitXpSchema } = await import('../validators')
+    const result = submitUnitXpSchema.safeParse({ matchParticipantId: 'p-42', unitId: 'unit-xyz', xpGained: 5 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.matchParticipantId).toBe('p-42')
+      expect(result.data.unitId).toBe('unit-xyz')
+      expect(result.data.xpGained).toBe(5)
     }
   })
 })

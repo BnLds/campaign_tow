@@ -205,3 +205,162 @@ describe('[AC2][P0] TimelineEntry — source file contract for onEvolutionStart 
     expect(code).toMatch(/onEvolutionStart\?[\s\S]{0,200}(matchId|string)[\s\S]{0,100}void/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Story 4-1b — Compact XP line display on TimelineEntry
+// AC: 4
+// Status: RED — written before implementation (TDD)
+// ---------------------------------------------------------------------------
+
+describe('[AC4][P1] TimelineEntry — compact XP line display (Story 4-1b)', () => {
+  const sampleXpEntries = [
+    { unitName: 'Nomarch', unitType: 'personnage', xpGained: 3 },
+    { unitName: 'Gardes', unitType: 'base', xpGained: 5 },
+    { unitName: 'Sorcier', unitType: 'rare', xpGained: 2 },
+  ]
+
+  it('[4.1b-TLE-001] renders compact XP line when hasEvolutions=true and unitXpEntries provided', () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={true}
+        isEditable={false}
+        unitXpEntries={sampleXpEntries}
+      />
+    )
+    expect(screen.getByText(/Nomarch \+3 XP/)).toBeTruthy()
+    expect(screen.getByText(/Gardes \+5 XP/)).toBeTruthy()
+  })
+
+  it('[4.1b-TLE-002] uses ` · ` separator between XP entries (middle dot with spaces)', () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={true}
+        isEditable={false}
+        unitXpEntries={sampleXpEntries}
+      />
+    )
+    // All entries should appear in a single line separated by ' · '
+    expect(
+      screen.getByText(/Nomarch \+3 XP · Gardes \+5 XP · Sorcier \+2 XP/)
+    ).toBeTruthy()
+  })
+
+  it('[4.1b-TLE-003] does NOT render XP line when unitXpEntries is undefined', () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={true}
+        isEditable={false}
+        // unitXpEntries intentionally omitted
+      />
+    )
+    expect(screen.queryByText(/\+3 XP/)).toBeNull()
+    expect(screen.queryByText(/\+5 XP/)).toBeNull()
+  })
+
+  it('[4.1b-TLE-004] does NOT render XP line when unitXpEntries is empty array', () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={true}
+        isEditable={false}
+        unitXpEntries={[]}
+      />
+    )
+    expect(screen.queryByText(/\+3 XP/)).toBeNull()
+    expect(screen.queryByText(/\+5 XP/)).toBeNull()
+  })
+
+  it('[4.1b-TLE-005] does NOT render XP line when hasEvolutions is false even with entries', () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={false}
+        unitXpEntries={sampleXpEntries}
+      />
+    )
+    expect(screen.queryByText(/Nomarch \+3 XP/)).toBeNull()
+    expect(screen.queryByText(/Gardes \+5 XP/)).toBeNull()
+  })
+
+  it('[4.1b-TLE-006] filters out entries with xpGained === 0 from display', () => {
+    const entriesWithZero = [
+      { unitName: 'A', unitType: 'base', xpGained: 3 },
+      { unitName: 'B', unitType: 'special', xpGained: 0 },
+    ]
+
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={true}
+        isEditable={false}
+        unitXpEntries={entriesWithZero}
+      />
+    )
+    expect(screen.getByText(/A \+3 XP/)).toBeTruthy()
+    expect(screen.queryByText(/B \+0/)).toBeNull()
+  })
+
+  it('[4.1b-TLE-007] XP line uses text-xs styling (0.75rem) and secondary text color', () => {
+    const { readFileSync } = require('node:fs')
+    const { resolve: resolvePath } = require('node:path')
+    const filePath = resolvePath(__dirname, '..', 'timeline-entry.tsx')
+    const code = readFileSync(filePath, 'utf-8')
+    // The XP line element should use text-xs (0.75rem) and the secondary text color token
+    expect(code).toMatch(/text-xs/)
+    expect(code).toMatch(/text-secondary|#6b5f52|color-secondary/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Story 4-1b — Source file structural contract for unitXpEntries prop
+// AC: 4
+// ---------------------------------------------------------------------------
+
+describe('[AC4][P1] TimelineEntry — source contract for unitXpEntries (Story 4-1b)', () => {
+  it('[4.1b-TLE-008] timeline-entry.tsx declares unitXpEntries in TimelineEntryProps', () => {
+    const { readFileSync } = require('node:fs')
+    const { resolve: resolvePath } = require('node:path')
+    const filePath = resolvePath(__dirname, '..', 'timeline-entry.tsx')
+    const code = readFileSync(filePath, 'utf-8')
+    expect(code).toMatch(/unitXpEntries/)
+  })
+
+  it('[4.1b-TLE-009] timeline-entry.tsx unitXpEntries is optional (? modifier)', () => {
+    const { readFileSync } = require('node:fs')
+    const { resolve: resolvePath } = require('node:path')
+    const filePath = resolvePath(__dirname, '..', 'timeline-entry.tsx')
+    const code = readFileSync(filePath, 'utf-8')
+    expect(code).toMatch(/unitXpEntries\?/)
+  })
+
+  it('[4.1b-TLE-010] timeline-entry.tsx uses ` · ` as separator (join with middle dot)', () => {
+    const { readFileSync } = require('node:fs')
+    const { resolve: resolvePath } = require('node:path')
+    const filePath = resolvePath(__dirname, '..', 'timeline-entry.tsx')
+    const code = readFileSync(filePath, 'utf-8')
+    // Must join entries with ' · ' (space-middledot-space)
+    expect(code).toMatch(/' · '|" · "|` · `/)
+  })
+})

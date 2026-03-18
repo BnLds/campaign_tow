@@ -344,13 +344,14 @@ function ArmyView() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.5rem' }}>
           <Link
             to="/armies"
+            className="nav-btn-brand"
             style={{
               width: 30,
               height: 30,
               borderRadius: 999,
-              border: '1px solid #d9cfbf',
-              background: '#fff9f2',
-              color: 'var(--color-brand)',
+              border: 'none',
+              background: 'var(--color-brand)',
+              color: '#fff',
               fontWeight: 800,
               display: 'grid',
               placeItems: 'center',

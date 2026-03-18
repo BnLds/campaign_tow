@@ -17,6 +17,7 @@ export type TimelineEntryProps = {
   isEditable?: boolean
   onResultSubmit?: (matchId: string, result: 'victory' | 'defeat' | 'draw') => Promise<void>
   onEvolutionStart?: (matchId: string) => void
+  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number }>
 }
 
 const RESULT_CONFIG = {
@@ -65,6 +66,7 @@ export function TimelineEntry({
   isEditable = false,
   onResultSubmit,
   onEvolutionStart,
+  unitXpEntries,
 }: TimelineEntryProps) {
   const resultConfig = result ? RESULT_CONFIG[result] : null
   const formattedDate = formatDate(date)
@@ -249,19 +251,25 @@ export function TimelineEntry({
         </p>
       )}
 
-      {/* Evolution indicator */}
-      {hasEvolutions && (
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.8125rem',
-            color: 'var(--color-text-secondary)',
-            margin: 0,
-          }}
-        >
-          Evolutions saisies
-        </p>
-      )}
+      {/* Compact XP line — shown when evolutions entered and XP entries exist (AC4) */}
+      {(() => {
+        const xpLines = hasEvolutions
+          ? (unitXpEntries ?? []).filter((e) => e.xpGained > 0)
+          : []
+        return xpLines.length > 0 ? (
+          <p
+            className="text-xs"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.75rem',
+              color: 'var(--color-text-secondary)',
+              margin: '2px 0 0 0',
+            }}
+          >
+            {xpLines.map((e) => `${e.unitName} +${e.xpGained} XP`).join(' · ')}
+          </p>
+        ) : null
+      })()}
 
       {/* "Saisir évolutions" link — shown when result is set, evolutions not yet entered, and editable */}
       {isEditable && result !== null && !hasEvolutions && onEvolutionStart && (

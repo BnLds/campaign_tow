@@ -4,7 +4,7 @@
 import { eq, inArray, desc, and, ne, sql, isNull, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from './index'
-import { players, armies, units, subProfiles, statModifiers, unitGains, matches, matchParticipants } from './schema'
+import { players, armies, units, subProfiles, statModifiers, unitGains, matches, matchParticipants, matchXpEntries } from './schema'
 import type { ParsedArmy } from '../lib/owb-parser'
 
 export async function markPlayerWelcomeSeen(playerId: string): Promise<void> {
@@ -276,7 +276,16 @@ export async function getUnitsForArmy(armyId: string) {
     .select()
     .from(units)
     .where(eq(units.armyId, armyId))
-    .orderBy(units.createdAt)
+    .orderBy(
+      sql`CASE ${units.type}
+        WHEN 'Personnages' THEN 0
+        WHEN 'Unités de base' THEN 1
+        WHEN 'Unités spéciales' THEN 2
+        WHEN 'Unités rares' THEN 3
+        ELSE 4
+      END`,
+      units.name,
+    )
 
   const unitIds = unitRows.map((u) => u.id)
   const spRows =
@@ -480,6 +489,7 @@ export async function getUnitById(unitId: string) {
 
 export type TimelineEntryData = {
   matchId: string
+  matchParticipantId: string
   date: string // ISO 8601 string
   result: string | null
   hasEvolutions: boolean
@@ -488,6 +498,7 @@ export type TimelineEntryData = {
     faction: string
     playerName: string | null
   }
+  unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number }>
 }
 
 export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryData[]> {
@@ -498,6 +509,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
   const rows = await db
     .select({
       matchId: matches.id,
+      matchParticipantId: matchParticipants.id,
       date: matches.date,
       result: matchParticipants.result,
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
@@ -513,8 +525,9 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     .where(eq(matchParticipants.armyId, armyId))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
-  return rows.map((row) => ({
+  const entries = rows.map((row) => ({
     matchId: row.matchId,
+    matchParticipantId: row.matchParticipantId,
     date: row.date.toISOString(),
     result: row.result,
     hasEvolutions: row.evolutionsEnteredAt !== null,
@@ -523,7 +536,45 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
       faction: row.opponentFaction,
       playerName: row.opponentPlayerName ?? null,
     },
+    unitXpEntries: [] as Array<{ unitName: string; unitType: string; xpGained: number }>,
   }))
+
+  // Secondary query: load XP entries for entries that have evolutions
+  const participantIds = entries
+    .filter((e) => e.hasEvolutions)
+    .map((e) => e.matchParticipantId)
+
+  if (participantIds.length > 0) {
+    const xpRows = await db
+      .select({
+        matchParticipantId: matchXpEntries.matchParticipantId,
+        unitName: units.name,
+        unitType: units.type,
+        xpGained: matchXpEntries.xpGained,
+      })
+      .from(matchXpEntries)
+      .innerJoin(units, eq(matchXpEntries.unitId, units.id))
+      .where(inArray(matchXpEntries.matchParticipantId, participantIds))
+
+    // Group by matchParticipantId, sorted by unit type: personnage > base > spécial > rare
+    const UNIT_TYPE_ORDER: Record<string, number> = { personnage: 0, base: 1, special: 2, rare: 3 }
+    const xpMap = new Map<string, Array<{ unitName: string; unitType: string; xpGained: number }>>()
+    for (const row of xpRows) {
+      const arr = xpMap.get(row.matchParticipantId) ?? []
+      arr.push({ unitName: row.unitName, unitType: row.unitType, xpGained: row.xpGained })
+      xpMap.set(row.matchParticipantId, arr)
+    }
+    for (const arr of xpMap.values()) {
+      arr.sort((a, b) => (UNIT_TYPE_ORDER[a.unitType] ?? 99) - (UNIT_TYPE_ORDER[b.unitType] ?? 99))
+    }
+
+    return entries.map((e) => ({
+      ...e,
+      unitXpEntries: xpMap.get(e.matchParticipantId) ?? [],
+    }))
+  }
+
+  return entries
 }
 
 // Story 3.1 — Admin: create a match with two participants
@@ -730,6 +781,63 @@ export async function markEvolutionsEntered(matchParticipantId: string): Promise
     .where(eq(matchParticipants.id, matchParticipantId))
     .returning({ id: matchParticipants.id })
   return rows.length > 0 ? true : false
+}
+
+// Story 4-1b — verify match participant ownership
+export async function getMatchParticipantArmyId(
+  matchParticipantId: string,
+): Promise<string | null> {
+  const rows = await db
+    .select({ armyId: matchParticipants.armyId })
+    .from(matchParticipants)
+    .where(eq(matchParticipants.id, matchParticipantId))
+    .limit(1)
+  return rows.length > 0 ? rows[0].armyId : null
+}
+
+// Story 4-1b — upsert XP entry and return previous value
+// Wrapped in a transaction to guarantee atomicity of the SELECT + upsert pair,
+// preventing race conditions where concurrent requests read stale previousXpGained.
+export async function upsertMatchXpEntry(
+  matchParticipantId: string,
+  unitId: string,
+  xpGained: number,
+): Promise<{ previousXpGained: number | null }> {
+  return db.transaction(async (tx) => {
+    const existing = await tx.select({ xpGained: matchXpEntries.xpGained })
+      .from(matchXpEntries)
+      .where(
+        and(
+          eq(matchXpEntries.matchParticipantId, matchParticipantId),
+          eq(matchXpEntries.unitId, unitId),
+        ),
+      )
+      .limit(1)
+
+    const previousXpGained = existing.length > 0 ? existing[0].xpGained : null
+
+    await tx.insert(matchXpEntries)
+      .values({ matchParticipantId, unitId, xpGained })
+      .onConflictDoUpdate({
+        target: [matchXpEntries.matchParticipantId, matchXpEntries.unitId],
+        set: { xpGained },
+      })
+
+    return { previousXpGained }
+  })
+}
+
+// Story 4-1b — retrieve XP entries for a match participant (used for wizard pre-fill)
+export async function getMatchXpEntries(
+  matchParticipantId: string,
+): Promise<Array<{ unitId: string; xpGained: number }>> {
+  return db
+    .select({
+      unitId: matchXpEntries.unitId,
+      xpGained: matchXpEntries.xpGained,
+    })
+    .from(matchXpEntries)
+    .where(eq(matchXpEntries.matchParticipantId, matchParticipantId))
 }
 
 export async function updateMatchResults(

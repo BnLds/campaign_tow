@@ -86,6 +86,12 @@
   --font-body: 'Inter', sans-serif;
 }
 
+/* Focus ring for navy-background circular buttons (back btn, FAB) */
+.nav-btn-brand:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 html,
 body {
   margin: 0;

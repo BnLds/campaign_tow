@@ -1,8 +1,8 @@
 // Campaign TOW — Database Schema
 // This is the single source of all Drizzle table definitions.
 
-import { pgTable, text, boolean, timestamp, integer, pgEnum, uniqueIndex, index } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { pgTable, text, boolean, timestamp, integer, pgEnum, uniqueIndex, index, check } from 'drizzle-orm/pg-core'
+import { relations, sql } from 'drizzle-orm'
 
 // Story 3.1 — Enum for match result (enforces valid values at DB level)
 export const matchResultEnum = pgEnum('match_result', ['victory', 'defeat', 'draw'])
@@ -115,6 +115,21 @@ export const matchParticipants = pgTable('match_participants', {
   uniqueIndex('mp_match_army_unique').on(table.matchId, table.armyId),
   index('idx_mp_army_id').on(table.armyId),
   index('idx_mp_match_id').on(table.matchId),
+])
+
+// Story 4-1b — match XP entries: per-unit per-match XP tracking
+export const matchXpEntries = pgTable('match_xp_entries', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  matchParticipantId: text('match_participant_id')
+    .notNull()
+    .references(() => matchParticipants.id, { onDelete: 'cascade' }),
+  unitId: text('unit_id')
+    .notNull()
+    .references(() => units.id, { onDelete: 'cascade' }),
+  xpGained: integer('xp_gained').notNull(),
+}, (table) => [
+  uniqueIndex('mxe_participant_unit_unique').on(table.matchParticipantId, table.unitId),
+  check('mxe_xp_gained_non_negative', sql`${table.xpGained} >= 0`),
 ])
 
 // Drizzle relations — matches and matchParticipants

@@ -2,24 +2,27 @@
 // Story 4.1: Sequential post-match XP entry wizard
 // Presents each unit one at a time for XP entry.
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { ServerResult } from '../lib/types'
 
 export type PostMatchWizardProps = {
   matchId: string
   matchParticipantId: string
-  units: Array<{ id: string; name: string; type: string; xp: number }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null }>
   onComplete: () => void
+  onCancel: () => void
   /** Optional: inject custom submit function (for testing). Defaults to submitUnitXpFn. */
-  onSubmitUnitXp?: (unitId: string, xpGained: number) => Promise<ServerResult<{ unitId: string; newXp: number }>>
+  onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string) => Promise<ServerResult<{ unitId: string; newXp: number }>>
   /** Optional: inject custom complete function (for testing). Defaults to completeEvolutionsFn. */
   onCompleteEvolutions?: (matchId: string) => Promise<ServerResult<{ matchId: string }>>
 }
 
 export function PostMatchWizard({
   matchId,
+  matchParticipantId,
   units,
   onComplete,
+  onCancel,
   onSubmitUnitXp,
   onCompleteEvolutions,
 }: PostMatchWizardProps) {
@@ -28,6 +31,21 @@ export function PostMatchWizard({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Pre-fill XP input from previousXpGained when step changes (AC2)
+  // Only depends on currentStep — not units — so a parent re-render with new unit
+  // objects won't reset the input while the player is typing.
+  useEffect(() => {
+    const submitted = submittedXpByStep.current.get(currentStep)
+    if (submitted !== undefined) {
+      setXpGained(submitted)
+    } else {
+      const prevXp = (units[currentStep] as typeof units[0] | undefined)?.previousXpGained
+      setXpGained(prevXp ?? 0)
+    }
+  }, [currentStep]) // intentionally excludes `units` — see comment above
+
+  // Track XP values entered by the player per step (for back-button pre-fill)
+  const submittedXpByStep = useRef<Map<number, number>>(new Map())
   // Fix 2 — synchronous guard against double-click race condition
   const submittingRef = useRef(false)
   // Fix 1 — track already-submitted units to prevent double XP on retry
@@ -97,11 +115,11 @@ export function PostMatchWizard({
       if (!alreadySubmitted) {
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
-          submitResult = await onSubmitUnitXp(currentUnit.id, Math.floor(xpGained))
+          submitResult = await onSubmitUnitXp(currentUnit.id, Math.floor(xpGained), matchParticipantId)
         } else {
           // Dynamic import to avoid bundling server fn into client
           const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
-          submitResult = await submitUnitXpFn({ data: { unitId: currentUnit.id, xpGained: Math.floor(xpGained) } })
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentUnit.id, xpGained: Math.floor(xpGained) } })
         }
 
         if (!submitResult.success) {
@@ -132,9 +150,10 @@ export function PostMatchWizard({
         }
         onComplete()
       } else {
-        // Advance to next unit
+        // Record the submitted XP value for this step (for back-button pre-fill)
+        submittedXpByStep.current.set(currentStep, xpGained)
+        // Advance to next unit — useEffect on [currentStep] handles xpGained pre-fill
         setCurrentStep((prev) => prev + 1)
-        setXpGained(0)
         setIsSubmitting(false)
         submittingRef.current = false
       }
@@ -147,19 +166,79 @@ export function PostMatchWizard({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Progress indicator */}
-      <p
-        data-testid="wizard-progress"
-        style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.875rem',
-          color: 'var(--color-text-secondary)',
-          margin: 0,
-          textAlign: 'center',
-        }}
-      >
-        Unité {currentStep + 1} / {total}
-      </p>
+      {/* Progress row with optional back button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', position: 'relative' }}>
+        {currentStep > 0 && (
+          <button
+            data-testid="wizard-back-button"
+            onClick={() => {
+              const prevStep = currentStep - 1
+              const prevUnit = units[prevStep]
+              if (prevUnit) {
+                submittedUnitsRef.current.delete(prevUnit.id)
+              }
+              setCurrentStep(prevStep)
+            }}
+            aria-label="Unité précédente"
+            style={{
+              position: 'absolute',
+              left: 0,
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              border: 'none',
+              background: '#334155',
+              color: '#fff',
+              fontWeight: 800,
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              fontSize: '1rem',
+              padding: 0,
+            }}
+          >
+            ‹
+          </button>
+        )}
+        <p
+          data-testid="wizard-progress"
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            color: 'var(--color-text-secondary)',
+            margin: 0,
+            textAlign: 'center',
+          }}
+        >
+          Unité {currentStep + 1} / {total}
+        </p>
+        <button
+          type="button"
+          data-testid="wizard-cancel-button"
+          onClick={onCancel}
+          aria-label="Quitter"
+          style={{
+            position: 'absolute',
+            right: 0,
+            width: 30,
+            height: 30,
+            borderRadius: 999,
+            border: 'none',
+            background: 'var(--color-malus)',
+            color: '#fff',
+            fontWeight: 800,
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer',
+            flexShrink: 0,
+            fontSize: '1rem',
+            padding: 0,
+          }}
+        >
+          ✕
+        </button>
+      </div>
 
       {/* Unit info */}
       <div
@@ -200,7 +279,7 @@ export function PostMatchWizard({
             margin: 0,
           }}
         >
-          XP actuel : {currentUnit.xp}
+          XP avant cette partie : {currentUnit.xp - (currentUnit.previousXpGained ?? 0)}
         </p>
       </div>
 
@@ -214,7 +293,7 @@ export function PostMatchWizard({
             color: 'var(--color-text-primary)',
           }}
         >
-          XP gagné
+          XP gagné lors de cette partie
         </label>
         <input
           id="wizard-xp-input"

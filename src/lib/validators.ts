@@ -85,6 +85,7 @@ export const loadPostMatchDataSchema = z.object({
 export type LoadPostMatchDataInput = z.infer<typeof loadPostMatchDataSchema>
 
 export const submitUnitXpSchema = z.object({
+  matchParticipantId: z.string().min(1),
   unitId: z.string().min(1),
   xpGained: z.number().int().min(0).max(99),
 })

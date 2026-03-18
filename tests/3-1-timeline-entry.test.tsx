@@ -175,7 +175,7 @@ describe('[AC3][P0] TimelineEntry — result badge', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC3][AC6][P0] TimelineEntry — evolution indicator', () => {
-  it('[3.1-COMP-010] hasEvolutions=true shows "Evolutions saisies" text indicator', () => {
+  it('[3.1-COMP-010] hasEvolutions=true does NOT show "Evolutions saisies" text (removed in 4-1b)', () => {
     render(
       <TimelineEntry
         matchId="match-10"
@@ -185,7 +185,7 @@ describe('[AC3][AC6][P0] TimelineEntry — evolution indicator', () => {
         hasEvolutions={true}
       />
     )
-    expect(screen.getByText(/Evolutions saisies/i)).toBeTruthy()
+    expect(screen.queryByText(/Evolutions saisies/i)).toBeNull()
   })
 
   it('[3.1-COMP-011] hasEvolutions=false renders NO "Evolutions saisies" text (clean absence)', () => {

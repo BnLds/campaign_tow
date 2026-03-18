@@ -191,3 +191,149 @@ describe('[AC3][AC4][AC5][AC7][P0] DB queries — getMatchParticipantForEvolutio
     expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,1500}\.limit\(1\)/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Story 4-1b: Match XP Tracking & Wizard Resume
+// ---------------------------------------------------------------------------
+
+function getSchema() {
+  return readFileSync(resolve(root, 'src/db/schema.ts'), 'utf-8')
+}
+
+// ---------------------------------------------------------------------------
+// 4-1b — matchXpEntries table in schema.ts (AC1)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][P0] DB schema — matchXpEntries table — src/db/schema.ts', () => {
+  it('[4.1b-SCH-001] schema.ts defines matchXpEntries pgTable', () => {
+    const schema = getSchema()
+    expect(schema).toMatch(/export const matchXpEntries\s*=\s*pgTable\(/)
+  })
+
+  it('[4.1b-SCH-002] matchXpEntries has matchParticipantId FK to matchParticipants with cascade', () => {
+    const schema = getSchema()
+    expect(schema).toMatch(
+      /matchXpEntries[\s\S]{0,1500}matchParticipantId[\s\S]{0,300}\.references\(\(\)\s*=>\s*matchParticipants\.id[\s\S]{0,100}onDelete:\s*['"]cascade['"]/
+    )
+  })
+
+  it('[4.1b-SCH-003] matchXpEntries has unitId FK to units with cascade', () => {
+    const schema = getSchema()
+    expect(schema).toMatch(
+      /matchXpEntries[\s\S]{0,2000}unitId[\s\S]{0,300}\.references\(\(\)\s*=>\s*units\.id[\s\S]{0,100}onDelete:\s*['"]cascade['"]/
+    )
+  })
+
+  it('[4.1b-SCH-004] matchXpEntries has xpGained integer notNull', () => {
+    const schema = getSchema()
+    expect(schema).toMatch(
+      /matchXpEntries[\s\S]{0,2500}xpGained[\s\S]{0,100}integer\([\s\S]{0,50}\)\.notNull\(\)/
+    )
+  })
+
+  it('[4.1b-SCH-005] matchXpEntries has uniqueIndex on (matchParticipantId, unitId)', () => {
+    const schema = getSchema()
+    expect(schema).toMatch(
+      /matchXpEntries[\s\S]{0,3000}unique(Index)?\([\s\S]{0,200}matchParticipantId[\s\S]{0,100}unitId/
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 4-1b — upsertMatchXpEntry function (AC1, AC3, AC5)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][AC3][AC5][P0] DB queries — upsertMatchXpEntry — src/db/queries.ts', () => {
+  it('[4.1b-QRY-001] queries.ts exports upsertMatchXpEntry as async function', () => {
+    const queries = getQueries()
+    expect(queries).toContain('export async function upsertMatchXpEntry')
+  })
+
+  it('[4.1b-QRY-002] upsertMatchXpEntry accepts matchParticipantId, unitId, xpGained params', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /upsertMatchXpEntry[\s\S]{0,300}matchParticipantId[\s\S]{0,150}unitId[\s\S]{0,150}xpGained/
+    )
+  })
+
+  it('[4.1b-QRY-003] upsertMatchXpEntry SELECTs existing entry before upserting inside a transaction', () => {
+    const queries = getQueries()
+    // Must run inside a transaction (db.transaction), SELECT then INSERT/upsert via tx
+    expect(queries).toMatch(
+      /upsertMatchXpEntry[\s\S]{0,1500}db\.transaction[\s\S]{0,1500}tx\.select\([\s\S]{0,500}matchXpEntries[\s\S]{0,1500}tx\.insert\(matchXpEntries\)/
+    )
+  })
+
+  it('[4.1b-QRY-004] upsertMatchXpEntry uses onConflictDoUpdate on matchXpEntries', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /upsertMatchXpEntry[\s\S]{0,2500}onConflictDoUpdate/
+    )
+  })
+
+  it('[4.1b-QRY-005] upsertMatchXpEntry returns { previousXpGained } shape (number | null)', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /upsertMatchXpEntry[\s\S]{0,3000}previousXpGained/
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 4-1b — getMatchXpEntries function (AC2)
+// ---------------------------------------------------------------------------
+
+describe('[AC2][P0] DB queries — getMatchXpEntries — src/db/queries.ts', () => {
+  it('[4.1b-QRY-006] queries.ts exports getMatchXpEntries as async function', () => {
+    const queries = getQueries()
+    expect(queries).toContain('export async function getMatchXpEntries')
+  })
+
+  it('[4.1b-QRY-007] getMatchXpEntries accepts matchParticipantId param', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /getMatchXpEntries[\s\S]{0,300}matchParticipantId/
+    )
+  })
+
+  it('[4.1b-QRY-008] getMatchXpEntries queries matchXpEntries table', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /getMatchXpEntries[\s\S]{0,1000}matchXpEntries/
+    )
+  })
+
+  it('[4.1b-QRY-009] getMatchXpEntries returns Array with unitId and xpGained fields', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /getMatchXpEntries[\s\S]{0,1500}unitId[\s\S]{0,500}xpGained/
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 4-1b — getTimelineForArmy modifications (AC4)
+// ---------------------------------------------------------------------------
+
+describe('[AC4][P0] DB queries — getTimelineForArmy modifications for XP entries — src/db/queries.ts', () => {
+  it('[4.1b-QRY-010] getTimelineForArmy selects matchParticipants.id (needed as join key for XP entries)', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /getTimelineForArmy[\s\S]{0,2000}matchParticipants\.id/
+    )
+  })
+
+  it('[4.1b-QRY-011] getTimelineForArmy references matchXpEntries for secondary XP query', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /getTimelineForArmy[\s\S]{0,5000}matchXpEntries/
+    )
+  })
+
+  it('[4.1b-QRY-012] getTimelineForArmy returns unitXpEntries field in its results', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(
+      /getTimelineForArmy[\s\S]{0,5000}unitXpEntries/
+    )
+  })
+})
