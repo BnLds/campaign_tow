@@ -795,6 +795,31 @@ export async function getMatchParticipantArmyId(
   return rows.length > 0 ? rows[0].armyId : null
 }
 
+// Story 4.2 — check whether evolutions have been entered for a participant
+export async function getMatchParticipantEvolutionsStatus(
+  matchParticipantId: string,
+): Promise<{ found: boolean; evolutionsEnteredAt: Date | null }> {
+  const rows = await db
+    .select({ evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt })
+    .from(matchParticipants)
+    .where(eq(matchParticipants.id, matchParticipantId))
+    .limit(1)
+  if (rows.length === 0) return { found: false, evolutionsEnteredAt: null }
+  return { found: true, evolutionsEnteredAt: rows[0].evolutionsEnteredAt }
+}
+
+// Story 4.2 — insert multiple unit gains in a single transaction (C3: prevents partial commits)
+export async function insertUnitGainsTransaction(
+  unitId: string,
+  descriptions: string[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    for (const description of descriptions) {
+      await tx.insert(unitGains).values({ unitId, description })
+    }
+  })
+}
+
 // Story 4-1b — upsert XP entry and return previous value
 // Wrapped in a transaction to guarantee atomicity of the SELECT + upsert pair,
 // preventing race conditions where concurrent requests read stale previousXpGained.

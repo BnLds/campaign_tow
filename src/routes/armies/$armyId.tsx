@@ -11,6 +11,7 @@ import { UnitCard } from '../../components/unit-card'
 import { UnitEditPanel } from '../../components/unit-edit-panel'
 import { composeUnitView } from '../../lib/delta-composer'
 import { calculateTier } from '../../lib/tier'
+import type { TierLevel } from '../../lib/tier'
 import type { ComposedUnitView } from '../../lib/delta-composer'
 
 // ---------------------------------------------------------------------------
@@ -286,7 +287,7 @@ function groupUnitsByType(
   unitCards: Array<{
     unit: { id: string; name: string; type: string; xp: number }
     composedView: ComposedUnitView
-    tier: 0 | 1 | 2 | 3
+    tier: TierLevel
     subProfiles: Array<{ id: string; label: string; isMount: boolean; sortOrder: number }>
   }>
 ) {
@@ -429,6 +430,7 @@ function ArmyView() {
                   armyId={army.id}
                   unitId={card.unit.id}
                   unitName={card.unit.name}
+                  unitType={card.unit.type}
                   currentXp={card.unit.xp}
                   subProfiles={card.subProfiles}
                   onClose={() => setEditingUnitId(null)}

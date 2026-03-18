@@ -4,6 +4,7 @@
 import React from 'react'
 import type { ComposedUnitView, ComposedSubProfile, StatDelta, UnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
+import type { TierLevel } from '../lib/tier'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -12,7 +13,7 @@ import { getTierLabel, getTierColor } from '../lib/tier'
 interface UnitCardProps {
   unit: { id: string; name: string; type: string; xp: number }
   composedView: ComposedUnitView
-  tier: 0 | 1 | 2 | 3
+  tier: TierLevel
   action?: React.ReactNode
 }
 
@@ -20,8 +21,13 @@ interface UnitCardProps {
 // Tier border styles
 // ---------------------------------------------------------------------------
 
-function tierBorderStyle(tier: 0 | 1 | 2 | 3): React.CSSProperties {
+function tierBorderStyle(tier: TierLevel): React.CSSProperties {
   switch (tier) {
+    case 4:
+      return {
+        border: '2px solid var(--color-gold)',
+        boxShadow: '0 0 12px 4px #fffcf3',
+      }
     case 3:
       return {
         border: '2px solid var(--color-gold)',
@@ -307,7 +313,7 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
 // ---------------------------------------------------------------------------
 
 export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
-  const tierLabel = getTierLabel(tier)
+  const tierLabel = getTierLabel(tier, unit.type)
   const tierColor = getTierColor(tier)
   const borderStyle = tierBorderStyle(tier)
 

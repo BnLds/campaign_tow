@@ -421,9 +421,9 @@ describe('[AC6][P0] PostMatchWizard — empty units state (Task 6.7)', () => {
 // AC: 6
 // ---------------------------------------------------------------------------
 
-describe('[AC6][P0] PostMatchWizard — last step shows "Terminer" (Task 6.3)', () => {
-  // 10.26 — single unit wizard shows "Terminer" immediately
-  it('[4.1-WIZ-017] wizard shows "Terminer" on last step (single unit)', () => {
+describe('[AC6][P0] PostMatchWizard — Phase 1 always shows "Suivant" (Story 4-2: Phase 1 never shows Terminer)', () => {
+  // Story 4-2 change: Phase 1 always shows "Suivant" because "Terminer" only appears at end of Phase 2
+  it('[4.1-WIZ-017] wizard shows "Suivant" on last XP step (single unit, Phase 1)', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -434,7 +434,7 @@ describe('[AC6][P0] PostMatchWizard — last step shows "Terminer" (Task 6.3)', 
       />
     )
     const nextButton = screen.getByTestId('wizard-next-button')
-    expect(nextButton.textContent).toMatch(/Terminer/)
+    expect(nextButton.textContent).toMatch(/Suivant/)
   })
 
   // 10.26 — "Suivant" shown for non-last step, "Terminer" for last

@@ -7,7 +7,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
-import { submitUnitXpSchema, completeEvolutionsSchema, loadPostMatchDataSchema } from '../../../lib/validators'
+import { submitUnitXpSchema, completeEvolutionsSchema, loadPostMatchDataSchema, submitTierUpSchema } from '../../../lib/validators'
 import { PostMatchWizard } from '../../../components/post-match-wizard'
 import type { ServerResult } from '../../../lib/types'
 
@@ -19,7 +19,7 @@ type PostMatchLoaderData = {
   alreadyCompleted: boolean
   matchId: string
   matchParticipantId: string
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; hasMount: boolean }>
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +61,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       type: u.type,
       xp: u.xp,
       previousXpGained: entryMap.get(u.id) ?? null,
+      hasMount: u.subProfiles.some((sp) => sp.isMount),
     }))
     return {
       alreadyCompleted: false,
@@ -148,6 +149,46 @@ export const completeEvolutionsFn = createServerFn({ method: 'POST' })
   })
 
 // ---------------------------------------------------------------------------
+// Server function — submit tier-up improvement selections (POST)
+// Story 4.2: saves selected improvements as unit_gains entries
+// ---------------------------------------------------------------------------
+
+export const submitTierUpFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(submitTierUpSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<{ unitId: string; gainsCreated: number }>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    // C3: insertUnitGain calls committed atomically per improvement.description (via insertUnitGainsTransaction)
+    const { getPlayerArmy, getUnitById, getMatchParticipantArmyId, getMatchParticipantEvolutionsStatus, insertUnitGainsTransaction } = await import('../../../db/queries')
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+    }
+    // C4 — verify participant belongs to the player's army
+    const participantArmyId = await getMatchParticipantArmyId(data.matchParticipantId)
+    if (participantArmyId !== army.id) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Participant invalide' } }
+    }
+    // C4+M2 — verify the match is still open (evolutionsEnteredAt must be null)
+    const { found, evolutionsEnteredAt } = await getMatchParticipantEvolutionsStatus(data.matchParticipantId)
+    if (!found) {
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Participant introuvable' } }
+    }
+    if (evolutionsEnteredAt !== null) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Evolutions deja saisies pour cette partie' } }
+    }
+    // C4 — verify the unit belongs to the player's army
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== army.id) {
+      return { success: false, error: { code: 'FORBIDDEN', message: "Cette unite n'appartient pas a votre armee" } }
+    }
+    await insertUnitGainsTransaction(data.unitId, data.improvements.map((i) => i.description))
+    return { success: true, data: { unitId: data.unitId, gainsCreated: data.improvements.length } }
+  })
+
+// ---------------------------------------------------------------------------
 // Route definition
 // ---------------------------------------------------------------------------
 
@@ -212,6 +253,14 @@ function PostMatchRoute() {
     return completeEvolutionsFn({ data: { matchId: mId } })
   }
 
+  const handleSubmitTierUp = async (
+    unitId: string,
+    mParticipantId: string,
+    improvements: Array<{ description: string }>,
+  ) => {
+    return submitTierUpFn({ data: { unitId, matchParticipantId: mParticipantId, improvements } })
+  }
+
   return (
     <main style={{ padding: '1rem', maxWidth: '480px', margin: '0 auto' }}>
       <PostMatchWizard
@@ -222,6 +271,7 @@ function PostMatchRoute() {
         onCancel={handleComplete}
         onSubmitUnitXp={handleSubmitUnitXp}
         onCompleteEvolutions={handleCompleteEvolutions}
+        onSubmitTierUp={handleSubmitTierUp}
       />
     </main>
   )

@@ -96,6 +96,14 @@ export const completeEvolutionsSchema = z.object({
 })
 export type CompleteEvolutionsInput = z.infer<typeof completeEvolutionsSchema>
 
+// Story 4.2 — Tier-up: save selected improvements as unit_gains
+export const submitTierUpSchema = z.object({
+  unitId: z.string().min(1),
+  matchParticipantId: z.string().min(1),
+  improvements: z.array(z.object({ description: z.string().min(1) })).min(1),
+})
+export type SubmitTierUpInput = z.infer<typeof submitTierUpSchema>
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),
