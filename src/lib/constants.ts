@@ -10,7 +10,7 @@ export type Improvement = {
   id: string
   label: string
   category: 'minor' | 'major' | 'honour'
-  slotCost?: number  // Default 1. Character Endurance = 2.
+  slotCost?: number  // Reserved for future use (currently unused).
 }
 
 export type ThresholdEntry = {
@@ -23,17 +23,35 @@ export type ThresholdEntry = {
 }
 
 // ---------------------------------------------------------------------------
+// Skill improvement helpers
+// ---------------------------------------------------------------------------
+
+export const MAJOR_SKILL_OPTIONS = [
+  'Bien entraîné',
+  'Vétéran',
+  'Tenace',
+  'Mur de bouclier',
+] as const
+
+export function isMinorSkillImprovement(id: string): boolean {
+  return id.endsWith('-min-skill')
+}
+
+export function isMajorSkillImprovement(id: string): boolean {
+  return id.endsWith('-maj-skill')
+}
+
+// ---------------------------------------------------------------------------
 // Exported canonical improvement arrays (for reference / import by tests)
 // ---------------------------------------------------------------------------
 
-// Note: Unit Endurance has NO slotCost override (default 1 / undefined).
-// Only CHARACTER Endurance has slotCost=2.
+// Note: slotCost is not currently used — Character Endurance is excluded at 20 XP tier instead.
 export const UNIT_MINOR_IMPROVEMENTS: Improvement[] = [
   { id: 'u-min-init', label: '+1 Initiative', category: 'minor' },
   { id: 'u-min-cc', label: '+1 CC', category: 'minor' },
   { id: 'u-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-  { id: 'u-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
-  { id: 'u-min-skill', label: 'Compétence (voir fiche)', category: 'minor' },
+  { id: 'u-min-cd', label: '+1 Commandement', category: 'minor' },
+  { id: 'u-min-skill', label: "1 compétence de la fiche d'unité", category: 'minor' },
 ]
 
 export const UNIT_MAJOR_IMPROVEMENTS: Improvement[] = [
@@ -44,22 +62,17 @@ export const UNIT_MAJOR_IMPROVEMENTS: Improvement[] = [
   { id: 'u-maj-skill', label: 'Compétence au choix (bien entraîné, vétéran, tenace, mur de bouclier)', category: 'major' },
 ]
 
-// Honneurs de bataille rewards (unit-only, not visual tiers)
-export const UNIT_HONOUR_IMPROVEMENTS: Improvement[] = [
-  { id: 'u-hon-champ', label: 'Champion gratuit', category: 'honour' },
-  { id: 'u-hon-ban', label: 'Bannière gratuite', category: 'honour' },
-]
-
 export const CHARACTER_MINOR_IMPROVEMENTS: Improvement[] = [
   { id: 'c-min-init', label: '+1 Initiative', category: 'minor' },
-  { id: 'c-min-ccct', label: '+1 CC ou +1 CT', category: 'minor' },
+  { id: 'c-min-cc', label: '+1 CC', category: 'minor' },
+  { id: 'c-min-ct', label: '+1 CT', category: 'minor' },
   { id: 'c-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-  { id: 'c-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
+  { id: 'c-min-cd', label: '+1 Commandement', category: 'minor' },
 ]
 
 export const CHARACTER_MAJOR_IMPROVEMENTS: Improvement[] = [
   { id: 'c-maj-f', label: '+1 Force', category: 'major' },
-  { id: 'c-maj-e', label: '+1 Endurance (2 emplacements)', category: 'major', slotCost: 2 },
+  { id: 'c-maj-e', label: '+1 Endurance', category: 'major' },
   { id: 'c-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
   { id: 'c-maj-a', label: '+1 Attaque', category: 'major' },
   { id: 'c-maj-mag', label: '+1 Niveau de magie (sorcier, max 4)', category: 'major' },
@@ -81,6 +94,7 @@ export const UNIT_THRESHOLDS: ThresholdEntry[] = [
     minorImprovements: [
       { id: 'u-hon1-champ', label: 'Champion gratuit', category: 'honour' },
       { id: 'u-hon1-ban', label: 'Bannière gratuite', category: 'honour' },
+      { id: 'u-hon1-na', label: 'Non applicable', category: 'honour' },
     ],
     majorCount: 0,
     minorCount: 1,
@@ -92,6 +106,7 @@ export const UNIT_THRESHOLDS: ThresholdEntry[] = [
     minorImprovements: [
       { id: 'u-hon2-champ', label: 'Champion gratuit', category: 'honour' },
       { id: 'u-hon2-ban', label: 'Bannière gratuite', category: 'honour' },
+      { id: 'u-hon2-na', label: 'Non applicable', category: 'honour' },
     ],
     majorCount: 0,
     minorCount: 1,
@@ -104,8 +119,8 @@ export const UNIT_THRESHOLDS: ThresholdEntry[] = [
       { id: 'u-t10-min-init', label: '+1 Initiative', category: 'minor' },
       { id: 'u-t10-min-cc', label: '+1 CC', category: 'minor' },
       { id: 'u-t10-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-      { id: 'u-t10-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
-      { id: 'u-t10-min-skill', label: 'Compétence (voir fiche)', category: 'minor' },
+      { id: 'u-t10-min-cd', label: '+1 Commandement', category: 'minor' },
+      { id: 'u-t10-min-skill', label: "1 compétence de la fiche d'unité", category: 'minor' },
     ],
     majorCount: 0,
     minorCount: 1,
@@ -132,8 +147,8 @@ export const UNIT_THRESHOLDS: ThresholdEntry[] = [
       { id: 'u-t50-min-init', label: '+1 Initiative', category: 'minor' },
       { id: 'u-t50-min-cc', label: '+1 CC', category: 'minor' },
       { id: 'u-t50-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-      { id: 'u-t50-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
-      { id: 'u-t50-min-skill', label: 'Compétence (voir fiche)', category: 'minor' },
+      { id: 'u-t50-min-cd', label: '+1 Commandement', category: 'minor' },
+      { id: 'u-t50-min-skill', label: "1 compétence de la fiche d'unité", category: 'minor' },
     ],
     majorCount: 0,
     minorCount: 2,
@@ -152,8 +167,8 @@ export const UNIT_THRESHOLDS: ThresholdEntry[] = [
       { id: 'u-t80-min-init', label: '+1 Initiative', category: 'minor' },
       { id: 'u-t80-min-cc', label: '+1 CC', category: 'minor' },
       { id: 'u-t80-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-      { id: 'u-t80-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
-      { id: 'u-t80-min-skill', label: 'Compétence (voir fiche)', category: 'minor' },
+      { id: 'u-t80-min-cd', label: '+1 Commandement', category: 'minor' },
+      { id: 'u-t80-min-skill', label: "1 compétence de la fiche d'unité", category: 'minor' },
     ],
     majorCount: 2,
     minorCount: 1,
@@ -173,9 +188,10 @@ export const CHARACTER_THRESHOLDS: ThresholdEntry[] = [
     majorImprovements: [],
     minorImprovements: [
       { id: 'c-t6-min-init', label: '+1 Initiative', category: 'minor' },
-      { id: 'c-t6-min-ccct', label: '+1 CC ou +1 CT', category: 'minor' },
+      { id: 'c-t6-min-cc', label: '+1 CC', category: 'minor' },
+      { id: 'c-t6-min-ct', label: '+1 CT', category: 'minor' },
       { id: 'c-t6-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-      { id: 'c-t6-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
+      { id: 'c-t6-min-cd', label: '+1 Commandement', category: 'minor' },
     ],
     majorCount: 0,
     minorCount: 1,
@@ -185,7 +201,7 @@ export const CHARACTER_THRESHOLDS: ThresholdEntry[] = [
     tierLabel: 'Expérimenté',
     majorImprovements: [
       { id: 'c-maj-f', label: '+1 Force', category: 'major' },
-      { id: 'c-maj-e', label: '+1 Endurance (2 emplacements)', category: 'major', slotCost: 2 },
+      // Endurance excluded at 20 XP — not available as first major improvement
       { id: 'c-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
       { id: 'c-maj-a', label: '+1 Attaque', category: 'major' },
       { id: 'c-maj-mag', label: '+1 Niveau de magie (sorcier, max 4)', category: 'major' },
@@ -200,7 +216,7 @@ export const CHARACTER_THRESHOLDS: ThresholdEntry[] = [
     tierLabel: 'Vétéran',
     majorImprovements: [
       { id: 'c-t40-maj-f', label: '+1 Force', category: 'major' },
-      { id: 'c-t40-maj-e', label: '+1 Endurance (2 emplacements)', category: 'major', slotCost: 2 },
+      { id: 'c-t40-maj-e', label: '+1 Endurance', category: 'major' },
       { id: 'c-t40-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
       { id: 'c-t40-maj-a', label: '+1 Attaque', category: 'major' },
       { id: 'c-t40-maj-mag', label: '+1 Niveau de magie (sorcier, max 4)', category: 'major' },
@@ -208,9 +224,10 @@ export const CHARACTER_THRESHOLDS: ThresholdEntry[] = [
     ],
     minorImprovements: [
       { id: 'c-t40-min-init', label: '+1 Initiative', category: 'minor' },
-      { id: 'c-t40-min-ccct', label: '+1 CC ou +1 CT', category: 'minor' },
+      { id: 'c-t40-min-cc', label: '+1 CC', category: 'minor' },
+      { id: 'c-t40-min-ct', label: '+1 CT', category: 'minor' },
       { id: 'c-t40-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-      { id: 'c-t40-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
+      { id: 'c-t40-min-cd', label: '+1 Commandement', category: 'minor' },
     ],
     majorCount: 1,
     minorCount: 2,
@@ -220,7 +237,7 @@ export const CHARACTER_THRESHOLDS: ThresholdEntry[] = [
     tierLabel: 'Héroïque',
     majorImprovements: [
       { id: 'c-t70-maj-f', label: '+1 Force', category: 'major' },
-      { id: 'c-t70-maj-e', label: '+1 Endurance (2 emplacements)', category: 'major', slotCost: 2 },
+      { id: 'c-t70-maj-e', label: '+1 Endurance', category: 'major' },
       { id: 'c-t70-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
       { id: 'c-t70-maj-a', label: '+1 Attaque', category: 'major' },
       { id: 'c-t70-maj-mag', label: '+1 Niveau de magie (sorcier, max 4)', category: 'major' },
@@ -228,9 +245,10 @@ export const CHARACTER_THRESHOLDS: ThresholdEntry[] = [
     ],
     minorImprovements: [
       { id: 'c-t70-min-init', label: '+1 Initiative', category: 'minor' },
-      { id: 'c-t70-min-ccct', label: '+1 CC ou +1 CT', category: 'minor' },
+      { id: 'c-t70-min-cc', label: '+1 CC', category: 'minor' },
+      { id: 'c-t70-min-ct', label: '+1 CT', category: 'minor' },
       { id: 'c-t70-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-      { id: 'c-t70-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
+      { id: 'c-t70-min-cd', label: '+1 Commandement', category: 'minor' },
     ],
     majorCount: 2,
     minorCount: 2,

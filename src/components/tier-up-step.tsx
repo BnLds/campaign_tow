@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import type { Improvement } from '../lib/constants'
+import { isMinorSkillImprovement, isMajorSkillImprovement, MAJOR_SKILL_OPTIONS } from '../lib/constants'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -20,6 +21,10 @@ export interface TierUpStepProps {
   isMounted?: boolean
   /** Button label override for the last step (default: 'Confirmer') */
   confirmLabel?: string
+  /** IDs of improvements that should be disabled (already taken, at max, etc.) */
+  disabledImprovementIds?: string[]
+  /** IDs of improvements blocked because the stat has reached STAT_CAP (10) */
+  capBlockedImprovementIds?: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -36,26 +41,28 @@ export function TierUpStep({
   onConfirm,
   isMounted,
   confirmLabel = 'Confirmer',
+  disabledImprovementIds = [],
+  capBlockedImprovementIds = [],
 }: TierUpStepProps) {
-  // Filter out character Endurance (slotCost=2) when majorCount < 2
-  const filteredMajors = majorImprovements.filter((imp) => {
-    const cost = imp.slotCost ?? 1
-    if (cost >= 2 && majorCount < 2) return false
-    return true
-  })
+  // Major improvements are passed as-is (Endurance exclusion at 20 XP is done in constants)
+  const filteredMajors = majorImprovements
 
   // State: selected major improvement IDs + selected minor improvement IDs
   const [selectedMajorIds, setSelectedMajorIds] = useState<string[]>([])
   const [selectedMinorIds, setSelectedMinorIds] = useState<string[]>([])
-
-  // Compute used major slots
-  const usedMajorSlots = selectedMajorIds.reduce((sum, id) => {
-    const imp = filteredMajors.find((m) => m.id === id)
-    return sum + (imp?.slotCost ?? 1)
-  }, 0)
+  const [skillText, setSkillText] = useState('')
+  const [skillChoice, setSkillChoice] = useState<string | null>(null)
 
   // Is the confirm button enabled?
-  const isValid = usedMajorSlots === majorCount && selectedMinorIds.length === minorCount
+  const hasMinorSkillSelected = selectedMinorIds.some(isMinorSkillImprovement)
+  const hasMajorSkillSelected = selectedMajorIds.some(isMajorSkillImprovement)
+  const skillDetailProvided =
+    (!hasMinorSkillSelected || skillText.trim() !== '') &&
+    (!hasMajorSkillSelected || skillChoice !== null)
+  const isValid =
+    selectedMajorIds.length === majorCount &&
+    selectedMinorIds.length === minorCount &&
+    skillDetailProvided
 
   // Determine UI mode
   const isMixed = majorCount > 0 && minorCount > 0
@@ -64,129 +71,212 @@ export function TierUpStep({
   function handleMajorClick(id: string) {
     const imp = filteredMajors.find((m) => m.id === id)
     if (!imp) return
-    const cost = imp.slotCost ?? 1
+
+    // Check disabled list
+    if (disabledImprovementIds.includes(id)) return
 
     if (selectedMajorIds.includes(id)) {
       // Deselect
       setSelectedMajorIds((prev) => prev.filter((x) => x !== id))
+      if (isMajorSkillImprovement(id)) setSkillChoice(null)
+    } else if (majorCount === 1) {
+      // Radio mode — always replace current selection
+      // Reset skill choice if replacing a skill with a non-skill (or vice versa)
+      if (!isMajorSkillImprovement(id) || (selectedMajorIds.length > 0 && isMajorSkillImprovement(selectedMajorIds[0]))) {
+        setSkillChoice(null)
+      }
+      setSelectedMajorIds([id])
     } else {
-      // Select if there's room
-      const remaining = majorCount - usedMajorSlots
-      if (remaining >= cost) {
-        if (majorCount === 1) {
-          // Radio mode
-          setSelectedMajorIds([id])
-        } else {
-          setSelectedMajorIds((prev) => [...prev, id])
-        }
+      // Checkbox mode — select if there's room
+      const remaining = majorCount - selectedMajorIds.length
+      if (remaining > 0) {
+        setSelectedMajorIds((prev) => [...prev, id])
       }
     }
   }
 
   // Handle minor selection
   function handleMinorClick(id: string) {
+    // Check disabled list
+    if (disabledImprovementIds.includes(id)) return
+
     if (selectedMinorIds.includes(id)) {
       setSelectedMinorIds((prev) => prev.filter((x) => x !== id))
+      if (isMinorSkillImprovement(id)) setSkillText('')
     } else if (minorCount === 1) {
-      // Radio mode
+      // Radio mode — always replace current selection
+      // Reset skill text if replacing a skill with a non-skill (or vice versa)
+      if (!isMinorSkillImprovement(id) || (selectedMinorIds.length > 0 && isMinorSkillImprovement(selectedMinorIds[0]))) {
+        setSkillText('')
+      }
       setSelectedMinorIds([id])
     } else if (selectedMinorIds.length < minorCount) {
       setSelectedMinorIds((prev) => [...prev, id])
     }
   }
 
+  function resolveDescription(imp: Improvement, isMajor: boolean): string {
+    if (!isMajor && isMinorSkillImprovement(imp.id)) return skillText.trim()
+    if (isMajor && isMajorSkillImprovement(imp.id)) return skillChoice!
+    return imp.label
+  }
+
   function handleConfirm() {
     if (!isValid) return
     const majorDescriptions = selectedMajorIds.map((id) => {
       const imp = filteredMajors.find((m) => m.id === id)
-      return imp?.label ?? id
+      return imp ? resolveDescription(imp, true) : id
     })
     const minorDescriptions = selectedMinorIds.map((id) => {
       const imp = minorImprovements.find((m) => m.id === id)
-      return imp?.label ?? id
+      return imp ? resolveDescription(imp, false) : id
     })
     onConfirm({ descriptions: [...majorDescriptions, ...minorDescriptions] })
   }
 
-  // Determine if a major improvement is disabled (slots exhausted or Endurance blocks others)
+  // Determine if a major improvement is disabled (slots exhausted or constraint-disabled)
   function isMajorDisabled(imp: Improvement): boolean {
+    if (disabledImprovementIds.includes(imp.id)) return true
     if (selectedMajorIds.includes(imp.id)) return false // already selected
-    const cost = imp.slotCost ?? 1
-    const remaining = majorCount - usedMajorSlots
-    return remaining < cost
+    if (majorCount === 1) return false // radio mode — can always switch
+    const remaining = majorCount - selectedMajorIds.length
+    return remaining <= 0
   }
 
   // Render improvement item as radio or checkbox
   function renderMajorItem(imp: Improvement) {
     const checked = selectedMajorIds.includes(imp.id)
     const disabled = !checked && isMajorDisabled(imp)
+    const isCapBlocked = capBlockedImprovementIds.includes(imp.id)
     const inputType = majorCount === 1 ? 'radio' : 'checkbox'
     const inputName = `major-${tierLabel}-${unitName}`
 
     return (
-      <label
-        key={imp.id}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.375rem 0',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.875rem',
-          color: disabled ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          borderBottom: '1px solid var(--color-border)',
-        }}
-      >
-        <input
-          type={inputType}
-          name={inputName}
-          checked={checked}
-          disabled={disabled}
-          onChange={() => handleMajorClick(imp.id)}
-          aria-label={imp.label}
-        />
-        {imp.label}
-        {(imp.slotCost ?? 1) > 1 && (
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-            ({imp.slotCost} emplacements)
-          </span>
+      <div key={imp.id}>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.375rem 0',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            color: isCapBlocked ? 'var(--color-malus)' : disabled ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            borderBottom: '1px solid var(--color-border)',
+          }}
+        >
+          <input
+            type={inputType}
+            name={inputName}
+            checked={checked}
+            disabled={disabled}
+            onChange={() => handleMajorClick(imp.id)}
+            aria-label={imp.label}
+          />
+          {imp.label}
+          {isCapBlocked && (
+            <span style={{ color: 'var(--color-malus)', fontSize: '0.75rem' }}>
+              — valeur 10 atteinte
+            </span>
+          )}
+        </label>
+        {checked && isMajorSkillImprovement(imp.id) && (
+          <div
+            data-testid="skill-choice-group"
+            style={{
+              marginTop: '0.25rem',
+              marginLeft: '1.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem',
+            }}
+          >
+            {MAJOR_SKILL_OPTIONS.map((option) => (
+              <label
+                key={option}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="radio"
+                  name={`skill-choice-${imp.id}`}
+                  checked={skillChoice === option}
+                  onChange={() => setSkillChoice(option)}
+                />
+                {option}
+              </label>
+            ))}
+          </div>
         )}
-      </label>
+      </div>
     )
   }
 
   function renderMinorItem(imp: Improvement) {
     const checked = selectedMinorIds.includes(imp.id)
-    const disabled = !checked && selectedMinorIds.length >= minorCount
+    const isConstraintDisabled = disabledImprovementIds.includes(imp.id)
+    const isCapBlocked = capBlockedImprovementIds.includes(imp.id)
+    const disabled = isConstraintDisabled || (!checked && minorCount > 1 && selectedMinorIds.length >= minorCount)
     const inputType = minorCount === 1 ? 'radio' : 'checkbox'
     const inputName = `minor-${tierLabel}-${unitName}`
 
     return (
-      <label
-        key={imp.id}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.375rem 0',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.875rem',
-          color: disabled ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          borderBottom: '1px solid var(--color-border)',
-        }}
-      >
-        <input
-          type={inputType}
-          name={inputName}
-          checked={checked}
-          disabled={disabled}
-          onChange={() => handleMinorClick(imp.id)}
-          aria-label={imp.label}
-        />
-        {imp.label}
-      </label>
+      <div key={imp.id}>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.375rem 0',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            color: isCapBlocked ? 'var(--color-malus)' : disabled ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            borderBottom: '1px solid var(--color-border)',
+          }}
+        >
+          <input
+            type={inputType}
+            name={inputName}
+            checked={checked}
+            disabled={disabled}
+            onChange={() => handleMinorClick(imp.id)}
+            aria-label={imp.label}
+          />
+          {imp.label}
+          {isCapBlocked && (
+            <span style={{ color: 'var(--color-malus)', fontSize: '0.75rem' }}>
+              — valeur 10 atteinte
+            </span>
+          )}
+        </label>
+        {checked && isMinorSkillImprovement(imp.id) && (
+          <input
+            data-testid="skill-text-input"
+            type="text"
+            placeholder="ex: vétéran, si l'unité y a droit"
+            value={skillText}
+            onChange={(e) => setSkillText(e.target.value)}
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.875rem',
+              padding: '0.375rem 0.5rem',
+              marginTop: '0.25rem',
+              marginLeft: '1.5rem',
+              borderRadius: '4px',
+              border: '1px solid var(--color-border)',
+              width: 'calc(100% - 1.5rem)',
+            }}
+          />
+        )}
+      </div>
     )
   }
 

@@ -421,10 +421,11 @@ export async function deleteStatModifier(modifierId: string): Promise<boolean> {
 export async function insertUnitGain(
   unitId: string,
   description: string,
+  matchParticipantId?: string,
 ) {
   const rows = await db
     .insert(unitGains)
-    .values({ unitId, description })
+    .values({ unitId, description, matchParticipantId: matchParticipantId ?? null })
     .returning()
   if (rows.length === 0) throw new Error('Insert returned no rows')
   return rows[0]
@@ -498,7 +499,7 @@ export type TimelineEntryData = {
     faction: string
     playerName: string | null
   }
-  unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number }>
+  unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[] }>
 }
 
 export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryData[]> {
@@ -536,7 +537,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
       faction: row.opponentFaction,
       playerName: row.opponentPlayerName ?? null,
     },
-    unitXpEntries: [] as Array<{ unitName: string; unitType: string; xpGained: number }>,
+    unitXpEntries: [] as Array<{ unitName: string; unitType: string; xpGained: number; gains: string[] }>,
   }))
 
   // Secondary query: load XP entries for entries that have evolutions
@@ -545,23 +546,45 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     .map((e) => e.matchParticipantId)
 
   if (participantIds.length > 0) {
-    const xpRows = await db
-      .select({
-        matchParticipantId: matchXpEntries.matchParticipantId,
-        unitName: units.name,
-        unitType: units.type,
-        xpGained: matchXpEntries.xpGained,
-      })
-      .from(matchXpEntries)
-      .innerJoin(units, eq(matchXpEntries.unitId, units.id))
-      .where(inArray(matchXpEntries.matchParticipantId, participantIds))
+    const [xpRows, gainRows] = await Promise.all([
+      db
+        .select({
+          matchParticipantId: matchXpEntries.matchParticipantId,
+          unitId: matchXpEntries.unitId,
+          unitName: units.name,
+          unitType: units.type,
+          xpGained: matchXpEntries.xpGained,
+        })
+        .from(matchXpEntries)
+        .innerJoin(units, eq(matchXpEntries.unitId, units.id))
+        .where(inArray(matchXpEntries.matchParticipantId, participantIds)),
+      db
+        .select({
+          matchParticipantId: unitGains.matchParticipantId,
+          unitId: unitGains.unitId,
+          description: unitGains.description,
+        })
+        .from(unitGains)
+        .where(inArray(unitGains.matchParticipantId, participantIds)),
+    ])
+
+    // Group gains by matchParticipantId + unitId
+    const gainsMap = new Map<string, string[]>()
+    for (const row of gainRows) {
+      if (!row.matchParticipantId) continue
+      const key = `${row.matchParticipantId}:${row.unitId}`
+      const arr = gainsMap.get(key) ?? []
+      arr.push(row.description)
+      gainsMap.set(key, arr)
+    }
 
     // Group by matchParticipantId, sorted by unit type: personnage > base > spécial > rare
     const UNIT_TYPE_ORDER: Record<string, number> = { personnage: 0, base: 1, special: 2, rare: 3 }
-    const xpMap = new Map<string, Array<{ unitName: string; unitType: string; xpGained: number }>>()
+    const xpMap = new Map<string, Array<{ unitName: string; unitType: string; xpGained: number; gains: string[] }>>()
     for (const row of xpRows) {
       const arr = xpMap.get(row.matchParticipantId) ?? []
-      arr.push({ unitName: row.unitName, unitType: row.unitType, xpGained: row.xpGained })
+      const unitGainsForMatch = gainsMap.get(`${row.matchParticipantId}:${row.unitId}`) ?? []
+      arr.push({ unitName: row.unitName, unitType: row.unitType, xpGained: row.xpGained, gains: unitGainsForMatch })
       xpMap.set(row.matchParticipantId, arr)
     }
     for (const arr of xpMap.values()) {
@@ -808,14 +831,24 @@ export async function getMatchParticipantEvolutionsStatus(
   return { found: true, evolutionsEnteredAt: rows[0].evolutionsEnteredAt }
 }
 
+// Story 4.2 — delete all unit gains for a match participant (used on wizard resume to reset partial gains)
+export async function deleteUnitGainsForMatchParticipant(matchParticipantId: string): Promise<number> {
+  const deleted = await db
+    .delete(unitGains)
+    .where(eq(unitGains.matchParticipantId, matchParticipantId))
+    .returning({ id: unitGains.id })
+  return deleted.length
+}
+
 // Story 4.2 — insert multiple unit gains in a single transaction (C3: prevents partial commits)
 export async function insertUnitGainsTransaction(
   unitId: string,
   descriptions: string[],
+  matchParticipantId?: string,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     for (const description of descriptions) {
-      await tx.insert(unitGains).values({ unitId, description })
+      await tx.insert(unitGains).values({ unitId, description, matchParticipantId: matchParticipantId ?? null })
     }
   })
 }
@@ -863,6 +896,27 @@ export async function getMatchXpEntries(
     })
     .from(matchXpEntries)
     .where(eq(matchXpEntries.matchParticipantId, matchParticipantId))
+}
+
+// Batch commit: insert all unit_gains + stamp evolutionsEnteredAt in one transaction
+export async function completeEvolutionsWithGainsTransaction(
+  matchParticipantId: string,
+  gains: Array<{ unitId: string; descriptions: string[] }>,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    for (const { unitId, descriptions } of gains) {
+      for (const description of descriptions) {
+        await tx.insert(unitGains).values({
+          unitId,
+          description,
+          matchParticipantId,
+        })
+      }
+    }
+    await tx.update(matchParticipants)
+      .set({ evolutionsEnteredAt: new Date() })
+      .where(eq(matchParticipants.id, matchParticipantId))
+  })
 }
 
 export async function updateMatchResults(

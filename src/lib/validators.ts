@@ -104,6 +104,17 @@ export const submitTierUpSchema = z.object({
 })
 export type SubmitTierUpInput = z.infer<typeof submitTierUpSchema>
 
+// Batch commit: complete evolutions with all tier-up gains in one atomic operation
+export const completeEvolutionsWithGainsSchema = z.object({
+  matchId: z.string().min(1),
+  matchParticipantId: z.string().min(1),
+  gains: z.array(z.object({
+    unitId: z.string().min(1),
+    descriptions: z.array(z.string().min(1)),
+  })),
+})
+export type CompleteEvolutionsWithGainsInput = z.infer<typeof completeEvolutionsWithGainsSchema>
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),

@@ -25,8 +25,8 @@ const MINOR_IMPROVEMENTS: Improvement[] = [
   { id: 'u-min-init', label: '+1 Initiative', category: 'minor' },
   { id: 'u-min-cc', label: '+1 CC', category: 'minor' },
   { id: 'u-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-  { id: 'u-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
-  { id: 'u-min-skill', label: 'Compétence (voir fiche)', category: 'minor' },
+  { id: 'u-min-cd', label: '+1 Commandement', category: 'minor' },
+  { id: 'u-min-skill', label: "1 compétence de la fiche d'unité", category: 'minor' },
 ]
 
 const MAJOR_IMPROVEMENTS: Improvement[] = [
@@ -39,7 +39,7 @@ const MAJOR_IMPROVEMENTS: Improvement[] = [
 
 const CHAR_MAJOR_IMPROVEMENTS: Improvement[] = [
   { id: 'c-maj-f', label: '+1 Force', category: 'major' },
-  { id: 'c-maj-e', label: '+1 Endurance (2 emplacements)', category: 'major', slotCost: 2 },
+  { id: 'c-maj-e', label: '+1 Endurance', category: 'major' },
   { id: 'c-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
   { id: 'c-maj-a', label: '+1 Attaque', category: 'major' },
   { id: 'c-maj-mag', label: '+1 Niveau de magie (sorcier, max 4)', category: 'major' },
@@ -48,9 +48,10 @@ const CHAR_MAJOR_IMPROVEMENTS: Improvement[] = [
 
 const CHAR_MINOR_IMPROVEMENTS: Improvement[] = [
   { id: 'c-min-init', label: '+1 Initiative', category: 'minor' },
-  { id: 'c-min-ccct', label: '+1 CC ou +1 CT', category: 'minor' },
+  { id: 'c-min-cc', label: '+1 CC', category: 'minor' },
+  { id: 'c-min-ct', label: '+1 CT', category: 'minor' },
   { id: 'c-min-mouv', label: '+1 Mouvement (unique)', category: 'minor' },
-  { id: 'c-min-cd', label: '+1 Commandement (max 10)', category: 'minor' },
+  { id: 'c-min-cd', label: '+1 Commandement', category: 'minor' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -409,14 +410,14 @@ describe('[AC2][P0] TierUpStep — mixed mode (two sections: Task 11.7)', () => 
 })
 
 // ---------------------------------------------------------------------------
-// Task 11.8 — Endurance slotCost=2 consumes both major slots
+// Task 11.8 — Endurance is a normal selection (no slotCost) in majorCount=2 tier
 // ---------------------------------------------------------------------------
 
-describe('[AC2][P0] TierUpStep — Endurance slotCost=2 in majorCount=2 tier (Task 11.8)', () => {
-  it('[4.2-TUS-017] selecting Endurance (slotCost=2) in majorCount=2 tier counts as 2 slots', () => {
+describe('[AC2][P0] TierUpStep — Endurance as normal selection in majorCount=2 tier (Task 11.8)', () => {
+  it('[4.2-TUS-017] selecting Endurance in majorCount=2 tier counts as 1 slot, allowing another major', () => {
     const majorWithEndurance: Improvement[] = [
       { id: 'c-maj-f', label: '+1 Force', category: 'major' },
-      { id: 'c-maj-e', label: '+1 Endurance (2 emplacements)', category: 'major', slotCost: 2 },
+      { id: 'c-maj-e', label: '+1 Endurance', category: 'major' },
       { id: 'c-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
     ]
     render(
@@ -430,21 +431,28 @@ describe('[AC2][P0] TierUpStep — Endurance slotCost=2 in majorCount=2 tier (Ta
         onConfirm={vi.fn()}
       />
     )
-    // Select Endurance — should consume both major slots
-    fireEvent.click(screen.getByLabelText(/\+1 Endurance \(2 emplacements\)/))
-
-    // Now selecting minors
-    fireEvent.click(screen.getByLabelText(/\+1 Initiative/))
-    fireEvent.click(screen.getByLabelText(/\+1 CC ou \+1 CT/))
+    // Select Endurance — counts as 1 slot, button still disabled (need 2 major + 2 minor)
+    fireEvent.click(screen.getByLabelText(/\+1 Endurance/))
 
     const btn = screen.getByTestId('tier-up-confirm-button') as HTMLButtonElement
+    expect(btn.disabled).toBe(true)
+
+    // Select second major — now 2 major slots filled
+    fireEvent.click(screen.getByLabelText(/\+1 Force/))
+    // Still disabled (need 2 minors)
+    expect(btn.disabled).toBe(true)
+
+    // Select 2 minors
+    fireEvent.click(screen.getByLabelText(/\+1 Initiative/))
+    fireEvent.click(screen.getByLabelText(/\+1 CT/))
+
     expect(btn.disabled).toBe(false)
   })
 
-  it('[4.2-TUS-018] after selecting Endurance (slotCost=2), other major options become unselectable', () => {
+  it('[4.2-TUS-018] after selecting Endurance, one more major slot remains in majorCount=2', () => {
     const majorWithEndurance: Improvement[] = [
       { id: 'c-maj-f', label: '+1 Force', category: 'major' },
-      { id: 'c-maj-e', label: '+1 Endurance (2 emplacements)', category: 'major', slotCost: 2 },
+      { id: 'c-maj-e', label: '+1 Endurance', category: 'major' },
       { id: 'c-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
     ]
     render(
@@ -459,26 +467,35 @@ describe('[AC2][P0] TierUpStep — Endurance slotCost=2 in majorCount=2 tier (Ta
       />
     )
     // Select Endurance
-    fireEvent.click(screen.getByLabelText(/\+1 Endurance \(2 emplacements\)/))
+    fireEvent.click(screen.getByLabelText(/\+1 Endurance/))
 
-    // Other major options should be disabled
+    // Other major options should still be selectable (not disabled)
     const forceCb = screen.getByLabelText(/\+1 Force/) as HTMLInputElement
     const pvCb = screen.getByLabelText(/\+1 PV/) as HTMLInputElement
-    expect(forceCb.disabled).toBe(true)
-    expect(pvCb.disabled).toBe(true)
+    expect(forceCb.disabled).toBe(false)
+    expect(pvCb.disabled).toBe(false)
   })
 })
 
 // ---------------------------------------------------------------------------
-// Task 11.9 — Character Endurance (slotCost=2) filtered when majorCount < 2
+// Task 11.9 — Character Endurance excluded from 20 XP tier data (not filtered by component)
 // ---------------------------------------------------------------------------
 
-describe('[AC2][P0] TierUpStep — character Endurance filtered when majorCount < 2 (Task 11.9)', () => {
-  it('[4.2-TUS-019] character Expérimenté (majorCount=1): Endurance slotCost=2 NOT rendered', () => {
+describe('[AC2][P0] TierUpStep — character Endurance excluded from 20 XP tier (Task 11.9)', () => {
+  it('[4.2-TUS-019] character Expérimenté (majorCount=1): Endurance not rendered (not in data)', () => {
+    // At 20 XP, Endurance is excluded from the improvement list by the constants,
+    // so the component receives improvements without Endurance
+    const charMajorWithoutEndurance: Improvement[] = [
+      { id: 'c-maj-f', label: '+1 Force', category: 'major' },
+      { id: 'c-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
+      { id: 'c-maj-a', label: '+1 Attaque', category: 'major' },
+      { id: 'c-maj-mag', label: '+1 Niveau de magie (sorcier, max 4)', category: 'major' },
+      { id: 'c-maj-2min', label: '2 améliorations mineures', category: 'major' },
+    ]
     render(
       <TierUpStep
         tierLabel="Expérimenté"
-        majorImprovements={CHAR_MAJOR_IMPROVEMENTS}
+        majorImprovements={charMajorWithoutEndurance}
         minorImprovements={[]}
         majorCount={1}
         minorCount={0}
@@ -486,11 +503,11 @@ describe('[AC2][P0] TierUpStep — character Endurance filtered when majorCount 
         onConfirm={vi.fn()}
       />
     )
-    // Endurance with slotCost=2 should be filtered out when majorCount < 2
-    expect(screen.queryByLabelText(/\+1 Endurance \(2 emplacements\)/)).toBeNull()
+    // Endurance is not in the data, so it should not appear
+    expect(screen.queryByLabelText(/\+1 Endurance/)).toBeNull()
   })
 
-  it('[4.2-TUS-020] character Héroïque (majorCount=2): Endurance slotCost=2 IS rendered', () => {
+  it('[4.2-TUS-020] character Héroïque (majorCount=2): Endurance IS rendered', () => {
     render(
       <TierUpStep
         tierLabel="Héroïque"
@@ -502,8 +519,8 @@ describe('[AC2][P0] TierUpStep — character Endurance filtered when majorCount 
         onConfirm={vi.fn()}
       />
     )
-    // Endurance should be visible when majorCount >= 2
-    expect(screen.getByLabelText(/\+1 Endurance \(2 emplacements\)/)).not.toBeNull()
+    // Endurance should be visible in higher tiers
+    expect(screen.getByLabelText(/\+1 Endurance/)).not.toBeNull()
   })
 
   it('[4.2-TUS-021] unit Expérimenté (majorCount=1): unit Endurance IS rendered (no slotCost filter for units)', () => {
@@ -632,5 +649,454 @@ describe('[AC2][P0] TierUpStep — source file contract', () => {
     const { resolve: resolvePath } = require('node:path')
     const code = readFileSync(resolvePath(__dirname, '..', 'tier-up-step.tsx'), 'utf-8')
     expect(code).toContain('data-testid="tier-up-mounted-callout"')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CC — Radio toggle fix: clicking different major in majorCount=1 replaces selection
+// ---------------------------------------------------------------------------
+
+describe('[CC-AC1] TierUpStep — radio toggle fix', () => {
+  it('[CC-TUS-001] clicking a different major when majorCount=1 replaces selection', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+      />,
+    )
+
+    // Select first option
+    fireEvent.click(screen.getByLabelText('+1 CT'))
+    const ctRadio = screen.getByLabelText('+1 CT') as HTMLInputElement
+    expect(ctRadio.checked).toBe(true)
+
+    // Click a different option — should replace
+    fireEvent.click(screen.getByLabelText('+1 Force'))
+    const forceRadio = screen.getByLabelText('+1 Force') as HTMLInputElement
+    expect(forceRadio.checked).toBe(true)
+    expect(ctRadio.checked).toBe(false)
+
+    // Confirm button should be enabled (not disabled)
+    const btn = screen.getByTestId('tier-up-confirm-button') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+  })
+
+  it('[CC-TUS-002] confirm sends the replaced selection, not the original', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+      />,
+    )
+
+    // Select CT first, then switch to Force
+    fireEvent.click(screen.getByLabelText('+1 CT'))
+    fireEvent.click(screen.getByLabelText('+1 Force'))
+
+    // Confirm
+    fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+    expect(onConfirm).toHaveBeenCalledWith({ descriptions: ['+1 Force'] })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CC — disabledImprovementIds: greyed-out items are not selectable
+// ---------------------------------------------------------------------------
+
+describe('[CC-AC2/AC3/AC7] TierUpStep — disabledImprovementIds', () => {
+  it('[CC-TUS-003] disabled minor improvements are not selectable', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+        disabledImprovementIds={['u-min-mouv']}
+      />,
+    )
+
+    // Mouvement should be disabled
+    const mouvInput = screen.getByLabelText('+1 Mouvement (unique)') as HTMLInputElement
+    expect(mouvInput.disabled).toBe(true)
+
+    // Clicking it should not select it
+    fireEvent.click(mouvInput)
+    expect(mouvInput.checked).toBe(false)
+
+    // Other items should still be selectable
+    fireEvent.click(screen.getByLabelText('+1 Initiative'))
+    expect((screen.getByLabelText('+1 Initiative') as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('[CC-TUS-004] disabled major improvements are not selectable', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+        disabledImprovementIds={['u-maj-e', 'u-maj-a']}
+      />,
+    )
+
+    // Endurance and Attaque should be disabled
+    expect((screen.getByLabelText('+1 Endurance (max +1)') as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByLabelText('+1 Attaque (max +1)') as HTMLInputElement).disabled).toBe(true)
+
+    // CT and Force should be selectable
+    fireEvent.click(screen.getByLabelText('+1 CT'))
+    expect((screen.getByLabelText('+1 CT') as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('[CC-TUS-005] disabled improvements in mixed mode are not selectable in either section', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Légendaire"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={2}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+        disabledImprovementIds={['u-maj-e', 'u-min-mouv']}
+      />,
+    )
+
+    // Major Endurance disabled
+    expect((screen.getByLabelText('+1 Endurance (max +1)') as HTMLInputElement).disabled).toBe(true)
+    // Minor Mouvement disabled
+    expect((screen.getByLabelText('+1 Mouvement (unique)') as HTMLInputElement).disabled).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CAP — capBlockedImprovementIds: red text "valeur 10 atteinte"
+// ---------------------------------------------------------------------------
+
+describe('[CAP] TierUpStep — capBlockedImprovementIds UI', () => {
+  it('[CAP-TUS-001] cap-blocked improvement shows red "valeur 10 atteinte" text and is disabled', () => {
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+        disabledImprovementIds={['u-min-cd']}
+        capBlockedImprovementIds={['u-min-cd']}
+      />,
+    )
+
+    // Commandement should be disabled
+    const cdInput = screen.getByLabelText('+1 Commandement') as HTMLInputElement
+    expect(cdInput.disabled).toBe(true)
+
+    // Should show "valeur 10 atteinte" text
+    expect(screen.getByText(/valeur 10 atteinte/)).not.toBeNull()
+  })
+
+  it('[CAP-TUS-002] improvement in disabledIds but NOT in capBlockedIds → no red text', () => {
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+        disabledImprovementIds={['u-min-mouv']}
+        capBlockedImprovementIds={[]}
+      />,
+    )
+
+    // Mouvement disabled but no cap text
+    expect((screen.getByLabelText('+1 Mouvement (unique)') as HTMLInputElement).disabled).toBe(true)
+    expect(screen.queryByText(/valeur 10 atteinte/)).toBeNull()
+  })
+
+  it('[CAP-TUS-003] cap-blocked major improvement shows red text', () => {
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+        disabledImprovementIds={['u-maj-f']}
+        capBlockedImprovementIds={['u-maj-f']}
+      />,
+    )
+
+    expect((screen.getByLabelText('+1 Force') as HTMLInputElement).disabled).toBe(true)
+    expect(screen.getByText(/valeur 10 atteinte/)).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Skill selection — minor skill (text input)
+// ---------------------------------------------------------------------------
+
+describe('[SKILL] TierUpStep — minor skill text input', () => {
+  it("[SKILL-TUS-001] text input appears when skill minor is selected", () => {
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
+    expect(screen.getByTestId('skill-text-input')).not.toBeNull()
+  })
+
+  it('[SKILL-TUS-002] text input disappears when switching to another minor', () => {
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
+    expect(screen.getByTestId('skill-text-input')).not.toBeNull()
+
+    // Switch to another option (radio mode)
+    fireEvent.click(screen.getByLabelText('+1 Initiative'))
+    expect(screen.queryByTestId('skill-text-input')).toBeNull()
+  })
+
+  it('[SKILL-TUS-003] confirm disabled when skill selected but text empty', () => {
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
+    const btn = screen.getByTestId('tier-up-confirm-button') as HTMLButtonElement
+    expect(btn.disabled).toBe(true)
+  })
+
+  it('[SKILL-TUS-004] confirm enabled when skill selected and text filled', () => {
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
+    fireEvent.change(screen.getByTestId('skill-text-input'), { target: { value: 'vétéran' } })
+    const btn = screen.getByTestId('tier-up-confirm-button') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+  })
+
+  it('[SKILL-TUS-005] onConfirm receives raw text, not the label, for minor skill', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
+    fireEvent.change(screen.getByTestId('skill-text-input'), { target: { value: 'vétéran' } })
+    fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+
+    expect(onConfirm).toHaveBeenCalledWith({ descriptions: ['vétéran'] })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Skill selection — major skill (radio group)
+// ---------------------------------------------------------------------------
+
+describe('[SKILL] TierUpStep — major skill radio group', () => {
+  it('[SKILL-TUS-006] radio group with 4 options appears when major skill selected', () => {
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Compétence au choix'))
+    const group = screen.getByTestId('skill-choice-group')
+    expect(group).not.toBeNull()
+    expect(group.querySelectorAll('input[type="radio"]')).toHaveLength(4)
+  })
+
+  it('[SKILL-TUS-007] radio group disappears when switching to another major', () => {
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Compétence au choix'))
+    expect(screen.getByTestId('skill-choice-group')).not.toBeNull()
+
+    fireEvent.click(screen.getByLabelText('+1 CT'))
+    expect(screen.queryByTestId('skill-choice-group')).toBeNull()
+  })
+
+  it('[SKILL-TUS-008] confirm disabled when major skill selected but no sub-option chosen', () => {
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Compétence au choix'))
+    const btn = screen.getByTestId('tier-up-confirm-button') as HTMLButtonElement
+    expect(btn.disabled).toBe(true)
+  })
+
+  it('[SKILL-TUS-009] confirm enabled when major skill selected and sub-option chosen', () => {
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Compétence au choix'))
+    fireEvent.click(screen.getByLabelText('Bien entraîné'))
+    const btn = screen.getByTestId('tier-up-confirm-button') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+  })
+
+  it('[SKILL-TUS-010] onConfirm receives sub-option name, not the long label, for major skill', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Expérimenté"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={[]}
+        majorCount={1}
+        minorCount={0}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Compétence au choix'))
+    fireEvent.click(screen.getByLabelText('Bien entraîné'))
+    fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+
+    expect(onConfirm).toHaveBeenCalledWith({ descriptions: ['Bien entraîné'] })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Skill selection — mixed mode (Légendaire)
+// ---------------------------------------------------------------------------
+
+describe('[SKILL] TierUpStep — mixed mode with minor skill', () => {
+  it('[SKILL-TUS-011] mixed mode: minor skill + normal majors → correct descriptions', () => {
+    const onConfirm = vi.fn()
+    render(
+      <TierUpStep
+        tierLabel="Légendaire"
+        majorImprovements={MAJOR_IMPROVEMENTS}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={2}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={onConfirm}
+      />,
+    )
+
+    // Select 2 normal majors
+    fireEvent.click(screen.getByLabelText('+1 CT'))
+    fireEvent.click(screen.getByLabelText('+1 Force'))
+
+    // Select minor skill + fill text
+    fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
+    fireEvent.change(screen.getByTestId('skill-text-input'), { target: { value: 'tenace' } })
+
+    fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+
+    const { descriptions } = onConfirm.mock.calls[0][0]
+    expect(descriptions).toHaveLength(3)
+    // Majors first (labels), then minor skill (raw text)
+    expect(descriptions[0]).toMatch(/\+1 CT|\+1 Force/)
+    expect(descriptions[1]).toMatch(/\+1 CT|\+1 Force/)
+    expect(descriptions[2]).toBe('tenace')
   })
 })

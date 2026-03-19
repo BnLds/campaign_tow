@@ -88,6 +88,7 @@ export const unitGains = pgTable('unit_gains', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
+  matchParticipantId: text('match_participant_id').references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
 
 // Story 3.1 — Campaign timeline: matches and participants

@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { TierUpStep } from './tier-up-step'
 import { detectTierCrossings } from '../lib/tier'
+import { parseGainStat, STAT_CAP, UNCAPPED_STATS } from '../lib/delta-composer'
 import type { ThresholdEntry } from '../lib/constants'
 import type { ServerResult } from '../lib/types'
 
@@ -17,20 +18,64 @@ type TierUpQueueEntry = ThresholdEntry & {
   unitName: string
   unitType: string
   hasMount: boolean  // defaults to false when not provided
+  commandement: number  // current CD value for constraint checks
+}
+
+// ---------------------------------------------------------------------------
+// Helper — expand multi-selection entries into sequential single-pick steps
+// ---------------------------------------------------------------------------
+
+function expandQueueEntry(entry: TierUpQueueEntry): TierUpQueueEntry[] {
+  const { majorCount, minorCount } = entry
+
+  // Simple entry: exactly one category with count 1 — no expansion needed
+  const needsExpansion = majorCount > 1 || minorCount > 1 || (majorCount > 0 && minorCount > 0)
+  if (!needsExpansion) {
+    return [entry]
+  }
+
+  const expanded: TierUpQueueEntry[] = []
+
+  // Expand major picks (one step per major selection)
+  for (let i = 0; i < majorCount; i++) {
+    expanded.push({
+      ...entry,
+      majorCount: 1,
+      minorCount: 0,
+      minorImprovements: [],
+      tierLabel: majorCount > 1
+        ? `${entry.tierLabel} — Majeure ${i + 1}/${majorCount}`
+        : entry.tierLabel,
+    })
+  }
+
+  // Expand minor picks (one step per minor selection)
+  for (let i = 0; i < minorCount; i++) {
+    expanded.push({
+      ...entry,
+      majorCount: 0,
+      minorCount: 1,
+      majorImprovements: [],
+      tierLabel: minorCount > 1
+        ? `${entry.tierLabel} — Mineure ${i + 1}/${minorCount}`
+        : (majorCount > 0 ? `${entry.tierLabel} — Mineure` : entry.tierLabel),
+    })
+  }
+
+  return expanded
 }
 
 export type PostMatchWizardProps = {
   matchId: string
   matchParticipantId: string
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; hasMount?: boolean }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
   onComplete: () => void
   onCancel: () => void
   /** Optional: inject custom submit function (for testing). Defaults to submitUnitXpFn. */
   onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string) => Promise<ServerResult<{ unitId: string; newXp: number }>>
-  /** Optional: inject custom complete function (for testing). Defaults to completeEvolutionsFn. */
-  onCompleteEvolutions?: (matchId: string) => Promise<ServerResult<{ matchId: string }>>
-  /** Optional: inject custom tier-up submit function (for testing). Defaults to submitTierUpFn. */
-  onSubmitTierUp?: (unitId: string, matchParticipantId: string, improvements: Array<{ description: string }>) => Promise<ServerResult<{ unitId: string; gainsCreated: number }>>
+  /** Batch commit: completes evolutions with all accumulated gains. Called once at the end.
+   *  gains=[] for the no-tierup path. */
+  onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>) => Promise<ServerResult<{ matchId: string }>>
 }
 
 export function PostMatchWizard({
@@ -41,7 +86,6 @@ export function PostMatchWizard({
   onCancel,
   onSubmitUnitXp,
   onCompleteEvolutions,
-  onSubmitTierUp,
 }: PostMatchWizardProps) {
   // Phase 1 state
   const [currentStep, setCurrentStep] = useState(0)
@@ -55,6 +99,13 @@ export function PostMatchWizard({
   const [tierUpStep, setTierUpStep] = useState(0)
   // Track tier-up selections per step for potential back-button restore (ref to avoid re-renders)
   const submittedTierUpsByStepRef = useRef<Map<number, string[]>>(new Map())
+  // Cumulative map: unitId → Set of honour descriptions already selected in this session
+  // Avoids O(N²) rescanning of prior steps during Phase 2 render
+  const cumulativeHonourSelectionsRef = useRef<Map<string, Set<string>>>(new Map())
+  // Cumulative map: unitId → all gain descriptions selected in this session (for constraint checks)
+  const cumulativeGainsRef = useRef<Map<string, string[]>>(new Map())
+  // Pending gains to batch-commit at the end (unitId → descriptions[])
+  const pendingGainsRef = useRef<Map<string, string[]>>(new Map())
 
   // XP results collected during Phase 1 (useRef to avoid re-renders on each submit)
   const xpResultsRef = useRef<Map<string, { oldXp: number; newXp: number }>>(new Map())
@@ -68,7 +119,7 @@ export function PostMatchWizard({
       const prevXp = (units[currentStep] as typeof units[0] | undefined)?.previousXpGained
       setXpGained(prevXp ?? 0)
     }
-  }, [currentStep]) // intentionally excludes `units` — see comment above
+  }, [currentStep, units])
 
   // Track XP values entered by the player per step (for back-button pre-fill)
   const submittedXpByStep = useRef<Map<number, number>>(new Map())
@@ -81,10 +132,10 @@ export function PostMatchWizard({
   if (units.length === 0) {
     const handleEmptyRetour = async () => {
       if (onCompleteEvolutions) {
-        await onCompleteEvolutions(matchId)
+        await onCompleteEvolutions(matchId, matchParticipantId, [])
       } else {
-        const { completeEvolutionsFn } = await import('../routes/match/$matchId/post-match')
-        await completeEvolutionsFn({ data: { matchId } })
+        const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
+        await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains: [] } })
       }
       onComplete()
     }
@@ -168,18 +219,21 @@ export function PostMatchWizard({
       }
 
       // Store XP result for tier crossing detection.
-      // oldXp = unit.xp (current XP before this wizard submission).
-      // newXp = server-returned value (or re-use existing if already submitted).
+      // oldXp = pre-match XP (before any XP from this match was applied).
+      // On first run: previousXpGained is null/0, so preMatchXp = currentUnit.xp.
+      // On resume: previousXpGained > 0, and currentUnit.xp already includes it,
+      // so preMatchXp = currentUnit.xp - previousXpGained = true pre-match XP.
+      const preMatchXp = currentUnit.xp - (currentUnit.previousXpGained ?? 0)
       if (newXp !== null) {
         xpResultsRef.current.set(currentUnit.id, {
-          oldXp: currentUnit.xp,
+          oldXp: preMatchXp,
           newXp,
         })
       } else {
         // Unit was already submitted — keep previous result (don't overwrite)
         if (!xpResultsRef.current.has(currentUnit.id)) {
-          // Fallback: no crossing possible
-          xpResultsRef.current.set(currentUnit.id, { oldXp: currentUnit.xp, newXp: currentUnit.xp })
+          // Fallback: use current xp as newXp (no change), but still use pre-match oldXp
+          xpResultsRef.current.set(currentUnit.id, { oldXp: preMatchXp, newXp: currentUnit.xp })
         }
       }
 
@@ -194,25 +248,38 @@ export function PostMatchWizard({
             continue
           }
           const crossings = detectTierCrossings(result.oldXp, result.newXp, unit.type)
+          const existingGains = unit.existingGains ?? []
           for (const crossing of crossings) {
-            queue.push({
+            // For honour thresholds, filter out already-acquired improvements from DB
+            const isHonour = crossing.tierLabel === 'Honneur de bataille'
+            let filteredMinor = crossing.minorImprovements
+            if (isHonour) {
+              filteredMinor = crossing.minorImprovements.filter((imp) => !existingGains.includes(imp.label))
+            }
+            // Skip honour step entirely if no options remain
+            if (isHonour && filteredMinor.length === 0) continue
+            const baseEntry: TierUpQueueEntry = {
               ...crossing,
+              minorImprovements: isHonour ? filteredMinor : crossing.minorImprovements,
               unitId: unit.id,
               unitName: unit.name,
               unitType: unit.type,
               hasMount: unit.hasMount ?? false,
-            })
+              commandement: unit.commandement ?? 0,
+            }
+            // Expand multi-selection entries into sequential single-pick steps
+            queue.push(...expandQueueEntry(baseEntry))
           }
         }
 
         if (queue.length === 0) {
-          // No tier crossings — call completeEvolutions directly
+          // No tier crossings — call completeEvolutions with empty gains
           let completeResult: ServerResult<{ matchId: string }>
           if (onCompleteEvolutions) {
-            completeResult = await onCompleteEvolutions(matchId)
+            completeResult = await onCompleteEvolutions(matchId, matchParticipantId, [])
           } else {
-            const { completeEvolutionsFn } = await import('../routes/match/$matchId/post-match')
-            completeResult = await completeEvolutionsFn({ data: { matchId } })
+            const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
+            completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains: [] } })
           }
           if (!completeResult.success) {
             setError(completeResult.error.message)
@@ -259,38 +326,74 @@ export function PostMatchWizard({
     setError(null)
 
     try {
-      const improvements = result.descriptions.map((d) => ({ description: d }))
+      // Check if "2 améliorations mineures" was selected — need special handling
+      const has2MinChoice = result.descriptions.includes('2 améliorations mineures')
+      // Descriptions to actually save as gains (exclude "2 améliorations mineures" placeholder)
+      const descriptionsToSave = has2MinChoice
+        ? result.descriptions.filter((d) => d !== '2 améliorations mineures')
+        : result.descriptions
 
-      let submitResult: ServerResult<{ unitId: string; gainsCreated: number }>
-      if (onSubmitTierUp) {
-        submitResult = await onSubmitTierUp(currentTierUp.unitId, matchParticipantId, improvements)
-      } else {
-        const { submitTierUpFn } = await import('../routes/match/$matchId/post-match')
-        submitResult = await submitTierUpFn({
-          data: { unitId: currentTierUp.unitId, matchParticipantId, improvements },
-        })
-      }
-
-      if (!submitResult.success) {
-        setError(submitResult.error.message)
-        setIsSubmitting(false)
-        submittingRef.current = false
-        return
+      // Accumulate gains in pendingGainsRef (NOT submitted to server yet)
+      if (descriptionsToSave.length > 0) {
+        const existing = pendingGainsRef.current.get(currentTierUp.unitId) ?? []
+        pendingGainsRef.current.set(currentTierUp.unitId, [...existing, ...descriptionsToSave])
       }
 
       // Store selections for back-button restore (ref-based to avoid re-renders)
       submittedTierUpsByStepRef.current.set(tierUpStep, result.descriptions)
 
-      const isLastTierUpStep = tierUpStep === tierUpQueue.length - 1
+      // Update cumulative gains for this unit (for constraint checks on subsequent steps)
+      const existingCumulative = cumulativeGainsRef.current.get(currentTierUp.unitId) ?? []
+      cumulativeGainsRef.current.set(currentTierUp.unitId, [...existingCumulative, ...descriptionsToSave])
+
+      // Update cumulative honour selections for this unit (O(1) lookup in render)
+      if (currentTierUp.tierLabel === 'Honneur de bataille') {
+        const existing = cumulativeHonourSelectionsRef.current.get(currentTierUp.unitId) ?? new Set()
+        for (const d of result.descriptions) existing.add(d)
+        cumulativeHonourSelectionsRef.current.set(currentTierUp.unitId, existing)
+      }
+
+      // If "2 améliorations mineures" was chosen, insert 2 sequential minor-pick sub-steps
+      if (has2MinChoice) {
+        const { CHARACTER_MINOR_IMPROVEMENTS } = await import('../lib/constants')
+        const subSteps: TierUpQueueEntry[] = [1, 2].map((n) => ({
+          xp: currentTierUp.xp,
+          tierLabel: `${currentTierUp.tierLabel} — Mineure ${n}/2`,
+          majorImprovements: [],
+          minorImprovements: CHARACTER_MINOR_IMPROVEMENTS.map((imp, idx) => ({
+            ...imp,
+            id: `${imp.id}-sub${tierUpStep}-${n}-${idx}`,
+          })),
+          majorCount: 0,
+          minorCount: 1,
+          unitId: currentTierUp.unitId,
+          unitName: currentTierUp.unitName,
+          unitType: currentTierUp.unitType,
+          hasMount: currentTierUp.hasMount,
+          commandement: currentTierUp.commandement,
+        }))
+        // Insert the 2 sub-steps right after the current step
+        const newQueue = [...tierUpQueue]
+        newQueue.splice(tierUpStep + 1, 0, ...subSteps)
+        setTierUpQueue(newQueue)
+      }
+
+      const effectiveQueueLength = has2MinChoice ? tierUpQueue.length + 2 : tierUpQueue.length
+      const isLastTierUpStep = tierUpStep === effectiveQueueLength - 1
 
       if (isLastTierUpStep) {
-        // All tier-ups done — call completeEvolutions
+        // All tier-ups done — batch commit all gains + stamp evolutionsEnteredAt
+        const gains: Array<{ unitId: string; descriptions: string[] }> = []
+        for (const [unitId, descriptions] of pendingGainsRef.current) {
+          gains.push({ unitId, descriptions })
+        }
+
         let completeResult: ServerResult<{ matchId: string }>
         if (onCompleteEvolutions) {
-          completeResult = await onCompleteEvolutions(matchId)
+          completeResult = await onCompleteEvolutions(matchId, matchParticipantId, gains)
         } else {
-          const { completeEvolutionsFn } = await import('../routes/match/$matchId/post-match')
-          completeResult = await completeEvolutionsFn({ data: { matchId } })
+          const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
+          completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains } })
         }
         if (!completeResult.success) {
           setError(completeResult.error.message)
@@ -319,9 +422,91 @@ export function PostMatchWizard({
   if (phase === 'tierup') {
     const currentTierUp = tierUpQueue[tierUpStep]
     // H3 — defensive guard: queue/step could be in intermediate state during React batching
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!currentTierUp) return null
     const isLastTierUpStep = tierUpStep === tierUpQueue.length - 1
     const totalTierUps = tierUpQueue.length
+
+    // For honour thresholds, dynamically filter out improvements already selected
+    // in earlier tier-up steps of the same unit (within this session) — O(1) lookup
+    let dynamicMinorImprovements = currentTierUp.minorImprovements
+    if (currentTierUp.tierLabel === 'Honneur de bataille') {
+      const priorSelections = cumulativeHonourSelectionsRef.current.get(currentTierUp.unitId)
+      if (priorSelections && priorSelections.size > 0) {
+        dynamicMinorImprovements = currentTierUp.minorImprovements.filter(
+          (imp) => !priorSelections.has(imp.label)
+        )
+      }
+    }
+
+    // Compute disabled improvement IDs based on existingGains + session cumulative gains
+    const unitData = units.find((u) => u.id === currentTierUp.unitId)
+    const existingGains = unitData?.existingGains ?? []
+    const sessionGains = cumulativeGainsRef.current.get(currentTierUp.unitId) ?? []
+    const allGains = [...existingGains, ...sessionGains]
+
+    const disabledIds: string[] = []
+    const isCharacter = currentTierUp.unitType === 'Personnages'
+
+    // Count occurrences of gain patterns
+    const mouvCount = allGains.filter((g) => /Mouvement/i.test(g)).length
+    const enduranceCount = allGains.filter((g) => /Endurance/i.test(g)).length
+    const attaqueCount = allGains.filter((g) => /Attaque/i.test(g)).length
+    const pvCount = allGains.filter((g) => /PV/i.test(g)).length
+
+    // Disable +1 Mouvement if already taken (unit + char)
+    if (mouvCount >= 1) {
+      for (const imp of [...currentTierUp.majorImprovements, ...dynamicMinorImprovements]) {
+        if (/Mouvement/i.test(imp.label)) disabledIds.push(imp.id)
+      }
+    }
+
+    // Generic stat cap constraint: disable improvements that would push a stat beyond STAT_CAP
+    const capBlockedIds: string[] = []
+    const unitEffective = unitData?.effectiveStats ?? {}
+    const allImprovements = [...currentTierUp.majorImprovements, ...dynamicMinorImprovements]
+    for (const imp of allImprovements) {
+      const parsed = parseGainStat(imp.label)
+      if (!parsed || unitEffective[parsed.stat] == null) continue
+      if ((UNCAPPED_STATS as readonly string[]).includes(parsed.stat)) continue
+      // Session gains for this stat
+      const sessionDelta = sessionGains
+        .map((g) => parseGainStat(g))
+        .filter((p) => p?.stat === parsed.stat)
+        .reduce((sum, p) => sum + (p?.delta ?? 0), 0)
+      if ((unitEffective[parsed.stat] as number) + sessionDelta + parsed.delta > STAT_CAP) {
+        capBlockedIds.push(imp.id)
+        if (!disabledIds.includes(imp.id)) disabledIds.push(imp.id)
+      }
+    }
+
+    if (isCharacter) {
+      // Char: +1 PV max 2x
+      if (pvCount >= 2) {
+        for (const imp of currentTierUp.majorImprovements) {
+          if (/PV/i.test(imp.label)) disabledIds.push(imp.id)
+        }
+      }
+      // Char: +1 Attaque max 1x
+      if (attaqueCount >= 1) {
+        for (const imp of currentTierUp.majorImprovements) {
+          if (/Attaque/i.test(imp.label) && !/CC|CT/i.test(imp.label)) disabledIds.push(imp.id)
+        }
+      }
+    } else {
+      // Unit: +1 Endurance max 1x
+      if (enduranceCount >= 1) {
+        for (const imp of currentTierUp.majorImprovements) {
+          if (/Endurance/i.test(imp.label)) disabledIds.push(imp.id)
+        }
+      }
+      // Unit: +1 Attaque max 1x
+      if (attaqueCount >= 1) {
+        for (const imp of currentTierUp.majorImprovements) {
+          if (/Attaque/i.test(imp.label) && !/CC|CT/i.test(imp.label)) disabledIds.push(imp.id)
+        }
+      }
+    }
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -331,6 +516,46 @@ export function PostMatchWizard({
             data-testid="wizard-back-button"
             onClick={() => {
               if (tierUpStep > 0) {
+                // H1 fix: rollback cumulative refs for the current step before going back
+                const currentEntry = tierUpQueue[tierUpStep]
+                const prevSelections = submittedTierUpsByStepRef.current.get(tierUpStep)
+                if (prevSelections && currentEntry) {
+                  // Remove from pendingGainsRef
+                  const pending = pendingGainsRef.current.get(currentEntry.unitId)
+                  if (pending) {
+                    const descriptionsToRemove = prevSelections.filter((d) => d !== '2 améliorations mineures')
+                    const updated = [...pending]
+                    for (const desc of descriptionsToRemove) {
+                      const idx = updated.indexOf(desc)
+                      if (idx !== -1) updated.splice(idx, 1)
+                    }
+                    if (updated.length > 0) {
+                      pendingGainsRef.current.set(currentEntry.unitId, updated)
+                    } else {
+                      pendingGainsRef.current.delete(currentEntry.unitId)
+                    }
+                  }
+                  // Remove from cumulativeGainsRef
+                  const cumGains = cumulativeGainsRef.current.get(currentEntry.unitId)
+                  if (cumGains) {
+                    const descriptionsToRemove = prevSelections.filter((d) => d !== '2 améliorations mineures')
+                    const updated = [...cumGains]
+                    for (const desc of descriptionsToRemove) {
+                      const idx = updated.indexOf(desc)
+                      if (idx !== -1) updated.splice(idx, 1)
+                    }
+                    cumulativeGainsRef.current.set(currentEntry.unitId, updated)
+                  }
+                  // Remove from cumulativeHonourSelectionsRef
+                  if (currentEntry.tierLabel === 'Honneur de bataille') {
+                    const honours = cumulativeHonourSelectionsRef.current.get(currentEntry.unitId)
+                    if (honours) {
+                      for (const d of prevSelections) honours.delete(d)
+                    }
+                  }
+                  // Clear the stored selections for this step
+                  submittedTierUpsByStepRef.current.delete(tierUpStep)
+                }
                 setTierUpStep((prev) => prev - 1)
               } else {
                 // Return to Phase 1 last XP step
@@ -424,12 +649,14 @@ export function PostMatchWizard({
           key={tierUpStep}
           tierLabel={currentTierUp.tierLabel}
           majorImprovements={currentTierUp.majorImprovements}
-          minorImprovements={currentTierUp.minorImprovements}
+          minorImprovements={dynamicMinorImprovements}
           majorCount={currentTierUp.majorCount}
           minorCount={currentTierUp.minorCount}
           unitName={currentTierUp.unitName}
           isMounted={currentTierUp.hasMount}
           confirmLabel={isLastTierUpStep ? 'Terminer' : 'Suivant'}
+          disabledImprovementIds={disabledIds}
+          capBlockedImprovementIds={capBlockedIds}
           onConfirm={(result) => void handleTierUpConfirm(result)}
         />
 

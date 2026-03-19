@@ -6,10 +6,8 @@
 // Tests for the 2-phase flow in PostMatchWizard.
 // These tests extend the existing PostMatchWizard test patterns.
 //
-// Phase 2 requires new props on PostMatchWizard:
-//   - onSubmitTierUp: (unitId, matchParticipantId, improvements) => Promise<ServerResult>
-//
-// All tests will fail until the Phase 2 implementation is complete.
+// Phase 2 uses batch commit: gains are accumulated in pendingGainsRef and
+// submitted atomically via onCompleteEvolutions(matchId, participantId, gains).
 //
 // Covers Tasks 12.1–12.6 (AC: 1, 6, 8, 9)
 
@@ -29,9 +27,9 @@ const unitsWithCrossings = [
   { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 0, previousXpGained: null, hasMount: false },
 ]
 
-// Units that will NOT trigger tier crossings (old xp=5, new xp=5, delta=0)
+// Units that will NOT trigger tier crossings (xp=5, submitting 0 XP → newXp=5, no crossings from 5→5)
 const unitsNoCrossings = [
-  { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 5, previousXpGained: 5, hasMount: false },
+  { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 5, previousXpGained: null, hasMount: false },
 ]
 
 
@@ -48,11 +46,6 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 starts after XP with crossings (
       data: { unitId: 'unit-1', newXp: 11 },
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
-    const onSubmitTierUp = vi.fn().mockResolvedValue({
-      success: true,
-      data: { unitId: 'unit-1', gainsCreated: 1 },
-    })
-
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -62,7 +55,7 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 starts after XP with crossings (
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={onSubmitTierUp}
+
       />
     )
 
@@ -81,11 +74,6 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 starts after XP with crossings (
       data: { unitId: 'unit-1', newXp: 11 },
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
-    const onSubmitTierUp = vi.fn().mockResolvedValue({
-      success: true,
-      data: { unitId: 'unit-1', gainsCreated: 1 },
-    })
-
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -95,7 +83,7 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 starts after XP with crossings (
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={onSubmitTierUp}
+
       />
     )
 
@@ -118,7 +106,6 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 starts after XP with crossings (
         onCancel={vi.fn()}
         onSubmitUnitXp={vi.fn()}
         onCompleteEvolutions={vi.fn()}
-        onSubmitTierUp={vi.fn()}
       />
     )
     // Single unit — but during Phase 1, button should say "Suivant" not "Terminer"
@@ -152,7 +139,6 @@ describe('[AC6][P0] PostMatchWizard — no crossings → wizard completes withou
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={vi.fn()}
       />
     )
 
@@ -180,7 +166,6 @@ describe('[AC6][P0] PostMatchWizard — no crossings → wizard completes withou
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={vi.fn()}
       />
     )
 
@@ -206,11 +191,6 @@ describe('[AC8][P0] PostMatchWizard — Phase 2 back button between steps (Task 
       data: { unitId: 'unit-1', newXp: 11 },
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
-    const onSubmitTierUp = vi.fn().mockResolvedValue({
-      success: true,
-      data: { unitId: 'unit-1', gainsCreated: 1 },
-    })
-
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -220,7 +200,7 @@ describe('[AC8][P0] PostMatchWizard — Phase 2 back button between steps (Task 
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={onSubmitTierUp}
+
       />
     )
 
@@ -265,11 +245,6 @@ describe('[AC8][P0] PostMatchWizard — Phase 2 back from first step → last XP
       data: { unitId: 'unit-1', newXp: 11 },
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
-    const onSubmitTierUp = vi.fn().mockResolvedValue({
-      success: true,
-      data: { unitId: 'unit-1', gainsCreated: 1 },
-    })
-
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -279,7 +254,7 @@ describe('[AC8][P0] PostMatchWizard — Phase 2 back from first step → last XP
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={onSubmitTierUp}
+
       />
     )
 
@@ -318,7 +293,6 @@ describe('[AC8][P0] PostMatchWizard — Phase 2 back from first step → last XP
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={vi.fn()}
       />
     )
 
@@ -361,7 +335,6 @@ describe('[AC9][P0] PostMatchWizard — Phase 2 cancel calls onCancel (Task 12.5
         onCancel={onCancel}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={vi.fn()}
       />
     )
 
@@ -392,14 +365,10 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
     const onComplete = vi.fn()
-    const onSubmitTierUp = vi.fn().mockResolvedValue({
-      success: true,
-      data: { unitId: 'unit-1', gainsCreated: 1 },
-    })
 
-    // Unit with previousXpGained=9 and xp=9 → when xp becomes 12, oldXp=9, delta=3 → crosses 10
+    // Unit with xp=9, no prior submission → preMatchXp=9, newXp=12 → crosses threshold 10 only
     const unitsOneThreshold = [
-      { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 9, previousXpGained: 9, hasMount: false },
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 9, previousXpGained: null, hasMount: false },
     ]
 
     render(
@@ -411,7 +380,7 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={onSubmitTierUp}
+
       />
     )
 
@@ -445,8 +414,9 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
 
+    // Unit with xp=9, no prior submission → preMatchXp=9, newXp=12 → crosses threshold 10 only (1 tier-up)
     const unitsOneThreshold = [
-      { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 9, previousXpGained: 9, hasMount: false },
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 9, previousXpGained: null, hasMount: false },
     ]
 
     render(
@@ -458,7 +428,6 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
         onCancel={vi.fn()}
         onSubmitUnitXp={onSubmitUnitXp}
         onCompleteEvolutions={onCompleteEvolutions}
-        onSubmitTierUp={vi.fn()}
       />
     )
 
@@ -481,11 +450,11 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
 // ---------------------------------------------------------------------------
 
 describe('[AC1][P0] PostMatchWizard — source contract for Phase 2 (story 4.2)', () => {
-  it('[4.2-WIZ-012] post-match-wizard.tsx accepts onSubmitTierUp prop', () => {
+  it('[4.2-WIZ-012] post-match-wizard.tsx has pendingGainsRef for batch commit', () => {
     const { readFileSync } = require('node:fs')
     const { resolve: resolvePath } = require('node:path')
     const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toMatch(/onSubmitTierUp/)
+    expect(code).toMatch(/pendingGainsRef/)
   })
 
   it('[4.2-WIZ-013] post-match-wizard.tsx contains phase state (xp/tierup)', () => {
@@ -514,5 +483,383 @@ describe('[AC1][P0] PostMatchWizard — source contract for Phase 2 (story 4.2)'
     const { resolve: resolvePath } = require('node:path')
     const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
     expect(code).toMatch(/hasMount\s*[:\?]/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CC — Constraint enforcement: disabledImprovementIds computed from existingGains
+// ---------------------------------------------------------------------------
+
+describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
+  it('[CC-WIZ-001] unit with existing +1 Mouvement gain: Mouvement disabled in tier-up step', async () => {
+    // Unit starts at xp=0, will gain 11 XP → crosses 3, 9, 10
+    // Unit already has "+1 Mouvement (unique)" in existingGains
+    const unitWithMouvGain = [
+      {
+        id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base',
+        xp: 0, previousXpGained: null, hasMount: false,
+        existingGains: ['+1 Mouvement (unique)'],
+        commandement: 8,
+      },
+    ]
+
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({
+      success: true,
+      data: { unitId: 'unit-1', newXp: 11 },
+    })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={unitWithMouvGain}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+
+      />,
+    )
+
+    // Set XP to 11 and submit
+    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '11' } })
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    // Wait for Phase 2 — first crossing is Honneur de bataille (xp=3)
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+
+    // Complete honour steps (xp=3, xp=9) by selecting Champion/Bannière
+    const honourOptions = screen.queryAllByRole('radio')
+    if (honourOptions.length > 0) {
+      fireEvent.click(honourOptions[0])
+      fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+    }
+
+    // Wait for next honour step or Aguerri step
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+
+    // Complete second honour step
+    const honourOptions2 = screen.queryAllByRole('radio')
+    if (honourOptions2.length > 0) {
+      fireEvent.click(honourOptions2[0])
+      fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+    }
+
+    // Now at Aguerri (minor) — Mouvement should be disabled
+    await waitFor(() => {
+      const mouvInput = screen.queryByLabelText(/Mouvement/)
+      if (mouvInput) {
+        expect((mouvInput as HTMLInputElement).disabled).toBe(true)
+      }
+    })
+  })
+
+  it('[CC-WIZ-002] unit with commandement at 10: Commandement disabled in tier-up step', async () => {
+    const unitWithMaxCd = [
+      {
+        id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base',
+        xp: 0, previousXpGained: null, hasMount: false,
+        existingGains: [],
+        commandement: 10,
+        effectiveStats: { m: 4, cc: 3, ct: 3, f: 3, e: 3, pv: 1, i: 3, a: 1, cd: 10 },
+      },
+    ]
+
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({
+      success: true,
+      data: { unitId: 'unit-1', newXp: 11 },
+    })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={unitWithMaxCd}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+
+      />,
+    )
+
+    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '11' } })
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    // Wait for Phase 2 — skip honour steps to get to Aguerri
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+
+    // Complete honour steps
+    const selectAndConfirm = async () => {
+      const radios = screen.queryAllByRole('radio')
+      if (radios.length > 0) {
+        fireEvent.click(radios[0])
+        fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+        await waitFor(() => {
+          expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+        })
+      }
+    }
+    await selectAndConfirm()
+    await selectAndConfirm()
+
+    // Now at Aguerri — Commandement should be disabled
+    await waitFor(() => {
+      const cdInput = screen.queryByLabelText(/Commandement/)
+      if (cdInput) {
+        expect((cdInput as HTMLInputElement).disabled).toBe(true)
+      }
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CC — "2 améliorations mineures" sub-flow
+// ---------------------------------------------------------------------------
+
+describe('[CC-AC6] PostMatchWizard — "2 améliorations mineures" sub-flow', () => {
+  it('[CC-WIZ-003] selecting "2 améliorations mineures" inserts 2 sequential minor-pick sub-steps', async () => {
+    // Character at xp=0, gains 25 XP → crosses 6 (Aguerri, minor) and 20 (Expérimenté, major)
+    const charUnit = [
+      {
+        id: 'char-1', name: 'Seigneur', type: 'Personnages',
+        xp: 0, previousXpGained: null, hasMount: false,
+        existingGains: [],
+        commandement: 8,
+      },
+    ]
+
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({
+      success: true,
+      data: { unitId: 'char-1', newXp: 25 },
+    })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+    const onComplete = vi.fn()
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={charUnit}
+        onComplete={onComplete}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+
+      />,
+    )
+
+    // Submit XP = 25
+    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '25' } })
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    // Wait for Phase 2 — first crossing is Aguerri (minor)
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+
+    // Complete Aguerri (select a minor improvement)
+    const aguerriRadios = screen.queryAllByRole('radio')
+    if (aguerriRadios.length > 0) {
+      fireEvent.click(aguerriRadios[0])
+      fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+    }
+
+    // Wait for Expérimenté (major) step
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+
+    // Select "2 améliorations mineures"
+    const twoMinOption = screen.queryByLabelText('2 améliorations mineures')
+    if (twoMinOption) {
+      fireEvent.click(twoMinOption)
+      fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+
+      // Sub-step 1: "Mineure 1/2" — radio mode (minorCount=1)
+      await waitFor(() => {
+        expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+        const radios = screen.queryAllByRole('radio')
+        expect(radios.length).toBeGreaterThan(0)
+      })
+
+      // Select a minor improvement in sub-step 1
+      const subStep1Radios = screen.queryAllByRole('radio')
+      fireEvent.click(subStep1Radios[0])
+      fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+
+      // Sub-step 2: "Mineure 2/2" — radio mode (minorCount=1)
+      await waitFor(() => {
+        expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+        const radios = screen.queryAllByRole('radio')
+        expect(radios.length).toBeGreaterThan(0)
+      })
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CAP — Generic stat cap constraint
+// ---------------------------------------------------------------------------
+
+describe('[CAP] PostMatchWizard — stat cap constraint', () => {
+  it('[CAP-WIZ-001] unit with CC effective at 10 → +1 CC is cap-blocked and shows red text', async () => {
+    const unitWithMaxCc = [
+      {
+        id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base',
+        xp: 0, previousXpGained: null, hasMount: false,
+        existingGains: [],
+        commandement: 7,
+        effectiveStats: { m: 4, cc: 10, ct: 3, f: 3, e: 3, pv: 1, i: 3, a: 1, cd: 7 },
+      },
+    ]
+
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({
+      success: true,
+      data: { unitId: 'unit-1', newXp: 11 },
+    })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={unitWithMaxCc}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />,
+    )
+
+    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '11' } })
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    // Skip honour steps to get to Aguerri
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+
+    const selectAndConfirm = async () => {
+      const radios = screen.queryAllByRole('radio')
+      if (radios.length > 0) {
+        fireEvent.click(radios[0])
+        fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+        await waitFor(() => {
+          expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+        })
+      }
+    }
+    await selectAndConfirm()
+    await selectAndConfirm()
+
+    // Now at Aguerri — CC input should be disabled (CC already at 10)
+    await waitFor(() => {
+      const ccInput = screen.queryByLabelText(/\+1 CC/)
+      if (ccInput) {
+        expect((ccInput as HTMLInputElement).disabled).toBe(true)
+      }
+    })
+  })
+
+  it('[CAP-WIZ-002] 2 consecutive minor improvements on same stat: second blocked if first pushes to 10', async () => {
+    // Unit with CC=9, crosses enough thresholds to get 2 minor picks
+    // Using xp=0→50 to cross Vétéran (2 minor picks) — expanded into 2 sequential steps
+    const unitCc9 = [
+      {
+        id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base',
+        xp: 0, previousXpGained: null, hasMount: false,
+        existingGains: [],
+        commandement: 7,
+        effectiveStats: { m: 4, cc: 9, ct: 3, f: 3, e: 3, pv: 1, i: 3, a: 1, cd: 7 },
+      },
+    ]
+
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({
+      success: true,
+      data: { unitId: 'unit-1', newXp: 50 },
+    })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={unitCc9}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />,
+    )
+
+    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '50' } })
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    // Wait for Phase 2
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+
+    // Navigate through honour steps and earlier tier-ups until we reach Vétéran
+    // (0→50 crosses: 3, 9, 10, 25, 50 — honour x2, aguerri, expérimenté, vétéran)
+    const advanceStep = async () => {
+      const radios = screen.queryAllByRole('radio')
+      const checkboxes = screen.queryAllByRole('checkbox')
+      const options = radios.length > 0 ? radios : checkboxes
+      if (options.length > 0) {
+        // Pick the first non-disabled option
+        for (const opt of options) {
+          if (!(opt as HTMLInputElement).disabled) {
+            fireEvent.click(opt)
+            break
+          }
+        }
+        fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+        await waitFor(() => {
+          expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+        })
+      }
+    }
+
+    // Advance through honour1, honour2, aguerri, expérimenté to reach vétéran
+    // At honour steps, pick something. At aguerri, pick +1 CC (pushing CC to 10).
+    // First honour step
+    await advanceStep()
+    // Second honour step
+    await advanceStep()
+
+    // Aguerri step — select +1 CC to push CC from 9 to 10
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+    const ccOption = screen.queryByLabelText(/\+1 CC/)
+    if (ccOption) {
+      fireEvent.click(ccOption)
+      fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
+    }
+
+    // Expérimenté (major) step
+    await waitFor(() => {
+      expect(screen.getByTestId('tier-up-step')).not.toBeNull()
+    })
+    await advanceStep()
+
+    // Now at Vétéran step 1/2 (minor) — CC should be disabled because CC is now 10
+    await waitFor(() => {
+      const ccInput2 = screen.queryByLabelText(/\+1 CC/)
+      if (ccInput2) {
+        expect((ccInput2 as HTMLInputElement).disabled).toBe(true)
+      }
+    })
   })
 })

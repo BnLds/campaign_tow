@@ -3,6 +3,7 @@
 // Story 3.3: Interactive result entry (isEditable, onResultSubmit).
 
 import { useState } from 'react'
+import { stripConstraintHint } from '../lib/format'
 
 export type TimelineEntryProps = {
   matchId: string
@@ -17,7 +18,7 @@ export type TimelineEntryProps = {
   isEditable?: boolean
   onResultSubmit?: (matchId: string, result: 'victory' | 'defeat' | 'draw') => Promise<void>
   onEvolutionStart?: (matchId: string) => void
-  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number }>
+  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[] }>
 }
 
 const RESULT_CONFIG = {
@@ -251,43 +252,88 @@ export function TimelineEntry({
         </p>
       )}
 
-      {/* Compact XP line — shown when evolutions entered and XP entries exist (AC4) */}
+      {/* XP + gains per unit — one line per unit/character */}
       {(() => {
         const xpLines = hasEvolutions
-          ? (unitXpEntries ?? []).filter((e) => e.xpGained > 0)
+          ? (unitXpEntries ?? []).filter((e) => e.xpGained > 0 || e.gains.length > 0)
           : []
         return xpLines.length > 0 ? (
-          <p
-            className="text-xs"
+          <div
             style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.75rem',
-              color: 'var(--color-text-secondary)',
-              margin: '2px 0 0 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              marginTop: '4px',
             }}
           >
-            {xpLines.map((e) => `${e.unitName} +${e.xpGained} XP`).join(' · ')}
-          </p>
+            {xpLines.map((e, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.75rem',
+                }}
+              >
+                <span style={{ color: 'var(--color-text-secondary)' }}>
+                  {e.unitName}
+                </span>
+                {e.xpGained > 0 && (
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    +{e.xpGained} XP
+                  </span>
+                )}
+                {e.gains.map((g, gi) => (
+                  <span
+                    key={gi}
+                    style={{
+                      padding: '0 0.375rem',
+                      borderRadius: '9999px',
+                      background: 'var(--color-bonus-bg)',
+                      color: 'var(--color-bonus)',
+                      border: '1px solid var(--color-bonus-border)',
+                      fontWeight: 600,
+                      fontSize: '0.6875rem',
+                    }}
+                  >
+                    {stripConstraintHint(g)}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         ) : null
       })()}
 
-      {/* "Saisir évolutions" link — shown when result is set, evolutions not yet entered, and editable */}
+      {/* "Au rapport !" button — shown when result is set, evolutions not yet entered, and editable */}
       {isEditable && result !== null && !hasEvolutions && onEvolutionStart && (
         <button
+          type="button"
+          data-testid="evolution-start"
           onClick={() => onEvolutionStart(matchId)}
           style={{
-            background: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.375rem',
+            alignSelf: 'center',
+            minHeight: '44px',
+            background: '#334155',
+            color: '#fff',
             border: 'none',
+            borderRadius: '6px',
             cursor: 'pointer',
             fontFamily: 'var(--font-body)',
+            fontWeight: 600,
             fontSize: '0.8125rem',
-            color: '#2a5ab8',
-            textDecoration: 'underline',
-            padding: 0,
-            textAlign: 'left',
+            padding: '0.5rem 1rem',
+            marginTop: '0.25rem',
           }}
         >
-          Saisir évolutions
+          Au rapport ! <span aria-hidden="true">›</span>
         </button>
       )}
     </div>

@@ -325,7 +325,7 @@ describe('[AC5][P0] PostMatchWizard — completes wizard after last unit (Task 6
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
-      expect(onCompleteEvolutions).toHaveBeenCalledWith(MATCH_ID)
+      expect(onCompleteEvolutions).toHaveBeenCalledWith(MATCH_ID, PARTICIPANT_ID, [])
       expect(onComplete).toHaveBeenCalled()
     })
   })
@@ -609,6 +609,61 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
       const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
       expect(xpInput.value).toBe('5')
     })
+  })
+
+  it('[4.1b-WIZ-016] XP input updates when units prop changes (stale cache fix)', async () => {
+    // Regression test: when TanStack Router serves stale cached data first (previousXpGained=null),
+    // then updates with fresh loader data (previousXpGained=3), the XP input must react to the
+    // units prop change even though currentStep stays at 0.
+    const staleUnits = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: null },
+    ]
+    const freshUnits = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
+    ]
+
+    const { rerender } = render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={staleUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+
+    // With stale data, XP should be 0
+    const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
+    await waitFor(() => {
+      expect(xpInput.value).toBe('0')
+    })
+
+    // Simulate loader completing with fresh data (units prop changes)
+    rerender(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={freshUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+
+    // XP should now be pre-filled with the fresh previousXpGained value
+    await waitFor(() => {
+      expect((screen.getByTestId('wizard-xp-input') as HTMLInputElement).value).toBe('3')
+    })
+  })
+
+  it('[4.1b-WIZ-017] useEffect dep array includes `units` (source contract)', () => {
+    // Structural guard: ensures the useEffect that pre-fills XP depends on `units`.
+    // If someone removes `units` from the dep array, this test catches it.
+    const { readFileSync } = require('node:fs')
+    const { resolve: resolvePath } = require('node:path')
+    const filePath = resolvePath(__dirname, '..', 'post-match-wizard.tsx')
+    const code = readFileSync(filePath, 'utf-8')
+    // The useEffect that sets xpGained from previousXpGained must have `units` in its dep array
+    expect(code).toMatch(/\}, \[currentStep, units\]\)/)
   })
 })
 

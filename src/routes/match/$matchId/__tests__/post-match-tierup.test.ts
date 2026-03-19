@@ -166,15 +166,15 @@ describe('[AC3][P0] submitTierUpFn — rejects unit not belonging to player army
 // AC: 3
 // ---------------------------------------------------------------------------
 
-describe('[AC3][P0] PostMatchRoute — passes onSubmitTierUp to wizard (Task 8)', () => {
-  it('[4.2-SFN-022] post-match.tsx PostMatchRoute passes onSubmitTierUp prop to PostMatchWizard', () => {
+describe('[AC3][P0] PostMatchRoute — passes onCompleteEvolutions to wizard (Task 8, batch commit)', () => {
+  it('[4.2-SFN-022] post-match.tsx PostMatchRoute passes onCompleteEvolutions prop to PostMatchWizard', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/<PostMatchWizard[\s\S]{0,500}onSubmitTierUp/)
+    expect(code).toMatch(/<PostMatchWizard[\s\S]{0,500}onCompleteEvolutions/)
   })
 
-  it('[4.2-SFN-023] post-match.tsx defines handleSubmitTierUp wrapper calling submitTierUpFn', () => {
+  it('[4.2-SFN-023] post-match.tsx defines handleCompleteEvolutions wrapper calling completeEvolutionsWithGainsFn', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/handleSubmitTierUp[\s\S]{0,300}submitTierUpFn/)
+    expect(code).toMatch(/handleCompleteEvolutions[\s\S]{0,300}completeEvolutionsWithGainsFn/)
   })
 })
 

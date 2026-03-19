@@ -12,8 +12,16 @@
 // Covers Tasks 9.1–9.13 (AC: 1, 5, 6, 7)
 
 import { describe, it, expect } from 'vitest'
-import { UNIT_THRESHOLDS, CHARACTER_THRESHOLDS, CHARACTER_MAJOR_IMPROVEMENTS } from '../src/lib/constants'
+import {
+  UNIT_THRESHOLDS,
+  CHARACTER_THRESHOLDS,
+  CHARACTER_MAJOR_IMPROVEMENTS,
+  MAJOR_SKILL_OPTIONS,
+  isMinorSkillImprovement,
+  isMajorSkillImprovement,
+} from '../src/lib/constants'
 import { detectTierCrossings } from '../src/lib/tier'
+import { STAT_CAP } from '../src/lib/delta-composer'
 
 const UNIT_TYPE = 'Unités de base'
 const CHAR_TYPE = 'Personnages'
@@ -280,20 +288,29 @@ describe('[AC5][P0] detectTierCrossings — Héroïque threshold (Task 9.11)', (
 })
 
 // ---------------------------------------------------------------------------
-// Task 9.12 — Endurance slotCost=2 ONLY in CHARACTER_MAJOR (not UNIT_MAJOR)
+// Task 9.12 — Endurance: no slotCost, excluded from 20 XP tier
 // ---------------------------------------------------------------------------
 
-describe('[AC2][P0] Endurance slotCost — character only (Task 9.12)', () => {
-  it('[4.2-CST-036] CHARACTER_MAJOR_IMPROVEMENTS contains Endurance with slotCost=2', () => {
+describe('[AC2][P0] Endurance — character improvements (Task 9.12)', () => {
+  it('[4.2-CST-036] CHARACTER_MAJOR_IMPROVEMENTS contains Endurance with no slotCost (default)', () => {
     const endurance = CHARACTER_MAJOR_IMPROVEMENTS.find((imp) => imp.id === 'c-maj-e')
     expect(endurance).toBeDefined()
-    expect(endurance?.slotCost).toBe(2)
+    expect(endurance?.label).toBe('+1 Endurance')
+    expect(endurance?.slotCost).toBeUndefined()
   })
 
-  it('[4.2-CST-037] Endurance in CHARACTER_THRESHOLDS at XP 20 (majorCount=1) major improvements has slotCost=2', () => {
-    const entry = CHARACTER_THRESHOLDS.find((t) => t.xp === 20)
-    const endurance = entry?.majorImprovements.find((imp) => imp.id === 'c-maj-e')
-    expect(endurance?.slotCost).toBe(2)
+  it('[4.2-CST-037] Endurance is ABSENT from CHARACTER_THRESHOLDS at XP 20 but PRESENT at XP 40 and 70', () => {
+    const entry20 = CHARACTER_THRESHOLDS.find((t) => t.xp === 20)
+    const endurance20 = entry20?.majorImprovements.find((imp) => imp.label.includes('Endurance'))
+    expect(endurance20).toBeUndefined()
+
+    const entry40 = CHARACTER_THRESHOLDS.find((t) => t.xp === 40)
+    const endurance40 = entry40?.majorImprovements.find((imp) => imp.label.includes('Endurance'))
+    expect(endurance40).toBeDefined()
+
+    const entry70 = CHARACTER_THRESHOLDS.find((t) => t.xp === 70)
+    const endurance70 = entry70?.majorImprovements.find((imp) => imp.label.includes('Endurance'))
+    expect(endurance70).toBeDefined()
   })
 
   it('[4.2-CST-038] UNIT_THRESHOLDS at XP 25 (Expérimenté) major improvements: Endurance has NO slotCost override (default 1 or undefined)', () => {
@@ -384,5 +401,62 @@ describe('[AC2][P0] CHARACTER_THRESHOLDS — majorCount/minorCount per entry', (
     const entry = CHARACTER_THRESHOLDS.find((t) => t.xp === 40)
     expect(entry?.majorCount).toBe(1)
     expect(entry?.minorCount).toBe(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// STAT_CAP — exported from delta-composer
+// ---------------------------------------------------------------------------
+
+describe('[CAP] STAT_CAP export', () => {
+  it('[4.2-CST-050] STAT_CAP is exported and equals 10', () => {
+    expect(STAT_CAP).toBe(10)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Skill improvement helpers
+// ---------------------------------------------------------------------------
+
+describe('[SKILL] MAJOR_SKILL_OPTIONS', () => {
+  it('contains exactly 4 options', () => {
+    expect(MAJOR_SKILL_OPTIONS).toHaveLength(4)
+  })
+
+  it('contains Bien entraîné, Vétéran, Tenace, Mur de bouclier', () => {
+    expect(MAJOR_SKILL_OPTIONS).toEqual([
+      'Bien entraîné',
+      'Vétéran',
+      'Tenace',
+      'Mur de bouclier',
+    ])
+  })
+})
+
+describe('[SKILL] isMinorSkillImprovement', () => {
+  it('returns true for IDs ending with -min-skill', () => {
+    expect(isMinorSkillImprovement('u-min-skill')).toBe(true)
+    expect(isMinorSkillImprovement('u-t10-min-skill')).toBe(true)
+    expect(isMinorSkillImprovement('u-t50-min-skill')).toBe(true)
+    expect(isMinorSkillImprovement('u-t80-min-skill')).toBe(true)
+  })
+
+  it('returns false for non-skill IDs', () => {
+    expect(isMinorSkillImprovement('u-min-init')).toBe(false)
+    expect(isMinorSkillImprovement('u-maj-skill')).toBe(false)
+    expect(isMinorSkillImprovement('u-min-cc')).toBe(false)
+  })
+})
+
+describe('[SKILL] isMajorSkillImprovement', () => {
+  it('returns true for IDs ending with -maj-skill', () => {
+    expect(isMajorSkillImprovement('u-maj-skill')).toBe(true)
+    expect(isMajorSkillImprovement('u-t80-maj-skill')).toBe(true)
+  })
+
+  it('returns false for non-skill IDs', () => {
+    expect(isMajorSkillImprovement('u-maj-ct')).toBe(false)
+    expect(isMajorSkillImprovement('u-min-skill')).toBe(false)
+    expect(isMajorSkillImprovement('u-t10-min-skill')).toBe(false)
   })
 })

@@ -7,7 +7,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
-import { submitUnitXpSchema, completeEvolutionsSchema, loadPostMatchDataSchema, submitTierUpSchema } from '../../../lib/validators'
+import { submitUnitXpSchema, completeEvolutionsSchema, loadPostMatchDataSchema, submitTierUpSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
 import { PostMatchWizard } from '../../../components/post-match-wizard'
 import type { ServerResult } from '../../../lib/types'
 
@@ -19,7 +19,7 @@ type PostMatchLoaderData = {
   alreadyCompleted: boolean
   matchId: string
   matchParticipantId: string
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; hasMount: boolean }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
 }
 
 // ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolution, getUnitsForArmy, getMatchXpEntries } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolution, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       throw new Error('FORBIDDEN')
@@ -55,14 +55,78 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     const unitsRaw = await getUnitsForArmy(army.id)
     const existingEntries = await getMatchXpEntries(participant.id)
     const entryMap = new Map(existingEntries.map((e) => [e.unitId, e.xpGained]))
-    const units = unitsRaw.map((u) => ({
-      id: u.id,
-      name: u.name,
-      type: u.type,
-      xp: u.xp,
-      previousXpGained: entryMap.get(u.id) ?? null,
-      hasMount: u.subProfiles.some((sp) => sp.isMount),
-    }))
+    // Load existing unit_gains — filter out gains from the current participant
+    // (defense in depth: with batch commit there should be no partial gains,
+    // but this protects against legacy orphaned gains from older code).
+    const unitIds = unitsRaw.map((u) => u.id)
+    const { statModifiers: allStatModifiers, unitGains: allExistingGains } = unitIds.length > 0
+      ? await getUnitDeltas(unitIds)
+      : { statModifiers: [], unitGains: [] }
+    const historicalGains = allExistingGains.filter((g) => g.matchParticipantId !== participant.id)
+    const gainsByUnit = new Map<string, string[]>()
+    for (const g of historicalGains) {
+      const arr = gainsByUnit.get(g.unitId) ?? []
+      arr.push(g.description)
+      gainsByUnit.set(g.unitId, arr)
+    }
+    // Group stat modifiers by unit
+    const statModsByUnit = new Map<string, typeof allStatModifiers>()
+    for (const mod of allStatModifiers) {
+      const arr = statModsByUnit.get(mod.unitId) ?? []
+      arr.push(mod)
+      statModsByUnit.set(mod.unitId, arr)
+    }
+
+    const { parseGainStat } = await import('../../../lib/delta-composer')
+
+    const units = unitsRaw.map((u) => {
+      const unitGains = gainsByUnit.get(u.id) ?? []
+      // Compute current Commandement: base CD from first non-mount sub-profile + CD gains
+      const riderProfile = u.subProfiles.find((sp) => !sp.isMount) ?? u.subProfiles[0]
+      const baseCd = riderProfile.cd ? parseInt(riderProfile.cd, 10) : 0
+      const cdGains = unitGains.filter((g) => /^\+\d+ Commandement/i.test(g)).length
+
+      // Compute effectiveStats: base numeric stats + stat_modifiers + historical gains
+      const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
+      const baseStats: Record<string, number | null> = {}
+      for (const key of STAT_KEYS) {
+        const raw = riderProfile[key]
+        if (raw == null || raw === '-') {
+          baseStats[key] = null
+        } else {
+          const parsed = parseInt(raw, 10)
+          baseStats[key] = isNaN(parsed) || String(parsed) !== raw.trim() ? null : parsed
+        }
+      }
+
+      // Apply stat_modifiers deltas
+      const unitMods = statModsByUnit.get(u.id) ?? []
+      for (const mod of unitMods) {
+        if (baseStats[mod.stat] != null) {
+          baseStats[mod.stat] = (baseStats[mod.stat] as number) + mod.delta
+        }
+      }
+
+      // Apply historical gain deltas
+      for (const gainDesc of unitGains) {
+        const parsed = parseGainStat(gainDesc)
+        if (parsed && baseStats[parsed.stat] != null) {
+          baseStats[parsed.stat] = (baseStats[parsed.stat] as number) + parsed.delta
+        }
+      }
+
+      return {
+        id: u.id,
+        name: u.name,
+        type: u.type,
+        xp: u.xp,
+        previousXpGained: entryMap.get(u.id) ?? null,
+        hasMount: u.subProfiles.some((sp) => sp.isMount),
+        existingGains: unitGains,
+        commandement: (isNaN(baseCd) ? 0 : baseCd) + cdGains,
+        effectiveStats: baseStats,
+      }
+    })
     return {
       alreadyCompleted: false,
       matchId: data.matchId,
@@ -118,6 +182,8 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
 
 // ---------------------------------------------------------------------------
 // Server function — complete evolutions (POST)
+// @deprecated — Replaced by completeEvolutionsWithGainsFn (batch commit).
+// Kept for backward compatibility with story 4-1 tests. Do not use in new code.
 // ---------------------------------------------------------------------------
 
 export const completeEvolutionsFn = createServerFn({ method: 'POST' })
@@ -150,7 +216,9 @@ export const completeEvolutionsFn = createServerFn({ method: 'POST' })
 
 // ---------------------------------------------------------------------------
 // Server function — submit tier-up improvement selections (POST)
-// Story 4.2: saves selected improvements as unit_gains entries
+// @deprecated — Replaced by completeEvolutionsWithGainsFn (batch commit).
+// The wizard no longer calls this; gains are accumulated client-side and
+// committed atomically at the end. Kept for existing test contracts.
 // ---------------------------------------------------------------------------
 
 export const submitTierUpFn = createServerFn({ method: 'POST' })
@@ -184,8 +252,41 @@ export const submitTierUpFn = createServerFn({ method: 'POST' })
     if (!unit || unit.armyId !== army.id) {
       return { success: false, error: { code: 'FORBIDDEN', message: "Cette unite n'appartient pas a votre armee" } }
     }
-    await insertUnitGainsTransaction(data.unitId, data.improvements.map((i) => i.description))
+    await insertUnitGainsTransaction(data.unitId, data.improvements.map((i) => i.description), data.matchParticipantId)
     return { success: true, data: { unitId: data.unitId, gainsCreated: data.improvements.length } }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — batch commit: complete evolutions with all gains (POST)
+// Replaces the separate submitTierUpFn + completeEvolutionsFn flow.
+// Accepts gains: [] for the no-tierup path (equivalent to old completeEvolutionsFn).
+// ---------------------------------------------------------------------------
+
+export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(completeEvolutionsWithGainsSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<{ matchId: string }>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getPlayerArmy, getMatchParticipantForEvolution, completeEvolutionsWithGainsTransaction } = await import('../../../db/queries')
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+    }
+    const participant = await getMatchParticipantForEvolution(data.matchId, army.id)
+    if (!participant) {
+      return {
+        success: false,
+        error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
+      }
+    }
+    // Idempotent: return success if already completed
+    if (participant.evolutionsEnteredAt !== null) {
+      return { success: true, data: { matchId: data.matchId } }
+    }
+    await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.gains)
+    return { success: true, data: { matchId: data.matchId } }
   })
 
 // ---------------------------------------------------------------------------
@@ -249,16 +350,12 @@ function PostMatchRoute() {
     return submitUnitXpFn({ data: { matchParticipantId: mParticipantId, unitId, xpGained } })
   }
 
-  const handleCompleteEvolutions = async (mId: string) => {
-    return completeEvolutionsFn({ data: { matchId: mId } })
-  }
-
-  const handleSubmitTierUp = async (
-    unitId: string,
+  const handleCompleteEvolutions = async (
+    mId: string,
     mParticipantId: string,
-    improvements: Array<{ description: string }>,
+    gains: Array<{ unitId: string; descriptions: string[] }>,
   ) => {
-    return submitTierUpFn({ data: { unitId, matchParticipantId: mParticipantId, improvements } })
+    return completeEvolutionsWithGainsFn({ data: { matchId: mId, matchParticipantId: mParticipantId, gains } })
   }
 
   return (
@@ -271,7 +368,6 @@ function PostMatchRoute() {
         onCancel={handleComplete}
         onSubmitUnitXp={handleSubmitUnitXp}
         onCompleteEvolutions={handleCompleteEvolutions}
-        onSubmitTierUp={handleSubmitTierUp}
       />
     </main>
   )

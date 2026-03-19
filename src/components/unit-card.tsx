@@ -4,6 +4,7 @@
 import React from 'react'
 import type { ComposedUnitView, ComposedSubProfile, StatDelta, UnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
+import { stripConstraintHint } from '../lib/format'
 import type { TierLevel } from '../lib/tier'
 
 // ---------------------------------------------------------------------------
@@ -301,7 +302,7 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
             fontWeight: 600,
           }}
         >
-          {g.description}
+          {stripConstraintHint(g.description)}
         </span>
       ))}
     </div>
@@ -328,7 +329,7 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
         ...borderStyle,
       }}
     >
-      {/* Header: unit name on top, tier pill + action below */}
+      {/* Header: unit name on top, XP + tier label + action below */}
       <div style={{ padding: '0.625rem 0.75rem' }}>
         <div
           style={{
@@ -340,33 +341,29 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
         >
           {unit.name}
         </div>
-        {(tier > 0 || action) && (
-          <div
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginTop: '0.25rem',
+          }}
+        >
+          <span
+            data-testid="xp-tier-label"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginTop: '0.25rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: tierColor,
+              fontFamily: 'var(--font-body)',
             }}
           >
-            {tier > 0 && (
-              <span
-                data-testid="tier-pill"
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: tierColor,
-                  fontFamily: 'var(--font-body)',
-                }}
-              >
-                {tierLabel}
-              </span>
-            )}
-            {action && (
-              <div style={{ marginLeft: 'auto' }}>{action}</div>
-            )}
-          </div>
-        )}
+            {unit.xp} XP{tierLabel ? ` — ${tierLabel}` : ''}
+          </span>
+          {action && (
+            <div style={{ marginLeft: 'auto' }}>{action}</div>
+          )}
+        </div>
       </div>
 
       {/* Compact stats table — all profiles as rows under single header */}
