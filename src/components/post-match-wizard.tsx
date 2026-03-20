@@ -470,11 +470,6 @@ export function PostMatchWizard({
       pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
     }
 
-    // Propagate championKilled from DestructionResult to championFlagsRef
-    if ('bannerLost' in result && result.championKilled) {
-      championFlagsRef.current.set(currentFlaggedUnit.id, true)
-    }
-
     // Advance to next flagged unit or transition to Phase 2
     const nextIndex = consequenceIndex + 1
     if (nextIndex < flaggedUnitsRef.current.length) {

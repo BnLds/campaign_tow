@@ -17,7 +17,6 @@ export type DestructionResult = {
     | 'rancune'
     | 'fureur_vengeresse'
   bannerLost: boolean
-  championKilled: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +48,6 @@ export type UnitDestructionStepProps = {
 export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStepProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [bannerLost, setBannerLost] = useState(false)
-  const [championKilled, setChampionKilled] = useState(false)
 
   const isConfirmEnabled = selectedType !== null
 
@@ -58,7 +56,6 @@ export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStep
     onConfirm({
       type: selectedType as DestructionResult['type'],
       bannerLost,
-      championKilled,
     })
   }
 
@@ -139,7 +136,7 @@ export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStep
         ))}
       </div>
 
-      {/* Additional checkboxes — banner and champion, independent of main selection */}
+      {/* Banner checkbox — independent of main selection */}
       <div
         style={{
           display: 'flex',
@@ -168,26 +165,6 @@ export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStep
             style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
           />
           L'unité possédait une bannière
-        </label>
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          <input
-            data-testid="champion-killed-checkbox"
-            type="checkbox"
-            checked={championKilled}
-            onChange={(e) => setChampionKilled(e.target.checked)}
-            style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
-          />
-          Champion tué en défi
         </label>
       </div>
 
