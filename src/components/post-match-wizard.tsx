@@ -513,10 +513,10 @@ export function PostMatchWizard({
     try {
       // Check if "2 améliorations mineures" was selected — need special handling
       const has2MinChoice = result.descriptions.includes('2 améliorations mineures')
-      // Descriptions to actually save as gains (exclude "2 améliorations mineures" placeholder)
-      const descriptionsToSave = has2MinChoice
-        ? result.descriptions.filter((d) => d !== '2 améliorations mineures')
-        : result.descriptions
+      // Descriptions to actually save as gains (exclude placeholders that aren't real gains)
+      const descriptionsToSave = result.descriptions.filter(
+        (d) => d !== '2 améliorations mineures' && d !== 'Non applicable'
+      )
 
       // Accumulate gains in pendingGainsRef (NOT submitted to server yet)
       if (descriptionsToSave.length > 0) {
@@ -534,7 +534,7 @@ export function PostMatchWizard({
       // Update cumulative honour selections for this unit (O(1) lookup in render)
       if (currentTierUp.tierLabel === 'Honneur de bataille') {
         const existing = cumulativeHonourSelectionsRef.current.get(currentTierUp.unitId) ?? new Set()
-        for (const d of result.descriptions) existing.add(d)
+        for (const d of descriptionsToSave) existing.add(d)
         cumulativeHonourSelectionsRef.current.set(currentTierUp.unitId, existing)
       }
 
@@ -1148,8 +1148,8 @@ export function PostMatchWizard({
         {currentUnit.type === 'Personnages' ? 'Mis Hors de Combat' : 'Détruite'}
       </label>
 
-      {/* Champion killed in challenge — only for non-Personnages units */}
-      {currentUnit.type !== 'Personnages' && (
+      {/* Champion killed in challenge — only for non-Personnages units that have a champion */}
+      {currentUnit.type !== 'Personnages' && (currentUnit.existingGains ?? []).some((g) => g === 'Champion gratuit') && (
         <label
           style={{
             display: 'flex',
