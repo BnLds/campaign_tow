@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm'
+import { eq, and, inArray, sql } from 'drizzle-orm'
 import { db } from '../index'
 import { players, armies, units, subProfiles, statModifiers, unitGains } from '../schema'
 
@@ -158,7 +158,7 @@ export async function getStatModifiers(unitId: string) {
   return db
     .select()
     .from(statModifiers)
-    .where(eq(statModifiers.unitId, unitId))
+    .where(and(eq(statModifiers.unitId, unitId), eq(statModifiers.cleared, false)))
     .orderBy(statModifiers.stat)
 }
 
@@ -166,7 +166,7 @@ export async function getUnitGains(unitId: string) {
   return db
     .select()
     .from(unitGains)
-    .where(eq(unitGains.unitId, unitId))
+    .where(and(eq(unitGains.unitId, unitId), eq(unitGains.cleared, false)))
 }
 
 export async function getUnitDeltas(unitIds: string[]): Promise<{
@@ -178,8 +178,8 @@ export async function getUnitDeltas(unitIds: string[]): Promise<{
   }
 
   const [modRows, gainRows] = await Promise.all([
-    db.select().from(statModifiers).where(inArray(statModifiers.unitId, unitIds)),
-    db.select().from(unitGains).where(inArray(unitGains.unitId, unitIds)),
+    db.select().from(statModifiers).where(and(inArray(statModifiers.unitId, unitIds), eq(statModifiers.cleared, false))),
+    db.select().from(unitGains).where(and(inArray(unitGains.unitId, unitIds), eq(unitGains.cleared, false))),
   ])
 
   return { statModifiers: modRows, unitGains: gainRows }

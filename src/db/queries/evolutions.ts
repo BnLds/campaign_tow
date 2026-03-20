@@ -132,8 +132,9 @@ export async function completeEvolutionsWithGainsTransaction(
   championKilledIds?: string[],
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    // AC24: Delete all temporary injury/destruction modifiers for this army's units
-    // Also delete temporary unit_gains (Pertes Catastrophiques) from previous match
+    // AC24: Clear (soft-delete) temporary injury/destruction modifiers for this army's units
+    // Also clear temporary unit_gains (Pertes Catastrophiques) from previous match
+    // Cleared entries remain in DB for timeline history but are excluded from army view
     if (armyId) {
       const armyUnitRows = await tx
         .select({ id: units.id })
@@ -141,15 +142,19 @@ export async function completeEvolutionsWithGainsTransaction(
         .where(eq(units.armyId, armyId))
       const armyUnitIds = armyUnitRows.map((u) => u.id)
       if (armyUnitIds.length > 0) {
-        await tx.delete(statModifiers)
+        await tx.update(statModifiers)
+          .set({ cleared: true })
           .where(and(
             inArray(statModifiers.unitId, armyUnitIds),
             eq(statModifiers.temporary, true),
+            eq(statModifiers.cleared, false),
             or(eq(statModifiers.source, 'injury'), eq(statModifiers.source, 'destruction')),
           ))
-        await tx.delete(unitGains)
+        await tx.update(unitGains)
+          .set({ cleared: true })
           .where(and(
             inArray(unitGains.unitId, armyUnitIds),
+            eq(unitGains.cleared, false),
             sql`${unitGains.description} LIKE 'Pertes Catastrophiques%'`,
           ))
       }

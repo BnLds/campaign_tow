@@ -85,6 +85,7 @@ export const statModifiers = pgTable('stat_modifiers', {
   delta: integer('delta').notNull(),
   source: text('source').notNull(),
   temporary: boolean('temporary').notNull().default(false),
+  cleared: boolean('cleared').notNull().default(false),
   matchParticipantId: text('match_participant_id')
     .references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
@@ -93,6 +94,7 @@ export const unitGains = pgTable('unit_gains', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
+  cleared: boolean('cleared').notNull().default(false),
   matchParticipantId: text('match_participant_id').references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
 
