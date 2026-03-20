@@ -898,12 +898,43 @@ export async function getMatchXpEntries(
     .where(eq(matchXpEntries.matchParticipantId, matchParticipantId))
 }
 
+// Story 4.3: consequence entry type (mirrors CompleteEvolutionsWithGainsInput['consequences'][number])
+type ConsequenceEntry = {
+  unitId: string
+  type: 'death' | 'permanent_injury' | 'grave_injury' | 'no_effect' | 'haine' | 'miracule' | 'deroute_sanglante' | 'pertes_catastrophiques' | 'moral_brise' | 'survivants_endurcis' | 'rancune' | 'fureur_vengeresse'
+  stat?: string
+  delta?: number
+  bannerLost?: boolean
+}
+
 // Batch commit: insert all unit_gains + stamp evolutionsEnteredAt in one transaction
+// Story 4.3: also processes injury/destruction consequences + cleans up temporary modifiers (AC24)
 export async function completeEvolutionsWithGainsTransaction(
   matchParticipantId: string,
   gains: Array<{ unitId: string; descriptions: string[] }>,
+  consequences: ConsequenceEntry[] = [],
+  armyId?: string,
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    // AC24: Delete all temporary injury/destruction modifiers for this army's units
+    // at the START of the transaction, before creating new ones ("next battle only" cleanup)
+    if (armyId) {
+      const armyUnitRows = await tx
+        .select({ id: units.id })
+        .from(units)
+        .where(eq(units.armyId, armyId))
+      const armyUnitIds = armyUnitRows.map((u) => u.id)
+      if (armyUnitIds.length > 0) {
+        await tx.delete(statModifiers)
+          .where(and(
+            inArray(statModifiers.unitId, armyUnitIds),
+            eq(statModifiers.temporary, true),
+            or(eq(statModifiers.source, 'injury'), eq(statModifiers.source, 'destruction')),
+          ))
+      }
+    }
+
+    // Insert tier-up gains
     for (const { unitId, descriptions } of gains) {
       for (const description of descriptions) {
         await tx.insert(unitGains).values({
@@ -913,6 +944,86 @@ export async function completeEvolutionsWithGainsTransaction(
         })
       }
     }
+
+    // Process consequence entries (AC4, AC5, AC6, AC8, AC15-AC21)
+    for (const consequence of consequences) {
+      switch (consequence.type) {
+        case 'permanent_injury':
+          // AC4: permanent stat_modifier, source='injury', temporary=false
+          await tx.insert(statModifiers).values({
+            unitId: consequence.unitId,
+            stat: consequence.stat!,
+            delta: consequence.delta!,
+            source: 'injury',
+            temporary: false,
+          })
+          break
+        case 'grave_injury':
+          // AC6: temporary stat_modifier, -1 PV, auto-clears next match
+          await tx.insert(statModifiers).values({
+            unitId: consequence.unitId,
+            stat: 'pv',
+            delta: -1,
+            source: 'injury',
+            temporary: true,
+          })
+          break
+        case 'haine':
+          // AC5: unit_gain entry for Haine special rule
+          await tx.insert(unitGains).values({
+            unitId: consequence.unitId,
+            description: 'Haine (blessure)',
+            matchParticipantId,
+          })
+          break
+        case 'death':
+          // AC8: unit_gain entry to mark character deceased
+          await tx.insert(unitGains).values({
+            unitId: consequence.unitId,
+            description: 'Mort (MHC)',
+            matchParticipantId,
+          })
+          break
+        case 'moral_brise':
+          // AC17: temporary -2 Cd, source='destruction', auto-clears next match
+          await tx.insert(statModifiers).values({
+            unitId: consequence.unitId,
+            stat: 'cd',
+            delta: -2,
+            source: 'destruction',
+            temporary: true,
+          })
+          break
+        case 'pertes_catastrophiques':
+          // AC16: text marker unit_gain (effectif tracking is manual for MVP)
+          await tx.insert(unitGains).values({
+            unitId: consequence.unitId,
+            description: 'Pertes Catastrophiques (effectif réduit de moitié pour la prochaine bataille)',
+            matchParticipantId,
+          })
+          break
+        case 'rancune':
+          // AC19: unit_gain entry for Haine via destruction
+          await tx.insert(unitGains).values({
+            unitId: consequence.unitId,
+            description: 'Rancune — Haine (destruction)',
+            matchParticipantId,
+          })
+          break
+        // no_effect, miracule, survivants_endurcis, fureur_vengeresse, deroute_sanglante:
+        // XP changes already applied client-side via onSubmitUnitXp re-submit — no DB action needed
+      }
+
+      // AC21: banner loss (independent of main consequence type)
+      if (consequence.bannerLost === true) {
+        await tx.insert(unitGains).values({
+          unitId: consequence.unitId,
+          description: 'Bannière perdue (destruction)',
+          matchParticipantId,
+        })
+      }
+    }
+
     await tx.update(matchParticipants)
       .set({ evolutionsEnteredAt: new Date() })
       .where(eq(matchParticipants.id, matchParticipantId))

@@ -104,6 +104,22 @@ export const submitTierUpSchema = z.object({
 })
 export type SubmitTierUpInput = z.infer<typeof submitTierUpSchema>
 
+// Story 4.3 — Consequence type enum (shared by InjuryResult and DestructionResult)
+const consequenceTypeEnum = z.enum([
+  'death',
+  'permanent_injury',
+  'grave_injury',
+  'no_effect',
+  'haine',
+  'miracule',
+  'deroute_sanglante',
+  'pertes_catastrophiques',
+  'moral_brise',
+  'survivants_endurcis',
+  'rancune',
+  'fureur_vengeresse',
+])
+
 // Batch commit: complete evolutions with all tier-up gains in one atomic operation
 export const completeEvolutionsWithGainsSchema = z.object({
   matchId: z.string().min(1),
@@ -112,8 +128,18 @@ export const completeEvolutionsWithGainsSchema = z.object({
     unitId: z.string().min(1),
     descriptions: z.array(z.string().min(1)),
   })),
+  // Story 4.3: optional consequences array (injuries + destruction results)
+  // armyId is NOT in schema — derived server-side from authenticated player's army
+  consequences: z.array(z.object({
+    unitId: z.string().min(1),
+    type: consequenceTypeEnum,
+    stat: z.string().optional(),
+    delta: z.number().optional(),
+    bannerLost: z.boolean().optional(),
+  })).optional(),
 })
 export type CompleteEvolutionsWithGainsInput = z.infer<typeof completeEvolutionsWithGainsSchema>
+export type ConsequenceEntry = NonNullable<CompleteEvolutionsWithGainsInput['consequences']>[number]
 
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),

@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
 import { submitUnitXpSchema, completeEvolutionsSchema, loadPostMatchDataSchema, submitTierUpSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
+import type { ConsequenceEntry } from '../../../lib/validators'
 import { PostMatchWizard } from '../../../components/post-match-wizard'
 import type { ServerResult } from '../../../lib/types'
 
@@ -285,7 +286,8 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     if (participant.evolutionsEnteredAt !== null) {
       return { success: true, data: { matchId: data.matchId } }
     }
-    await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.gains)
+    // Story 4.3: pass consequences and armyId for temporary modifier cleanup (AC24)
+    await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.gains, data.consequences ?? [], army.id)
     return { success: true, data: { matchId: data.matchId } }
   })
 
@@ -354,8 +356,9 @@ function PostMatchRoute() {
     mId: string,
     mParticipantId: string,
     gains: Array<{ unitId: string; descriptions: string[] }>,
+    consequences?: ConsequenceEntry[],
   ) => {
-    return completeEvolutionsWithGainsFn({ data: { matchId: mId, matchParticipantId: mParticipantId, gains } })
+    return completeEvolutionsWithGainsFn({ data: { matchId: mId, matchParticipantId: mParticipantId, gains, consequences } })
   }
 
   return (

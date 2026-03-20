@@ -1,13 +1,19 @@
 // Campaign TOW — PostMatchWizard component
 // Story 4.1: Sequential post-match XP entry wizard
 // Story 4.2: 2-phase flow — XP entry (Phase 1) then tier-up improvements (Phase 2)
+// Story 4.3: 3-phase flow — XP+flags (Phase 1) → consequences (Phase 1.5) → tier-ups (Phase 2)
 
 import { useState, useRef, useEffect } from 'react'
 import { TierUpStep } from './tier-up-step'
+import { InjuryBonusStep } from './injury-bonus-step'
+import { UnitDestructionStep } from './unit-destruction-step'
 import { detectTierCrossings } from '../lib/tier'
 import { parseGainStat, STAT_CAP, UNCAPPED_STATS } from '../lib/delta-composer'
 import type { ThresholdEntry } from '../lib/constants'
 import type { ServerResult } from '../lib/types'
+import type { InjuryResult } from './injury-bonus-step'
+import type { DestructionResult } from './unit-destruction-step'
+import type { ConsequenceEntry } from '../lib/validators'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +26,8 @@ type TierUpQueueEntry = ThresholdEntry & {
   hasMount: boolean  // defaults to false when not provided
   commandement: number  // current CD value for constraint checks
 }
+
+type FlaggedUnit = { id: string; name: string; type: string }
 
 // ---------------------------------------------------------------------------
 // Helper — expand multi-selection entries into sequential single-pick steps
@@ -73,9 +81,9 @@ export type PostMatchWizardProps = {
   onCancel: () => void
   /** Optional: inject custom submit function (for testing). Defaults to submitUnitXpFn. */
   onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string) => Promise<ServerResult<{ unitId: string; newXp: number }>>
-  /** Batch commit: completes evolutions with all accumulated gains. Called once at the end.
-   *  gains=[] for the no-tierup path. */
-  onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>) => Promise<ServerResult<{ matchId: string }>>
+  /** Batch commit: completes evolutions with all accumulated gains and consequences. Called once at the end.
+   *  gains=[] and consequences=[] for the no-tierup, no-consequence path. */
+  onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[]) => Promise<ServerResult<{ matchId: string }>>
 }
 
 export function PostMatchWizard({
@@ -87,14 +95,27 @@ export function PostMatchWizard({
   onSubmitUnitXp,
   onCompleteEvolutions,
 }: PostMatchWizardProps) {
+  // Phase state: Phase 1 (xp) → Phase 1.5 (consequences) → Phase 2 (tierup)
+  const [phase, setPhase] = useState<'xp' | 'consequences' | 'tierup'>('xp')
+
   // Phase 1 state
   const [currentStep, setCurrentStep] = useState(0)
   const [xpGained, setXpGained] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Phase 1.5 (consequence) state
+  const [consequenceIndex, setConsequenceIndex] = useState(0)
+  // Track consequence toggle per unit (MHC for characters, destroyed for units)
+  const consequenceFlagsRef = useRef<Map<string, boolean>>(new Map())
+  // Local checkbox state synced from ref on step change (for controlled input)
+  const [isConsequenceChecked, setIsConsequenceChecked] = useState(false)
+  // Ordered list of flagged units to process in Phase 1.5 (characters first, then units)
+  const flaggedUnitsRef = useRef<FlaggedUnit[]>([])
+  // Accumulated consequences for batch commit (discarded on cancel)
+  const pendingConsequencesRef = useRef<Map<string, InjuryResult | DestructionResult>>(new Map())
+
   // Phase 2 state
-  const [phase, setPhase] = useState<'xp' | 'tierup'>('xp')
   const [tierUpQueue, setTierUpQueue] = useState<TierUpQueueEntry[]>([])
   const [tierUpStep, setTierUpStep] = useState(0)
   // Track tier-up selections per step for potential back-button restore (ref to avoid re-renders)
@@ -109,6 +130,12 @@ export function PostMatchWizard({
 
   // XP results collected during Phase 1 (useRef to avoid re-renders on each submit)
   const xpResultsRef = useRef<Map<string, { oldXp: number; newXp: number }>>(new Map())
+
+  // Sync consequence toggle checkbox with current step's flag value
+  useEffect(() => {
+    const unitId = units[currentStep]?.id ?? ''
+    setIsConsequenceChecked(consequenceFlagsRef.current.get(unitId) ?? false)
+  }, [currentStep, units])
 
   // Pre-fill XP input from previousXpGained when step changes (AC2)
   useEffect(() => {
@@ -172,6 +199,94 @@ export function PostMatchWizard({
   const currentUnit = units[currentStep]
   const isLastXpStep = currentStep === units.length - 1
   const total = units.length
+
+  // ---------------------------------------------------------------------------
+  // Helper — build consequences array from pendingConsequencesRef for batch commit
+  // ---------------------------------------------------------------------------
+
+  const buildConsequencesArray = (): ConsequenceEntry[] => {
+    const consequences: ConsequenceEntry[] = []
+    for (const [unitId, result] of pendingConsequencesRef.current) {
+      if ('bannerLost' in result) {
+        // DestructionResult
+        consequences.push({ unitId, type: result.type, bannerLost: result.bannerLost })
+      } else {
+        // InjuryResult
+        const entry: ConsequenceEntry = { unitId, type: result.type }
+        if ('stat' in result && result.stat) entry.stat = result.stat
+        if ('delta' in result) entry.delta = result.delta
+        consequences.push(entry)
+      }
+    }
+    return consequences
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helper — transition from end of Phase 1.5 (or Phase 1 when no consequences)
+  //          to Phase 2 (tier-ups) or direct completion
+  // ---------------------------------------------------------------------------
+
+  const transitionToPhase2OrComplete = async () => {
+    const queue: TierUpQueueEntry[] = []
+    for (const unit of units) {
+      const result = xpResultsRef.current.get(unit.id)
+      if (!result) {
+        console.warn(`[PostMatchWizard] No XP result found for unit ${unit.id} (${unit.name}). Treating as 0 XP gained — no tier crossing.`)
+        continue
+      }
+      const crossings = detectTierCrossings(result.oldXp, result.newXp, unit.type)
+      const existingGains = unit.existingGains ?? []
+      for (const crossing of crossings) {
+        const isHonour = crossing.tierLabel === 'Honneur de bataille'
+        let filteredMinor = crossing.minorImprovements
+        if (isHonour) {
+          filteredMinor = crossing.minorImprovements.filter((imp) => !existingGains.includes(imp.label))
+        }
+        if (isHonour && filteredMinor.length === 0) continue
+        const baseEntry: TierUpQueueEntry = {
+          ...crossing,
+          minorImprovements: isHonour ? filteredMinor : crossing.minorImprovements,
+          unitId: unit.id,
+          unitName: unit.name,
+          unitType: unit.type,
+          hasMount: unit.hasMount ?? false,
+          commandement: unit.commandement ?? 0,
+        }
+        queue.push(...expandQueueEntry(baseEntry))
+      }
+    }
+
+    if (queue.length === 0) {
+      // No tier crossings — batch commit with empty gains + consequences
+      const consequences = buildConsequencesArray()
+      let completeResult: ServerResult<{ matchId: string }>
+      if (onCompleteEvolutions) {
+        completeResult = await onCompleteEvolutions(matchId, matchParticipantId, [], consequences)
+      } else {
+        const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
+        completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains: [], consequences } })
+      }
+      if (!completeResult.success) {
+        setError(completeResult.error.message)
+        setIsSubmitting(false)
+        submittingRef.current = false
+        return
+      }
+      // Transition out of Phase 1.5 before onComplete() so that if the parent
+      // doesn't unmount immediately (e.g. tests with vi.fn() no-ops), the
+      // consequence steps are no longer rendered.
+      flaggedUnitsRef.current = []
+      setPhase('xp')
+      onComplete()
+    } else {
+      // Tier crossings exist — transition to Phase 2
+      setTierUpQueue(queue)
+      setTierUpStep(0)
+      setPhase('tierup')
+      setIsSubmitting(false)
+      submittingRef.current = false
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Phase 1: XP entry
@@ -238,63 +353,21 @@ export function PostMatchWizard({
       }
 
       if (isLastXpStep) {
-        // All XP entered — compute tier crossings
-        const queue: TierUpQueueEntry[] = []
-        for (const unit of units) {
-          const result = xpResultsRef.current.get(unit.id)
-          if (!result) {
-            // M3 — no xpResults entry means the unit was never submitted; treat as no XP gain (no crossing possible)
-            console.warn(`[PostMatchWizard] No XP result found for unit ${unit.id} (${unit.name}). Treating as 0 XP gained — no tier crossing.`)
-            continue
-          }
-          const crossings = detectTierCrossings(result.oldXp, result.newXp, unit.type)
-          const existingGains = unit.existingGains ?? []
-          for (const crossing of crossings) {
-            // For honour thresholds, filter out already-acquired improvements from DB
-            const isHonour = crossing.tierLabel === 'Honneur de bataille'
-            let filteredMinor = crossing.minorImprovements
-            if (isHonour) {
-              filteredMinor = crossing.minorImprovements.filter((imp) => !existingGains.includes(imp.label))
-            }
-            // Skip honour step entirely if no options remain
-            if (isHonour && filteredMinor.length === 0) continue
-            const baseEntry: TierUpQueueEntry = {
-              ...crossing,
-              minorImprovements: isHonour ? filteredMinor : crossing.minorImprovements,
-              unitId: unit.id,
-              unitName: unit.name,
-              unitType: unit.type,
-              hasMount: unit.hasMount ?? false,
-              commandement: unit.commandement ?? 0,
-            }
-            // Expand multi-selection entries into sequential single-pick steps
-            queue.push(...expandQueueEntry(baseEntry))
-          }
-        }
+        // All XP entered — compute flagged units for Phase 1.5
+        const characters = units.filter((u) => u.type === 'Personnages' && consequenceFlagsRef.current.get(u.id))
+        const unitsFlagged = units.filter((u) => u.type !== 'Personnages' && consequenceFlagsRef.current.get(u.id))
+        const flagged: FlaggedUnit[] = [...characters, ...unitsFlagged].map((u) => ({ id: u.id, name: u.name, type: u.type }))
+        flaggedUnitsRef.current = flagged
 
-        if (queue.length === 0) {
-          // No tier crossings — call completeEvolutions with empty gains
-          let completeResult: ServerResult<{ matchId: string }>
-          if (onCompleteEvolutions) {
-            completeResult = await onCompleteEvolutions(matchId, matchParticipantId, [])
-          } else {
-            const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
-            completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains: [] } })
-          }
-          if (!completeResult.success) {
-            setError(completeResult.error.message)
-            setIsSubmitting(false)
-            submittingRef.current = false
-            return
-          }
-          onComplete()
-        } else {
-          // Tier crossings exist — transition to Phase 2
-          setTierUpQueue(queue)
-          setTierUpStep(0)
-          setPhase('tierup')
+        if (flagged.length > 0) {
+          // Has consequences — enter Phase 1.5
+          setConsequenceIndex(0)
+          setPhase('consequences')
           setIsSubmitting(false)
           submittingRef.current = false
+        } else {
+          // No consequences — go directly to Phase 2 or complete
+          await transitionToPhase2OrComplete()
         }
       } else {
         // Record the submitted XP value for this step (for back-button pre-fill)
@@ -308,6 +381,83 @@ export function PostMatchWizard({
       setError(err instanceof Error ? err.message : 'Erreur inconnue')
       setIsSubmitting(false)
       submittingRef.current = false
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 1.5: Consequence handling
+  // ---------------------------------------------------------------------------
+
+  const handleConsequenceConfirm = async (result: InjuryResult | DestructionResult) => {
+    const currentFlaggedUnit = flaggedUnitsRef.current[consequenceIndex]
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!currentFlaggedUnit) return
+
+    // Store consequence for batch commit
+    pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
+
+    // Handle XP adjustments for Miraculé / Fureur Vengeresse (+2 XP) and Déroute Sanglante (XP loss)
+    if (result.type === 'miracule' || result.type === 'fureur_vengeresse') {
+      const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
+      if (xpEntry) {
+        const currentXpGained = xpEntry.newXp - xpEntry.oldXp
+        const newXpGained = currentXpGained + 2
+        let submitResult: ServerResult<{ unitId: string; newXp: number }>
+        if (onSubmitUnitXp) {
+          submitResult = await onSubmitUnitXp(currentFlaggedUnit.id, newXpGained, matchParticipantId)
+        } else {
+          const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentFlaggedUnit.id, xpGained: newXpGained } })
+        }
+        if (submitResult.success) {
+          xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
+        }
+      }
+    } else if (result.type === 'deroute_sanglante') {
+      const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
+      if (xpEntry) {
+        const currentXpGained = xpEntry.newXp - xpEntry.oldXp
+        const { calculateTier } = await import('../lib/tier')
+        const { DEROUTE_XP_LOSS } = await import('../lib/constants')
+        const tier = calculateTier(xpEntry.newXp, currentFlaggedUnit.type)
+        const tierLoss = DEROUTE_XP_LOSS[tier]
+        const newXpGained = Math.max(0, currentXpGained - tierLoss)
+        let submitResult: ServerResult<{ unitId: string; newXp: number }>
+        if (onSubmitUnitXp) {
+          submitResult = await onSubmitUnitXp(currentFlaggedUnit.id, newXpGained, matchParticipantId)
+        } else {
+          const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentFlaggedUnit.id, xpGained: newXpGained } })
+        }
+        if (submitResult.success) {
+          xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
+        }
+      }
+    }
+
+    // Advance to next flagged unit or transition to Phase 2
+    const nextIndex = consequenceIndex + 1
+    if (nextIndex < flaggedUnitsRef.current.length) {
+      setConsequenceIndex(nextIndex)
+    } else {
+      // All consequences done — proceed to Phase 2 or complete
+      await transitionToPhase2OrComplete()
+    }
+  }
+
+  const handleConsequenceBack = () => {
+    if (consequenceIndex > 0) {
+      setConsequenceIndex((prev) => prev - 1)
+    } else {
+      // Back to Phase 1 last XP step
+      setPhase('xp')
+      setCurrentStep(units.length - 1)
+      // Clear last unit's XP result so it can be re-submitted
+      const lastUnitId = units[units.length - 1]?.id
+      if (lastUnitId) {
+        xpResultsRef.current.delete(lastUnitId)
+        submittedUnitsRef.current.delete(lastUnitId)
+      }
     }
   }
 
@@ -382,18 +532,19 @@ export function PostMatchWizard({
       const isLastTierUpStep = tierUpStep === effectiveQueueLength - 1
 
       if (isLastTierUpStep) {
-        // All tier-ups done — batch commit all gains + stamp evolutionsEnteredAt
+        // All tier-ups done — batch commit all gains + consequences + stamp evolutionsEnteredAt
         const gains: Array<{ unitId: string; descriptions: string[] }> = []
         for (const [unitId, descriptions] of pendingGainsRef.current) {
           gains.push({ unitId, descriptions })
         }
+        const consequences = buildConsequencesArray()
 
         let completeResult: ServerResult<{ matchId: string }>
         if (onCompleteEvolutions) {
-          completeResult = await onCompleteEvolutions(matchId, matchParticipantId, gains)
+          completeResult = await onCompleteEvolutions(matchId, matchParticipantId, gains, consequences)
         } else {
           const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
-          completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains } })
+          completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains, consequences } })
         }
         if (!completeResult.success) {
           setError(completeResult.error.message)
@@ -519,6 +670,7 @@ export function PostMatchWizard({
                 // H1 fix: rollback cumulative refs for the current step before going back
                 const currentEntry = tierUpQueue[tierUpStep]
                 const prevSelections = submittedTierUpsByStepRef.current.get(tierUpStep)
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (prevSelections && currentEntry) {
                   // Remove from pendingGainsRef
                   const pending = pendingGainsRef.current.get(currentEntry.unitId)
@@ -558,14 +710,19 @@ export function PostMatchWizard({
                 }
                 setTierUpStep((prev) => prev - 1)
               } else {
-                // Return to Phase 1 last XP step
-                setPhase('xp')
-                setCurrentStep(units.length - 1)
-                // Clear xpResults for last unit to avoid stale data
-                const lastUnitId = units[units.length - 1]?.id
-                if (lastUnitId) {
-                  xpResultsRef.current.delete(lastUnitId)
-                  submittedUnitsRef.current.delete(lastUnitId)
+                // AC: Risk 9 — if Phase 1.5 was present, return there; otherwise return to Phase 1
+                if (flaggedUnitsRef.current.length > 0) {
+                  setConsequenceIndex(flaggedUnitsRef.current.length - 1)
+                  setPhase('consequences')
+                } else {
+                  // Return to Phase 1 last XP step
+                  setPhase('xp')
+                  setCurrentStep(units.length - 1)
+                  const lastUnitId = units[units.length - 1]?.id
+                  if (lastUnitId) {
+                    xpResultsRef.current.delete(lastUnitId)
+                    submittedUnitsRef.current.delete(lastUnitId)
+                  }
                 }
               }
             }}
@@ -661,6 +818,82 @@ export function PostMatchWizard({
         />
 
         {/* Completion marker (shown after last unit submitted) */}
+        <span data-testid="wizard-complete" style={{ display: 'none' }} />
+      </div>
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render — Phase 1.5 (consequence flow)
+  // ---------------------------------------------------------------------------
+
+  if (phase === 'consequences') {
+    const currentFlaggedUnit = flaggedUnitsRef.current[consequenceIndex]
+    // Defensive guard
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!currentFlaggedUnit) return null
+    const isCharacter = currentFlaggedUnit.type === 'Personnages'
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* Progress row with cancel button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', position: 'relative' }}>
+          <p
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.875rem',
+              color: 'var(--color-text-secondary)',
+              margin: 0,
+              textAlign: 'center',
+            }}
+          >
+            {isCharacter ? 'Blessure' : 'Destruction'} — {currentFlaggedUnit.name}
+          </p>
+          <button
+            type="button"
+            data-testid="wizard-cancel-button"
+            onClick={onCancel}
+            aria-label="Quitter"
+            style={{
+              position: 'absolute',
+              right: 0,
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              border: 'none',
+              background: 'var(--color-malus)',
+              color: '#fff',
+              fontWeight: 800,
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              fontSize: '1rem',
+              padding: 0,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Consequence step — key resets internal state when index changes */}
+        {isCharacter ? (
+          <InjuryBonusStep
+            key={consequenceIndex}
+            unitName={currentFlaggedUnit.name}
+            onConfirm={(result) => void handleConsequenceConfirm(result)}
+            onBack={handleConsequenceBack}
+          />
+        ) : (
+          <UnitDestructionStep
+            key={consequenceIndex}
+            unitName={currentFlaggedUnit.name}
+            onConfirm={(result) => void handleConsequenceConfirm(result)}
+            onBack={handleConsequenceBack}
+          />
+        )}
+
+        {/* Completion marker */}
         <span data-testid="wizard-complete" style={{ display: 'none' }} />
       </div>
     )
@@ -831,6 +1064,30 @@ export function PostMatchWizard({
           }}
         />
       </div>
+
+      {/* Consequence toggle — MHC for characters, Détruite for units (AC1, AC12) */}
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          cursor: 'pointer',
+          fontFamily: 'var(--font-body)',
+          fontSize: '0.875rem',
+          color: 'var(--color-text-secondary)',
+        }}
+      >
+        <input
+          data-testid="consequence-toggle"
+          type="checkbox"
+          checked={isConsequenceChecked}
+          onChange={(e) => {
+            setIsConsequenceChecked(e.target.checked)
+            consequenceFlagsRef.current.set(currentUnit.id, e.target.checked)
+          }}
+        />
+        {currentUnit.type === 'Personnages' ? 'Mis Hors de Combat' : 'Détruite'}
+      </label>
 
       {/* Error message */}
       {error && (

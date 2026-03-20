@@ -325,7 +325,7 @@ describe('[AC5][P0] PostMatchWizard — completes wizard after last unit (Task 6
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
-      expect(onCompleteEvolutions).toHaveBeenCalledWith(MATCH_ID, PARTICIPANT_ID, [])
+      expect(onCompleteEvolutions).toHaveBeenCalledWith(MATCH_ID, PARTICIPANT_ID, [], [])
       expect(onComplete).toHaveBeenCalled()
     })
   })

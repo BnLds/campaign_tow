@@ -189,7 +189,8 @@ export function composeUnitView(
         let displayValue: string
         if (numeric) {
           const rawValue = parseInt(baseValue, 10) + netDelta
-          displayValue = UNCAPPED_STATS.includes(key) ? String(rawValue) : String(Math.min(rawValue, STAT_CAP))
+          // AC25: stat floor at 0 for all non-uncapped stats (injury/destruction modifiers can be large negatives)
+          displayValue = UNCAPPED_STATS.includes(key) ? String(rawValue) : String(Math.max(0, Math.min(rawValue, STAT_CAP)))
         } else {
           // Non-numeric stat (e.g. "3D6", "D6", "3+"): append +N or -N suffix
           const sign = netDelta >= 0 ? '+' : ''

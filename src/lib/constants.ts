@@ -1,6 +1,7 @@
 // Campaign TOW — Improvement constants and threshold data
 // Source of truth: docs/xp_rules.md
 // Story 4.2: Tier-Up Detection & Improvement Choice
+// Story 4.3: Character Injuries & Unit Destruction
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +26,20 @@ export type ThresholdEntry = {
 // ---------------------------------------------------------------------------
 // Skill improvement helpers
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Déroute Sanglante XP loss per tier (Story 4.3 — AC15, Task 7.3)
+// Uses TierLevel (0-4) from src/lib/tier.ts.
+// Source: docs/xp_rules.md — "Destruction d'unité" section
+// ---------------------------------------------------------------------------
+
+export const DEROUTE_XP_LOSS: Record<0 | 1 | 2 | 3 | 4, number> = {
+  0: 10, // Bleusaille
+  1: 10, // Aguerri
+  2: 15, // Expérimenté
+  3: 20, // Vétéran
+  4: 30, // Légendaire
+}
 
 export const MAJOR_SKILL_OPTIONS = [
   'Bien entraîné',
