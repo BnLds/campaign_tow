@@ -49,7 +49,13 @@ campaign_tow/
     ├── db/
     │   ├── schema.ts              ← All Drizzle tables (single file MVP)
     │   ├── index.ts               ← DB connection + drizzle client export
-    │   ├── queries.ts             ← Named reusable queries (getArmyWithUnitsAndDeltas, etc.)
+    │   ├── queries/               ← Named reusable queries (split by domain)
+    │   │   ├── index.ts           ← Barrel re-export
+    │   │   ├── players.ts         ← Player CRUD queries
+    │   │   ├── armies.ts          ← Army CRUD + assignment queries
+    │   │   ├── units.ts           ← Unit/sub-profile/stat modifier/gain queries
+    │   │   ├── matches.ts         ← Timeline, match creation, results, pending matches
+    │   │   └── evolutions.ts      ← Post-match XP, consequences, wizard completion
     │   └── seed.ts                ← Dev/E2E seed via real OWB parser
     ├── lib/
     │   ├── constants.ts           ← XP thresholds, 2D6 tables, improvements per tier, static campaign data
@@ -90,8 +96,8 @@ campaign_tow/
 
 **Data Access Boundary:**
 - `src/db/` is the ONLY directory that imports `drizzle-orm` table definitions (`pgTable`, `text`, `boolean`…) or the `db` client
-- Route server functions access the DB exclusively via named functions in `src/db/queries.ts` — never by importing `db` or `drizzle-orm` directly in a route file
-- Complex/reusable queries: extracted to named functions in `src/db/queries.ts`
+- Route server functions access the DB exclusively via named functions in `src/db/queries/` — never by importing `db` or `drizzle-orm` directly in a route file
+- Complex/reusable queries: extracted to named functions in `src/db/queries/`
 - Domain logic in `src/lib/` receives data as arguments — never imports `db` directly
 
 **Domain Logic Boundary:**
@@ -141,7 +147,7 @@ campaign_tow/
 | Delta composition | `src/lib/delta-composer.ts` → unit card display + army detail |
 | Campaign rules data | `src/lib/constants.ts` → references view + xp-calculator + post-match flow |
 | Validation schemas | `src/lib/validators.ts` → shared between TanStack Form (client) and server functions |
-| Reusable queries | `src/db/queries.ts` → army detail, timeline, post-match data loading |
+| Reusable queries | `src/db/queries/` → army detail, timeline, post-match data loading |
 
 ## Data Flow
 
@@ -150,7 +156,7 @@ campaign_tow/
                                       ↓
                               db.insert (armies, units, sub_profiles)
                                       ↓
-[Route Loader] → db/queries.ts → delta-composer.ts → [ComposedUnitView] → UnitCard
+[Route Loader] → db/queries/ → delta-composer.ts → [ComposedUnitView] → UnitCard
                                                                               ↑
 [Post-Match Flow] → xp-calculator.ts → tier detection → improvement choice
                   → db.insert (stat_modifiers, unit_gains)

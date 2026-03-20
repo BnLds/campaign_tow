@@ -15,14 +15,7 @@
 // All tests will fail until the implementation is complete.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-const root = resolve(__dirname, '../../..')
-
-function getQueries() {
-  return readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
-}
+import { readAllQueries as getQueries } from '../../../tests/helpers/read-queries'
 
 // ---------------------------------------------------------------------------
 // AC5, AC6 — PendingMatchData type exported (Task 5.2)

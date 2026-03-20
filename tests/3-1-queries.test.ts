@@ -12,14 +12,7 @@
 // All tests will fail until the implementation is complete.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-const root = resolve(__dirname, '..')
-
-function getQueries() {
-  return readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
-}
+import { readAllQueries as getQueries } from './helpers/read-queries'
 
 // ---------------------------------------------------------------------------
 // AC1, AC3, AC4, AC5, AC6 — getTimelineForArmy (Task 2.1)

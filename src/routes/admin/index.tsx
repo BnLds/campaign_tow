@@ -1050,7 +1050,7 @@ function CreateMatchSection({
 }
 
 // Story 2.2 — Shared stat field grid component
-type StatFields = { m: string; cc: string; ct: string; f: string; e: string; pv: string; i: string; a: string; cd: string }
+import type { StatFields } from '../../db/queries/units'
 const STAT_KEYS: (keyof StatFields)[] = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd']
 
 function StatFieldsGrid({ stats, setStats }: { stats: StatFields; setStats: (s: StatFields) => void }) {

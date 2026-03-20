@@ -14,14 +14,7 @@
 // All tests will fail until the implementation is complete.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-const root = resolve(__dirname, '../../..')
-
-function getQueries() {
-  return readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
-}
+import { readAllQueries as getQueries } from '../../../tests/helpers/read-queries'
 
 // ---------------------------------------------------------------------------
 // AC1, AC4 — getMatchParticipantByMatchAndArmy (Task 7.1, 7.2, 7.3)

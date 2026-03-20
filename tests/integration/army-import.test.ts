@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readAllQueries } from '../helpers/read-queries'
 
 // Project root = two levels up from tests/integration/
 const root = resolve(__dirname, '../..')
@@ -98,33 +99,33 @@ describe('[AC1][P0] Schema — sub_profiles table — src/db/schema.ts', () => {
 
 describe('[AC1][P0] DB queries — src/db/queries.ts', () => {
   it('[2.1-INT-011] queries.ts exports createArmyWithUnits as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function createArmyWithUnits')
   })
 
   it('[2.1-INT-012] createArmyWithUnits uses db.transaction for atomic insert (AC4 — no partial data on failure)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // transaction must be inside the createArmyWithUnits function body
     expect(queries).toMatch(/createArmyWithUnits[\s\S]{0,500}\.transaction/)
   })
 
   it('[2.1-INT-013] queries.ts exports assignArmyToPlayer as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function assignArmyToPlayer')
   })
 
   it('[2.1-INT-014] queries.ts exports getArmyById as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function getArmyById')
   })
 
   it('[2.1-INT-015] queries.ts exports getAllArmies as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function getAllArmies')
   })
 
   it('[2.1-INT-017] createArmyWithUnits does NOT import bcryptjs — no auth logic in DB layer', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).not.toContain('bcryptjs')
   })
 })

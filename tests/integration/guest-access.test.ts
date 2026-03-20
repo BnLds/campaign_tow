@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readAllQueries } from '../helpers/read-queries'
 
 // Project root = two levels up from tests/integration/
 const root = resolve(__dirname, '../..')
@@ -61,17 +62,17 @@ describe('[AC5][P0] SessionData.isGuest is boolean — src/lib/auth.ts', () => {
 
 describe('[AC2][P0] Ghost player queries — src/db/queries.ts', () => {
   it('[1.7-INT-004] queries.ts exports ensureGhostPlayer as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function ensureGhostPlayer')
   })
 
   it('[1.7-INT-005] queries.ts exports getGhostPlayerId as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function getGhostPlayerId')
   })
 
   it("[1.7-INT-006] ensureGhostPlayer upserts player with username '__guest__' (coupled assertion)", () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // ensureGhostPlayer must reference '__guest__' username — not two unrelated occurrences
     expect(queries).toMatch(/ensureGhostPlayer[\s\S]{0,400}__guest__/)
   })
@@ -79,7 +80,7 @@ describe('[AC2][P0] Ghost player queries — src/db/queries.ts', () => {
 
 describe('[AC4][P0] getAllPlayers filters ghost player — src/db/queries.ts', () => {
   it('[1.7-INT-007] getAllPlayers filters out guest players — .where(eq(players.isGuest, false)) inside the function body', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // isGuest filter must be inside getAllPlayers — coupled assertion (not two independent occurrences)
     expect(queries).toMatch(/getAllPlayers[\s\S]{0,500}isGuest[\s\S]{0,100}false/)
   })

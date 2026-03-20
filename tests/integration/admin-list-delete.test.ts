@@ -15,6 +15,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readAllQueries } from '../helpers/read-queries'
 
 // Project root = two levels up from tests/integration/
 const root = resolve(__dirname, '../..')
@@ -60,23 +61,23 @@ describe('[AC1][P1] Admin link removed from CampaignView — src/routes/index.ts
 
 describe('[AC2][AC4][P0] DB queries — src/db/queries.ts', () => {
   it('[1.6-INT-005] queries.ts exports getAllPlayers as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function getAllPlayers')
   })
 
   it('[1.6-INT-006] getAllPlayers queries the players table — .from(players) inside the function body', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // .from(players) must appear inside getAllPlayers — not just anywhere in the file
     expect(queries).toMatch(/getAllPlayers[\s\S]{0,300}\.from\(players\)/)
   })
 
   it('[1.6-INT-007] queries.ts exports deletePlayer as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function deletePlayer')
   })
 
   it('[1.6-INT-008] deletePlayer deletes from players table — .delete(players) inside the function body (cascade via FK)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // .delete(players) must be inside deletePlayer — not two independent occurrences
     expect(queries).toMatch(/deletePlayer[\s\S]{0,300}\.delete\(players\)/)
   })

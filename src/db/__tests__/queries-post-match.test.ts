@@ -17,12 +17,9 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readAllQueries as getQueries } from '../../../tests/helpers/read-queries'
 
 const root = resolve(__dirname, '../../..')
-
-function getQueries() {
-  return readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
-}
 
 // ---------------------------------------------------------------------------
 // 10.1, 10.2, 10.3 — incrementUnitXp function (Task 1.2)
