@@ -69,7 +69,8 @@ describe('[AC3][P0] submitTierUpSchema — validators.ts (Task 13.4)', () => {
 // AC: 3
 // ---------------------------------------------------------------------------
 
-describe('[AC3][P0] submitTierUpFn — creates unit_gains entries (Task 13.1)', () => {
+// submitTierUpFn removed (deprecated, replaced by completeEvolutionsWithGainsFn batch commit)
+describe.skip('[AC3][P0] submitTierUpFn — creates unit_gains entries (Task 13.1)', () => {
   it('[4.2-SFN-007] post-match.tsx exports submitTierUpFn', () => {
     const code = getPostMatchRoute()
     expect(code).toMatch(/export const submitTierUpFn/)
@@ -116,7 +117,7 @@ describe('[AC3][P0] submitTierUpFn — creates unit_gains entries (Task 13.1)', 
 // AC: 3
 // ---------------------------------------------------------------------------
 
-describe('[AC3][P0] submitTierUpFn — rejects guest session (Task 13.2)', () => {
+describe.skip('[AC3][P0] submitTierUpFn — rejects guest session (Task 13.2)', () => {
   it('[4.2-SFN-015] submitTierUpFn checks isGuest and returns UNAUTHORIZED', () => {
     const code = getPostMatchRoute()
     expect(code).toMatch(/submitTierUpFn[\s\S]{0,1500}isGuest[\s\S]{0,200}UNAUTHORIZED/)
@@ -133,7 +134,7 @@ describe('[AC3][P0] submitTierUpFn — rejects guest session (Task 13.2)', () =>
 // AC: 3
 // ---------------------------------------------------------------------------
 
-describe('[AC3][P0] submitTierUpFn — rejects unit not belonging to player army (Task 13.3)', () => {
+describe.skip('[AC3][P0] submitTierUpFn — rejects unit not belonging to player army (Task 13.3)', () => {
   it('[4.2-SFN-017] submitTierUpFn calls getPlayerArmy to verify army ownership', () => {
     const code = getPostMatchRoute()
     expect(code).toMatch(/submitTierUpFn[\s\S]{0,2000}getPlayerArmy/)

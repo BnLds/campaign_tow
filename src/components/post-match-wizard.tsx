@@ -8,7 +8,7 @@ import { TierUpStep } from './tier-up-step'
 import { InjuryBonusStep } from './injury-bonus-step'
 import { UnitDestructionStep } from './unit-destruction-step'
 import { detectTierCrossings } from '../lib/tier'
-import { parseGainStat, STAT_CAP, UNCAPPED_STATS } from '../lib/delta-composer'
+import { parseGainStat, STAT_CAP, UNCAPPED_STATS, CD_STAT } from '../lib/delta-composer'
 import type { ThresholdEntry } from '../lib/constants'
 import type { ServerResult } from '../lib/types'
 import type { InjuryResult } from './injury-bonus-step'
@@ -612,18 +612,19 @@ export function PostMatchWizard({
       }
     }
 
-    // Generic stat cap constraint: disable improvements that would push a stat beyond STAT_CAP
+    // Commandement cap constraint: disable improvements that would push Cd beyond STAT_CAP (10).
+    // Only Commandement is capped per campaign rules — all other stats are uncapped.
     const capBlockedIds: string[] = []
     const unitEffective = unitData?.effectiveStats ?? {}
     const allImprovements = [...currentTierUp.majorImprovements, ...dynamicMinorImprovements]
     for (const imp of allImprovements) {
       const parsed = parseGainStat(imp.label)
-      if (!parsed || unitEffective[parsed.stat] == null) continue
+      if (!parsed || parsed.stat !== CD_STAT || unitEffective[parsed.stat] == null) continue
       if ((UNCAPPED_STATS as readonly string[]).includes(parsed.stat)) continue
-      // Session gains for this stat
+      // Session gains for Commandement
       const sessionDelta = sessionGains
         .map((g) => parseGainStat(g))
-        .filter((p) => p?.stat === parsed.stat)
+        .filter((p) => p?.stat === CD_STAT)
         .reduce((sum, p) => sum + (p?.delta ?? 0), 0)
       if ((unitEffective[parsed.stat] as number) + sessionDelta + parsed.delta > STAT_CAP) {
         capBlockedIds.push(imp.id)

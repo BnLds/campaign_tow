@@ -35,7 +35,10 @@ export const armies = pgTable('armies', {
   faction: text('faction').notNull(),
   playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (table) => [
+  // One army per player max — nullable unique allows multiple unassigned armies
+  uniqueIndex('armies_player_id_unique').on(table.playerId),
+])
 
 export const units = pgTable('units', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

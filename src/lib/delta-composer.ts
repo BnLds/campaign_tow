@@ -74,7 +74,11 @@ const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
 type StatKey = (typeof STAT_KEYS)[number]
 
 export const STAT_CAP = 10
+// UNCAPPED_STATS: no floor at 0 and no upper cap in display. Only Mouvement is uncapped.
+// Upper cap at STAT_CAP applies only to Commandement per campaign rules (checked separately in tier-up).
 export const UNCAPPED_STATS: StatKey[] = ['m']
+// CD_CAPPED: only Commandement is capped at STAT_CAP per campaign rules.
+export const CD_STAT: StatKey = 'cd'
 
 // ---------------------------------------------------------------------------
 // Gain description → stat modifier mapping
@@ -190,7 +194,9 @@ export function composeUnitView(
         if (numeric) {
           const rawValue = parseInt(baseValue, 10) + netDelta
           // AC25: stat floor at 0 for all non-uncapped stats (injury/destruction modifiers can be large negatives)
-          displayValue = UNCAPPED_STATS.includes(key) ? String(rawValue) : String(Math.max(0, Math.min(rawValue, STAT_CAP)))
+          // Upper cap at STAT_CAP applies only to Commandement per campaign rules.
+          const floored = UNCAPPED_STATS.includes(key) ? rawValue : Math.max(0, rawValue)
+          displayValue = key === CD_STAT ? String(Math.min(floored, STAT_CAP)) : String(floored)
         } else {
           // Non-numeric stat (e.g. "3D6", "D6", "3+"): append +N or -N suffix
           const sign = netDelta >= 0 ? '+' : ''

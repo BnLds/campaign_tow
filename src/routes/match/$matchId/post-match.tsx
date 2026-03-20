@@ -1,13 +1,13 @@
 // Campaign TOW — /match/$matchId/post-match route
 // Story 4.1: Post-match flow — XP entry per unit & character
-// Server functions: loadPostMatchDataFn, submitUnitXpFn, completeEvolutionsFn
+// Server functions: loadPostMatchDataFn, submitUnitXpFn, completeEvolutionsWithGainsFn
 
 import { createFileRoute, useRouter, Link, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
-import { submitUnitXpSchema, completeEvolutionsSchema, loadPostMatchDataSchema, submitTierUpSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
+import { submitUnitXpSchema, loadPostMatchDataSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
 import type { ConsequenceEntry } from '../../../lib/validators'
 import { PostMatchWizard } from '../../../components/post-match-wizard'
 import type { ServerResult } from '../../../lib/types'
@@ -84,6 +84,14 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       const unitGains = gainsByUnit.get(u.id) ?? []
       // Compute current Commandement: base CD from first non-mount sub-profile + CD gains
       const riderProfile = u.subProfiles.find((sp) => !sp.isMount) ?? u.subProfiles[0]
+      if (!riderProfile) {
+        return {
+          id: u.id, name: u.name, type: u.type, xp: u.xp,
+          previousXpGained: entryMap.get(u.id) ?? null,
+          hasMount: false, existingGains: unitGains, commandement: 0,
+          effectiveStats: { m: null, cc: null, ct: null, f: null, e: null, pv: null, i: null, a: null, cd: null },
+        }
+      }
       const baseCd = riderProfile.cd ? parseInt(riderProfile.cd, 10) : 0
       const cdGains = unitGains.filter((g) => /^\+\d+ Commandement/i.test(g)).length
 
@@ -181,81 +189,9 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
     return { success: true, data: { unitId: data.unitId, newXp } }
   })
 
-// ---------------------------------------------------------------------------
-// Server function — complete evolutions (POST)
-// @deprecated — Replaced by completeEvolutionsWithGainsFn (batch commit).
-// Kept for backward compatibility with story 4-1 tests. Do not use in new code.
-// ---------------------------------------------------------------------------
-
-export const completeEvolutionsFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator(completeEvolutionsSchema)
-  .handler(async ({ context, data }): Promise<ServerResult<{ matchId: string }>> => {
-    if (context.session.isGuest) {
-      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
-    }
-    const { getPlayerArmy, getMatchParticipantForEvolution, markEvolutionsEntered } = await import('../../../db/queries')
-    const army = await getPlayerArmy(context.session.playerId)
-    if (!army) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
-    }
-    // Single query: verifies participation AND checks idempotency
-    const participant = await getMatchParticipantForEvolution(data.matchId, army.id)
-    if (!participant) {
-      return {
-        success: false,
-        error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
-      }
-    }
-    // Idempotent: return success without re-stamping if evolutionsEnteredAt already set
-    if (participant.evolutionsEnteredAt !== null) {
-      return { success: true, data: { matchId: data.matchId } }
-    }
-    await markEvolutionsEntered(participant.id)
-    return { success: true, data: { matchId: data.matchId } }
-  })
-
-// ---------------------------------------------------------------------------
-// Server function — submit tier-up improvement selections (POST)
-// @deprecated — Replaced by completeEvolutionsWithGainsFn (batch commit).
-// The wizard no longer calls this; gains are accumulated client-side and
-// committed atomically at the end. Kept for existing test contracts.
-// ---------------------------------------------------------------------------
-
-export const submitTierUpFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator(submitTierUpSchema)
-  .handler(async ({ context, data }): Promise<ServerResult<{ unitId: string; gainsCreated: number }>> => {
-    if (context.session.isGuest) {
-      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
-    }
-    // C3: insertUnitGain calls committed atomically per improvement.description (via insertUnitGainsTransaction)
-    const { getPlayerArmy, getUnitById, getMatchParticipantArmyId, getMatchParticipantEvolutionsStatus, insertUnitGainsTransaction } = await import('../../../db/queries')
-    const army = await getPlayerArmy(context.session.playerId)
-    if (!army) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
-    }
-    // C4 — verify participant belongs to the player's army
-    const participantArmyId = await getMatchParticipantArmyId(data.matchParticipantId)
-    if (participantArmyId !== army.id) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Participant invalide' } }
-    }
-    // C4+M2 — verify the match is still open (evolutionsEnteredAt must be null)
-    const { found, evolutionsEnteredAt } = await getMatchParticipantEvolutionsStatus(data.matchParticipantId)
-    if (!found) {
-      return { success: false, error: { code: 'NOT_FOUND', message: 'Participant introuvable' } }
-    }
-    if (evolutionsEnteredAt !== null) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Evolutions deja saisies pour cette partie' } }
-    }
-    // C4 — verify the unit belongs to the player's army
-    const unit = await getUnitById(data.unitId)
-    if (!unit || unit.armyId !== army.id) {
-      return { success: false, error: { code: 'FORBIDDEN', message: "Cette unite n'appartient pas a votre armee" } }
-    }
-    await insertUnitGainsTransaction(data.unitId, data.improvements.map((i) => i.description), data.matchParticipantId)
-    return { success: true, data: { unitId: data.unitId, gainsCreated: data.improvements.length } }
-  })
+// completeEvolutionsFn and submitTierUpFn have been removed.
+// They were @deprecated and replaced by completeEvolutionsWithGainsFn (batch commit).
+// Removing them prevents bypass of the atomic batch commit flow via direct HTTP calls.
 
 // ---------------------------------------------------------------------------
 // Server function — batch commit: complete evolutions with all gains (POST)
@@ -282,9 +218,27 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
         error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
       }
     }
+    // Verify matchParticipantId matches the actual participant (prevents cross-match injection)
+    if (data.matchParticipantId !== participant.id) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Participant invalide' } }
+    }
     // Idempotent: return success if already completed
     if (participant.evolutionsEnteredAt !== null) {
       return { success: true, data: { matchId: data.matchId } }
+    }
+    // Verify all unitIds in gains and consequences belong to this army
+    if (data.gains.length > 0 || (data.consequences && data.consequences.length > 0)) {
+      const { getUnitsForArmy } = await import('../../../db/queries')
+      const armyUnits = await getUnitsForArmy(army.id)
+      const armyUnitIds = new Set(armyUnits.map((u) => u.id))
+      const invalidGain = data.gains.find((g) => !armyUnitIds.has(g.unitId))
+      if (invalidGain) {
+        return { success: false, error: { code: 'FORBIDDEN', message: "Une unité des gains n'appartient pas à votre armée" } }
+      }
+      const invalidConsequence = (data.consequences ?? []).find((c) => !armyUnitIds.has(c.unitId))
+      if (invalidConsequence) {
+        return { success: false, error: { code: 'FORBIDDEN', message: "Une unité des conséquences n'appartient pas à votre armée" } }
+      }
     }
     // Story 4.3: pass consequences and armyId for temporary modifier cleanup (AC24)
     await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.gains, data.consequences ?? [], army.id)

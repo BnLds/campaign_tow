@@ -187,6 +187,13 @@ const createMatchFn = createServerFn({ method: 'POST' })
     if (data.army1Id === data.army2Id) {
       return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Les deux armées doivent être différentes' } }
     }
+    // Validate result coherence when both are set: (victory,defeat), (defeat,victory), or (draw,draw)
+    if (data.result1 !== null && data.result2 !== null) {
+      const validPairs: Array<[string, string]> = [['victory', 'defeat'], ['defeat', 'victory'], ['draw', 'draw']]
+      if (!validPairs.some(([r1, r2]) => r1 === data.result1 && r2 === data.result2)) {
+        return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Résultats incohérents (victoire/victoire ou défaite/défaite non autorisé)' } }
+      }
+    }
     const { createMatchWithParticipants } = await import('../../db/queries')
     const matchDate = new Date(data.date)
     if (isNaN(matchDate.getTime())) {

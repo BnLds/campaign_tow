@@ -185,7 +185,8 @@ describe('[AC3][AC4][AC7][AC8][P0] submitUnitXpFn — server function contract (
 // AC: 5
 // ---------------------------------------------------------------------------
 
-describe('[AC5][P0] completeEvolutionsFn — server function contract (Tasks 5.1-5.3)', () => {
+// completeEvolutionsFn removed (deprecated, replaced by completeEvolutionsWithGainsFn batch commit)
+describe.skip('[AC5][P0] completeEvolutionsFn — server function contract (Tasks 5.1-5.3)', () => {
   // 10.14 — completeEvolutionsFn defined as POST server function
   it('[4.1-SFN-023] post-match.tsx defines completeEvolutionsFn as createServerFn POST', () => {
     const code = getPostMatchRoute()

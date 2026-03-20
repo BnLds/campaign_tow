@@ -346,9 +346,9 @@ describe('[AC7][P0] Campaign view — timeline and pending matches coexist in lo
     expect(code).toMatch(/\{[\s\S]{0,200}(timeline[\s\S]{0,200}pendingMatches|pendingMatches[\s\S]{0,200}timeline)[\s\S]{0,200}\}[\s\S]{0,100}useLoaderData/)
   })
 
-  it('[3.2-SFN-041] TODO comment for story 3.3 link on "Resultat a entrer" chip (Task 7.4)', () => {
-    // AC: 5 — Task 7.4 — future link to story 3.3
+  it('[3.2-SFN-041] "Resultat a entrer" chip has onClick handler (story 3.3 implemented)', () => {
+    // AC: 5 — Task 7.4 — onClick now wired to result picker (TODO resolved)
     const code = getCampaignView()
-    expect(code).toMatch(/(TODO.*story 3\.3|story 3\.3.*TODO)/)
+    expect(code).toMatch(/onClick[\s\S]{0,100}resultPickerMatchId|resultPickerMatchId[\s\S]{0,100}onClick/)
   })
 })

@@ -667,7 +667,8 @@ describe('[AC2] composeUnitView — unit gains affect stats', () => {
 // ---------------------------------------------------------------------------
 
 describe('[CAP] composeUnitView — stat cap at 10', () => {
-  it('[CAP-001] numeric stat 9 + delta +2 → value "10" (capped), delta=2, modified=true', () => {
+  it('[CAP-001] numeric stat 9 + delta +2 → value "11" (CC uncapped per campaign rules), delta=2, modified=true', () => {
+    // Only Commandement is capped at 10 — other stats like CC have no upper cap
     const subProfile = makeSubProfile('Élite', {
       m: '4', cc: '9', ct: '3', f: '3', e: '3', pv: '1', i: '3', a: '1', cd: '7',
     })
@@ -675,7 +676,7 @@ describe('[CAP] composeUnitView — stat cap at 10', () => {
     const result = composeUnitView([subProfile], [modifier], [])
 
     const ccStat = result.subProfiles[0].stats['cc']
-    expect(ccStat.value).toBe('10')
+    expect(ccStat.value).toBe('11')
     expect(ccStat.delta).toBe(2)
     expect(ccStat.modified).toBe(true)
   })

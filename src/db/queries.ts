@@ -144,12 +144,17 @@ export async function createArmyWithUnits(
 }
 
 export async function assignArmyToPlayer(armyId: string, playerId: string): Promise<boolean> {
-  const result = await db
-    .update(armies)
-    .set({ playerId })
-    .where(eq(armies.id, armyId))
-    .returning({ id: armies.id })
-  return result.length > 0
+  return db.transaction(async (tx) => {
+    // Unassign any existing army for this player before assigning the new one
+    // (enforces the uniqueIndex on armies.playerId — one army per player max)
+    await tx.update(armies).set({ playerId: null }).where(and(eq(armies.playerId, playerId), ne(armies.id, armyId)))
+    const result = await tx
+      .update(armies)
+      .set({ playerId })
+      .where(eq(armies.id, armyId))
+      .returning({ id: armies.id })
+    return result.length > 0
+  })
 }
 
 export async function getArmyOwner(armyId: string): Promise<{ playerId: string | null } | null> {
@@ -579,7 +584,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     }
 
     // Group by matchParticipantId, sorted by unit type: personnage > base > spécial > rare
-    const UNIT_TYPE_ORDER: Record<string, number> = { personnage: 0, base: 1, special: 2, rare: 3 }
+    const UNIT_TYPE_ORDER: Record<string, number> = { 'Personnages': 0, 'Unités de base': 1, 'Unités spéciales': 2, 'Unités rares': 3 }
     const xpMap = new Map<string, Array<{ unitName: string; unitType: string; xpGained: number; gains: string[] }>>()
     for (const row of xpRows) {
       const arr = xpMap.get(row.matchParticipantId) ?? []
@@ -1036,21 +1041,26 @@ export async function updateMatchResults(
   myResult: 'victory' | 'defeat' | 'draw',
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
-    // Update MY result
+    // Update MY result — only if not already set (prevents re-submission and race conditions)
     const mine = await tx
       .update(matchParticipants)
       .set({ result: myResult })
-      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, myArmyId)))
+      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, myArmyId), isNull(matchParticipants.result)))
       .returning({ id: matchParticipants.id })
 
-    // Update OPPONENT's result to inverse
+    // Only update opponent if my update succeeded
+    if (mine.length === 0) {
+      return false
+    }
+
+    // Update OPPONENT's result to inverse — only if not already set
     const opp = await tx
       .update(matchParticipants)
       .set({ result: invertResult(myResult) })
-      .where(and(eq(matchParticipants.matchId, matchId), ne(matchParticipants.armyId, myArmyId)))
+      .where(and(eq(matchParticipants.matchId, matchId), ne(matchParticipants.armyId, myArmyId), isNull(matchParticipants.result)))
       .returning({ id: matchParticipants.id })
 
-    return mine.length === 1 && opp.length === 1
+    return opp.length === 1
   })
 }
 

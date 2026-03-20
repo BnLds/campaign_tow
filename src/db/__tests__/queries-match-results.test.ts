@@ -171,9 +171,12 @@ describe('[AC3][AC5][P0] DB queries — updateMatchResults — src/db/queries.ts
   })
 
   // AC: 3 — Task 7.5: returns true when both mine and opp updated
-  it('[3.3-QRY-022] updateMatchResults returns true when both updates succeed (mine.length === 1 && opp.length === 1)', () => {
+  it('[3.3-QRY-022] updateMatchResults returns false early if mine update matched 0 rows, then returns opp.length === 1', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/updateMatchResults[\s\S]{0,2500}(mine\.length\s*===\s*1[\s\S]{0,100}opp\.length\s*===\s*1|length === 1 && [\s\S]{0,100}length === 1)/)
+    // Guard: if mine update fails (0 rows), returns false before updating opponent
+    expect(queries).toMatch(/updateMatchResults[\s\S]{0,2500}mine\.length\s*===\s*0/)
+    // Final return is based on opp.length
+    expect(queries).toMatch(/updateMatchResults[\s\S]{0,3000}opp\.length\s*===\s*1/)
   })
 
   // AC: 3 — Both updates filter by matchId

@@ -712,7 +712,7 @@ describe('[CC-AC6] PostMatchWizard — "2 améliorations mineures" sub-flow', ()
 // ---------------------------------------------------------------------------
 
 describe('[CAP] PostMatchWizard — stat cap constraint', () => {
-  it('[CAP-WIZ-001] unit with CC effective at 10 → +1 CC is cap-blocked and shows red text', async () => {
+  it('[CAP-WIZ-001] unit with CC effective at 10 → +1 CC is NOT blocked (CC uncapped per campaign rules, only Cd is capped)', async () => {
     const unitWithMaxCc = [
       {
         id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base',
@@ -762,16 +762,16 @@ describe('[CAP] PostMatchWizard — stat cap constraint', () => {
     await selectAndConfirm()
     await selectAndConfirm()
 
-    // Now at Aguerri — CC input should be disabled (CC already at 10)
+    // Now at Aguerri — CC input should NOT be disabled (CC has no cap per campaign rules)
     await waitFor(() => {
       const ccInput = screen.queryByLabelText(/\+1 CC/)
       if (ccInput) {
-        expect((ccInput as HTMLInputElement).disabled).toBe(true)
+        expect((ccInput as HTMLInputElement).disabled).toBe(false)
       }
     })
   })
 
-  it('[CAP-WIZ-002] 2 consecutive minor improvements on same stat: second blocked if first pushes to 10', async () => {
+  it('[CAP-WIZ-002] 2 consecutive minor improvements on CC: second NOT blocked (CC uncapped per campaign rules)', async () => {
     // Unit with CC=9, crosses enough thresholds to get 2 minor picks
     // Using xp=0→50 to cross Vétéran (2 minor picks) — expanded into 2 sequential steps
     const unitCc9 = [
@@ -854,11 +854,11 @@ describe('[CAP] PostMatchWizard — stat cap constraint', () => {
     })
     await advanceStep()
 
-    // Now at Vétéran step 1/2 (minor) — CC should be disabled because CC is now 10
+    // Now at Vétéran step 1/2 (minor) — CC should NOT be disabled (CC is uncapped per campaign rules)
     await waitFor(() => {
       const ccInput2 = screen.queryByLabelText(/\+1 CC/)
       if (ccInput2) {
-        expect((ccInput2 as HTMLInputElement).disabled).toBe(true)
+        expect((ccInput2 as HTMLInputElement).disabled).toBe(false)
       }
     })
   })

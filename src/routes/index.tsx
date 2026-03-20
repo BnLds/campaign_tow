@@ -89,6 +89,7 @@ function CampaignView() {
   const context = useRouteContext({ from: '__root__' })
   const { session } = context
   const [modalOpen, setModalOpen] = useState(session?.hasSeenWelcome === false)
+  const [resultPickerMatchId, setResultPickerMatchId] = useState<string | null>(null)
   const hydrated = useHydrated()
   const { isGuest, army, timeline, pendingMatches } = Route.useLoaderData()
 
@@ -135,6 +136,36 @@ function CampaignView() {
           onDismiss={handleDismiss}
           onUpdateDisplayName={handleUpdateDisplayName}
         />
+      )}
+      {resultPickerMatchId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text-primary)' }}>
+              Résultat de la partie
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {(['victory', 'defeat', 'draw'] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={async () => {
+                    const matchId = resultPickerMatchId
+                    setResultPickerMatchId(null)
+                    await handleResultSubmit(matchId, r)
+                  }}
+                  style={{ padding: '0.6rem 1rem', borderRadius: 8, border: '1px solid var(--color-separator)', background: 'var(--color-background)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.9rem', textAlign: 'left' }}
+                >
+                  {r === 'victory' ? 'Victoire' : r === 'defeat' ? 'Défaite' : 'Nul'}
+                </button>
+              ))}
+              <button
+                onClick={() => setResultPickerMatchId(null)}
+                style={{ marginTop: '0.25rem', padding: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)', fontSize: '0.85rem' }}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
         {isGuest ? (
@@ -194,7 +225,7 @@ function CampaignView() {
                     <ActionChip
                       key={match.matchId}
                       label={label}
-                      // TODO: story 3.3 -- result entry route -- no href for now (avoids scroll-to-top)
+                      onClick={() => setResultPickerMatchId(match.matchId)}
                     />
                   )
                 })}
