@@ -21,12 +21,12 @@ export type InjuryResult =
 // ---------------------------------------------------------------------------
 
 const INJURY_OPTIONS = [
-  { type: 'death', label: '2 — Mort' },
-  { type: 'permanent_injury', label: '3 — Blessure Permanente' },
-  { type: 'grave_injury', label: '4-7 — Blessure Grave' },
-  { type: 'no_effect', label: '8-10 — Égratignures' },
-  { type: 'haine', label: '11 — Haine' },
-  { type: 'miracule', label: '12 — Miraculé' },
+  { type: 'death', label: '2 — Mort', ruleText: 'Le personnage est tué. Si la bataille est gagnée ou nulle, son équipement est récupéré. Sinon, il est perdu avec tout son matériel.' },
+  { type: 'permanent_injury', label: '3 — Blessure Permanente', ruleText: 'Jetez 1D6 sur la sous-table des blessures permanentes.' },
+  { type: 'grave_injury', label: '4-7 — Blessure Grave', ruleText: 'Commence la prochaine bataille avec –1 PV (minimum 1).' },
+  { type: 'no_effect', label: '8-10 — Égratignures', ruleText: 'Aucune séquelle. Quelques cicatrices, et une dent cassée.' },
+  { type: 'haine', label: '11 — Haine', ruleText: 'Gagne la règle spéciale Haine contre l\'armée adverse.' },
+  { type: 'miracule', label: '12 — Miraculé', ruleText: '+2 XP.' },
 ] as const
 
 // 1D6 permanent injury sub-table — stat keys match delta-composer STAT_KEYS
@@ -46,14 +46,13 @@ const PERMANENT_INJURY_SUBTABLE = [
 export type InjuryBonusStepProps = {
   unitName: string
   onConfirm: (result: InjuryResult) => void
-  onBack?: () => void
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function InjuryBonusStep({ unitName, onConfirm, onBack }: InjuryBonusStepProps) {
+export function InjuryBonusStep({ unitName, onConfirm }: InjuryBonusStepProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [selectedStat, setSelectedStat] = useState<string | null>(null)
 
@@ -121,31 +120,50 @@ export function InjuryBonusStep({ unitName, onConfirm, onBack }: InjuryBonusStep
       {/* 2D6 injury table */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {INJURY_OPTIONS.map((option) => (
-          <label
-            key={option.type}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.9rem',
-              color: 'var(--color-text-primary)',
-              padding: '0.4rem 0.5rem',
-              borderRadius: '4px',
-              background: selectedType === option.type ? 'rgba(184,44,44,0.08)' : 'transparent',
-            }}
-          >
-            <input
-              type="radio"
-              name="injury-type"
-              value={option.type}
-              checked={selectedType === option.type}
-              onChange={() => handleTypeSelect(option.type)}
-              style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
-            />
-            {option.label}
-          </label>
+          <div key={option.type}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.9rem',
+                color: 'var(--color-text-primary)',
+                padding: '0.4rem 0.5rem',
+                borderRadius: '4px',
+                background: selectedType === option.type ? 'rgba(184,44,44,0.08)' : 'transparent',
+              }}
+            >
+              <input
+                type="radio"
+                name="injury-type"
+                value={option.type}
+                checked={selectedType === option.type}
+                onChange={() => handleTypeSelect(option.type)}
+                style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
+              />
+              {option.label}
+            </label>
+            {selectedType === option.type && (
+              <p
+                data-testid="rule-text"
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.8rem',
+                  fontStyle: 'italic',
+                  color: 'var(--color-text-secondary)',
+                  margin: '0 0 0.25rem',
+                  padding: '0.375rem 0.75rem',
+                  background: 'rgba(184,44,44,0.05)',
+                  borderRadius: '4px',
+                  borderLeft: '2px solid rgba(184,44,44,0.3)',
+                }}
+              >
+                {option.ruleText}
+              </p>
+            )}
+          </div>
         ))}
       </div>
 
@@ -205,25 +223,6 @@ export function InjuryBonusStep({ unitName, onConfirm, onBack }: InjuryBonusStep
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-        {onBack && (
-          <button
-            data-testid="consequence-back"
-            type="button"
-            onClick={onBack}
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.875rem',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              border: '1px solid #e0d5c8',
-              background: 'transparent',
-              color: 'var(--color-text-secondary)',
-              cursor: 'pointer',
-            }}
-          >
-            ‹ Retour
-          </button>
-        )}
         <button
           data-testid="consequence-confirm"
           type="button"

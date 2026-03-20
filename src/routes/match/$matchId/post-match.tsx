@@ -20,6 +20,7 @@ type PostMatchLoaderData = {
   alreadyCompleted: boolean
   matchId: string
   matchParticipantId: string
+  opponentPlayerName: string
   units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
 }
 
@@ -43,11 +44,30 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (!participant) {
       throw new Error('FORBIDDEN')
     }
+
+    // Load opponent player name for Haine/Rancune descriptions
+    const { db } = await import('../../../db/index')
+    const { matchParticipants: mpTable, armies: armiesTable, players: playersTable } = await import('../../../db/schema')
+    const { and: dbAnd, eq: dbEq, ne: dbNe } = await import('drizzle-orm')
+    const { alias } = await import('drizzle-orm/pg-core')
+    const oppParticipant = alias(mpTable, 'opp_mp')
+    const oppArmy = alias(armiesTable, 'opp_army')
+    const oppPlayerAlias = alias(playersTable, 'opp_player')
+    const oppRows = await db
+      .select({ playerName: oppPlayerAlias.displayName })
+      .from(oppParticipant)
+      .innerJoin(oppArmy, dbEq(oppParticipant.armyId, oppArmy.id))
+      .leftJoin(oppPlayerAlias, dbEq(oppArmy.playerId, oppPlayerAlias.id))
+      .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.armyId, army.id)))
+      .limit(1)
+    const opponentPlayerName = oppRows[0]?.playerName ?? 'Adversaire'
+
     if (participant.evolutionsEnteredAt !== null) {
       return {
         alreadyCompleted: true,
         matchId: data.matchId,
         matchParticipantId: participant.id,
+        opponentPlayerName,
         units: [],
       }
     }
@@ -140,6 +160,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       alreadyCompleted: false,
       matchId: data.matchId,
       matchParticipantId: participant.id,
+      opponentPlayerName,
       units,
     }
   })
@@ -240,8 +261,8 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
         return { success: false, error: { code: 'FORBIDDEN', message: "Une unité des conséquences n'appartient pas à votre armée" } }
       }
     }
-    // Story 4.3: pass consequences and armyId for temporary modifier cleanup (AC24)
-    await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.gains, data.consequences ?? [], army.id)
+    // Story 4.3: pass consequences, armyId, championKilledIds for full post-match processing
+    await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.gains, data.consequences ?? [], army.id, data.championKilledIds)
     return { success: true, data: { matchId: data.matchId } }
   })
 
@@ -262,7 +283,7 @@ export const Route = createFileRoute('/match/$matchId/post-match')({
 
 function PostMatchRoute() {
   const loaderData = Route.useLoaderData()
-  const { alreadyCompleted, matchId, matchParticipantId, units } = loaderData as PostMatchLoaderData
+  const { alreadyCompleted, matchId, matchParticipantId, opponentPlayerName, units } = loaderData as PostMatchLoaderData
   const hydrated = useHydrated()
   const router = useRouter()
 
@@ -311,8 +332,9 @@ function PostMatchRoute() {
     mParticipantId: string,
     gains: Array<{ unitId: string; descriptions: string[] }>,
     consequences?: ConsequenceEntry[],
+    championKilledIds?: string[],
   ) => {
-    return completeEvolutionsWithGainsFn({ data: { matchId: mId, matchParticipantId: mParticipantId, gains, consequences } })
+    return completeEvolutionsWithGainsFn({ data: { matchId: mId, matchParticipantId: mParticipantId, gains, consequences, championKilledIds } })
   }
 
   return (
@@ -320,6 +342,7 @@ function PostMatchRoute() {
       <PostMatchWizard
         matchId={matchId}
         matchParticipantId={matchParticipantId}
+        opponentPlayerName={opponentPlayerName}
         units={units}
         onComplete={handleComplete}
         onCancel={handleComplete}

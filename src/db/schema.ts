@@ -85,6 +85,8 @@ export const statModifiers = pgTable('stat_modifiers', {
   delta: integer('delta').notNull(),
   source: text('source').notNull(),
   temporary: boolean('temporary').notNull().default(false),
+  matchParticipantId: text('match_participant_id')
+    .references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
 
 export const unitGains = pgTable('unit_gains', {

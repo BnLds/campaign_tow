@@ -136,7 +136,13 @@ export const completeEvolutionsWithGainsSchema = z.object({
     stat: z.string().optional(),
     delta: z.number().optional(),
     bannerLost: z.boolean().optional(),
+    // opponentPlayerName: passed by wizard for Haine / Rancune descriptions
+    opponentPlayerName: z.string().optional(),
+    // xpLostAmount: passed for deroute_sanglante to record in unit_gain description
+    xpLostAmount: z.number().optional(),
   })).optional(),
+  // championKilledIds: unit IDs where champion was killed in challenge (Phase 1 checkbox)
+  championKilledIds: z.array(z.string().min(1)).optional(),
 })
 export type CompleteEvolutionsWithGainsInput = z.infer<typeof completeEvolutionsWithGainsSchema>
 export type ConsequenceEntry = NonNullable<CompleteEvolutionsWithGainsInput['consequences']>[number]

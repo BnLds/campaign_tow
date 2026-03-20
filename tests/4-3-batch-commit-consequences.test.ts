@@ -233,9 +233,9 @@ describe('[AC16][P0] Consequence processing — pertes_catastrophiques (Task 12.
 // ---------------------------------------------------------------------------
 
 describe('[AC19][P0] Consequence processing — rancune (Task 12.8)', () => {
-  it('[4.3-TXN-007] rancune maps to insertUnitGain with description "Rancune — Haine (destruction)"', () => {
+  it('[4.3-TXN-007] rancune maps to insertUnitGain with description "Haine — {player}"', () => {
     const consequence = { unitId: 'unit-1', type: 'rancune' as const }
-    // Expected: insertUnitGain('unit-1', 'Rancune — Haine (destruction)', matchParticipantId)
+    // Expected: insertUnitGain('unit-1', 'Haine — ennemi', matchParticipantId) when no opponentPlayerName
     expect(consequence.type).toBe('rancune')
   })
 })

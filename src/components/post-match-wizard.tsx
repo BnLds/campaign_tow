@@ -76,6 +76,8 @@ function expandQueueEntry(entry: TierUpQueueEntry): TierUpQueueEntry[] {
 export type PostMatchWizardProps = {
   matchId: string
   matchParticipantId: string
+  /** Pseudo du joueur adverse — used for Haine/Rancune descriptions */
+  opponentPlayerName?: string
   units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
   onComplete: () => void
   onCancel: () => void
@@ -83,12 +85,13 @@ export type PostMatchWizardProps = {
   onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string) => Promise<ServerResult<{ unitId: string; newXp: number }>>
   /** Batch commit: completes evolutions with all accumulated gains and consequences. Called once at the end.
    *  gains=[] and consequences=[] for the no-tierup, no-consequence path. */
-  onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[]) => Promise<ServerResult<{ matchId: string }>>
+  onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[], championKilledIds?: string[]) => Promise<ServerResult<{ matchId: string }>>
 }
 
 export function PostMatchWizard({
   matchId,
   matchParticipantId,
+  opponentPlayerName = 'Adversaire',
   units,
   onComplete,
   onCancel,
@@ -108,12 +111,16 @@ export function PostMatchWizard({
   const [consequenceIndex, setConsequenceIndex] = useState(0)
   // Track consequence toggle per unit (MHC for characters, destroyed for units)
   const consequenceFlagsRef = useRef<Map<string, boolean>>(new Map())
-  // Local checkbox state synced from ref on step change (for controlled input)
+  // Track champion killed per unit (Phase 1, non-Personnages only)
+  const championFlagsRef = useRef<Map<string, boolean>>(new Map())
+  // Local checkbox states synced from refs on step change (for controlled inputs)
   const [isConsequenceChecked, setIsConsequenceChecked] = useState(false)
+  const [isChampionKilledChecked, setIsChampionKilledChecked] = useState(false)
   // Ordered list of flagged units to process in Phase 1.5 (characters first, then units)
   const flaggedUnitsRef = useRef<FlaggedUnit[]>([])
   // Accumulated consequences for batch commit (discarded on cancel)
-  const pendingConsequencesRef = useRef<Map<string, InjuryResult | DestructionResult>>(new Map())
+  // DestructionResult extended with xpLostAmount for deroute_sanglante
+  const pendingConsequencesRef = useRef<Map<string, InjuryResult | (DestructionResult & { xpLostAmount?: number })>>(new Map())
 
   // Phase 2 state
   const [tierUpQueue, setTierUpQueue] = useState<TierUpQueueEntry[]>([])
@@ -131,10 +138,11 @@ export function PostMatchWizard({
   // XP results collected during Phase 1 (useRef to avoid re-renders on each submit)
   const xpResultsRef = useRef<Map<string, { oldXp: number; newXp: number }>>(new Map())
 
-  // Sync consequence toggle checkbox with current step's flag value
+  // Sync consequence toggle checkboxes with current step's flag values
   useEffect(() => {
     const unitId = units[currentStep]?.id ?? ''
     setIsConsequenceChecked(consequenceFlagsRef.current.get(unitId) ?? false)
+    setIsChampionKilledChecked(championFlagsRef.current.get(unitId) ?? false)
   }, [currentStep, units])
 
   // Pre-fill XP input from previousXpGained when step changes (AC2)
@@ -208,17 +216,36 @@ export function PostMatchWizard({
     const consequences: ConsequenceEntry[] = []
     for (const [unitId, result] of pendingConsequencesRef.current) {
       if ('bannerLost' in result) {
-        // DestructionResult
-        consequences.push({ unitId, type: result.type, bannerLost: result.bannerLost })
+        // DestructionResult (possibly extended with xpLostAmount)
+        const entry: ConsequenceEntry = { unitId, type: result.type, bannerLost: result.bannerLost }
+        if (result.type === 'rancune') {
+          entry.opponentPlayerName = opponentPlayerName
+        }
+        const extResult = result as DestructionResult & { xpLostAmount?: number }
+        if (result.type === 'deroute_sanglante' && extResult.xpLostAmount != null) {
+          entry.xpLostAmount = extResult.xpLostAmount
+        }
+        consequences.push(entry)
       } else {
         // InjuryResult
         const entry: ConsequenceEntry = { unitId, type: result.type }
         if ('stat' in result && result.stat) entry.stat = result.stat
         if ('delta' in result) entry.delta = result.delta
+        if (result.type === 'haine') {
+          entry.opponentPlayerName = opponentPlayerName
+        }
         consequences.push(entry)
       }
     }
     return consequences
+  }
+
+  const buildChampionKilledIds = (): string[] => {
+    const ids: string[] = []
+    for (const [unitId, killed] of championFlagsRef.current) {
+      if (killed) ids.push(unitId)
+    }
+    return ids
   }
 
   // ---------------------------------------------------------------------------
@@ -259,12 +286,13 @@ export function PostMatchWizard({
     if (queue.length === 0) {
       // No tier crossings — batch commit with empty gains + consequences
       const consequences = buildConsequencesArray()
+      const championKilledIds = buildChampionKilledIds()
       let completeResult: ServerResult<{ matchId: string }>
       if (onCompleteEvolutions) {
-        completeResult = await onCompleteEvolutions(matchId, matchParticipantId, [], consequences)
+        completeResult = await onCompleteEvolutions(matchId, matchParticipantId, [], consequences, championKilledIds)
       } else {
         const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
-        completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains: [], consequences } })
+        completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains: [], consequences, championKilledIds } })
       }
       if (!completeResult.success) {
         setError(completeResult.error.message)
@@ -393,9 +421,6 @@ export function PostMatchWizard({
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!currentFlaggedUnit) return
 
-    // Store consequence for batch commit
-    pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
-
     // Handle XP adjustments for Miraculé / Fureur Vengeresse (+2 XP) and Déroute Sanglante (XP loss)
     if (result.type === 'miracule' || result.type === 'fureur_vengeresse') {
       const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
@@ -413,6 +438,8 @@ export function PostMatchWizard({
           xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
         }
       }
+      // Store consequence for batch commit
+      pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
     } else if (result.type === 'deroute_sanglante') {
       const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
       if (xpEntry) {
@@ -421,6 +448,7 @@ export function PostMatchWizard({
         const { DEROUTE_XP_LOSS } = await import('../lib/constants')
         const tier = calculateTier(xpEntry.newXp, currentFlaggedUnit.type)
         const tierLoss = DEROUTE_XP_LOSS[tier]
+        const actualLoss = Math.min(tierLoss, currentXpGained)
         const newXpGained = Math.max(0, currentXpGained - tierLoss)
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
@@ -432,7 +460,19 @@ export function PostMatchWizard({
         if (submitResult.success) {
           xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
         }
+        // Store consequence with xpLostAmount for timeline description
+        pendingConsequencesRef.current.set(currentFlaggedUnit.id, { ...result, xpLostAmount: actualLoss })
+      } else {
+        pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
       }
+    } else {
+      // Store consequence for batch commit (all other types)
+      pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
+    }
+
+    // Propagate championKilled from DestructionResult to championFlagsRef
+    if ('bannerLost' in result && result.championKilled) {
+      championFlagsRef.current.set(currentFlaggedUnit.id, true)
     }
 
     // Advance to next flagged unit or transition to Phase 2
@@ -538,13 +578,14 @@ export function PostMatchWizard({
           gains.push({ unitId, descriptions })
         }
         const consequences = buildConsequencesArray()
+        const championKilledIds = buildChampionKilledIds()
 
         let completeResult: ServerResult<{ matchId: string }>
         if (onCompleteEvolutions) {
-          completeResult = await onCompleteEvolutions(matchId, matchParticipantId, gains, consequences)
+          completeResult = await onCompleteEvolutions(matchId, matchParticipantId, gains, consequences, championKilledIds)
         } else {
           const { completeEvolutionsWithGainsFn } = await import('../routes/match/$matchId/post-match')
-          completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains, consequences } })
+          completeResult = await completeEvolutionsWithGainsFn({ data: { matchId, matchParticipantId, gains, consequences, championKilledIds } })
         }
         if (!completeResult.success) {
           setError(completeResult.error.message)
@@ -837,8 +878,32 @@ export function PostMatchWizard({
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Progress row with cancel button */}
+        {/* Progress row with back button and cancel button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', position: 'relative' }}>
+          <button
+            data-testid="wizard-back-button"
+            onClick={handleConsequenceBack}
+            aria-label="Étape précédente"
+            style={{
+              position: 'absolute',
+              left: 0,
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              border: 'none',
+              background: '#334155',
+              color: '#fff',
+              fontWeight: 800,
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              fontSize: '1rem',
+              padding: 0,
+            }}
+          >
+            ‹
+          </button>
           <p
             style={{
               fontFamily: 'var(--font-body)',
@@ -883,14 +948,12 @@ export function PostMatchWizard({
             key={consequenceIndex}
             unitName={currentFlaggedUnit.name}
             onConfirm={(result) => void handleConsequenceConfirm(result)}
-            onBack={handleConsequenceBack}
           />
         ) : (
           <UnitDestructionStep
             key={consequenceIndex}
             unitName={currentFlaggedUnit.name}
             onConfirm={(result) => void handleConsequenceConfirm(result)}
-            onBack={handleConsequenceBack}
           />
         )}
 
@@ -1089,6 +1152,32 @@ export function PostMatchWizard({
         />
         {currentUnit.type === 'Personnages' ? 'Mis Hors de Combat' : 'Détruite'}
       </label>
+
+      {/* Champion killed in challenge — only for non-Personnages units */}
+      {currentUnit.type !== 'Personnages' && (
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          <input
+            data-testid="champion-killed-toggle"
+            type="checkbox"
+            checked={isChampionKilledChecked}
+            onChange={(e) => {
+              setIsChampionKilledChecked(e.target.checked)
+              championFlagsRef.current.set(currentUnit.id, e.target.checked)
+            }}
+          />
+          Champion tué en défi
+        </label>
+      )}
 
       {/* Error message */}
       {error && (

@@ -4,7 +4,7 @@
 import React from 'react'
 import type { ComposedUnitView, ComposedSubProfile, StatDelta, UnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
-import { stripConstraintHint } from '../lib/format'
+import { stripConstraintHint, isNegativeConsequenceGain } from '../lib/format'
 import type { TierLevel } from '../lib/tier'
 
 // ---------------------------------------------------------------------------
@@ -254,7 +254,8 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
     >
       {deltas.map((d, idx) => {
         const isBonus = d.delta > 0
-        const isMalus = d.delta < 0
+        const isMalusTemporary = d.delta < 0 && d.temporary
+        const isMalusPermanent = d.delta < 0 && !d.temporary
 
         const chipStyle: React.CSSProperties = isBonus
           ? {
@@ -262,17 +263,23 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
               color: 'var(--color-bonus)',
               border: '1px solid var(--color-bonus-border)',
             }
-          : isMalus
+          : isMalusTemporary
             ? {
-                background: 'var(--color-malus-bg)',
-                color: 'var(--color-malus)',
-                border: '1px solid var(--color-malus-border)',
+                background: '#fff3eb',
+                color: '#e07b30',
+                border: '1px solid #f0a870',
               }
-            : {
-                background: '#f3f4f6',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
-              }
+            : isMalusPermanent
+              ? {
+                  background: 'var(--color-malus-bg)',
+                  color: 'var(--color-malus)',
+                  border: '1px solid var(--color-malus-border)',
+                }
+              : {
+                  background: '#f3f4f6',
+                  color: '#6b7280',
+                  border: '1px solid #d1d5db',
+                }
 
         const prefix = d.delta > 0 ? '+' : ''
 
@@ -286,25 +293,28 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
               ...chipStyle,
             }}
           >
-            {d.stat.toUpperCase()} {prefix}{d.delta} ({d.source})
+            {prefix}{d.delta} {d.stat.toUpperCase()}
           </span>
         )
       })}
-      {gains.map((g, idx) => (
-        <span
-          key={`${g.id}-${idx}`}
-          style={{
-            padding: '0.125rem 0.5rem',
-            borderRadius: '9999px',
-            background: 'var(--color-bonus-bg)',
-            color: 'var(--color-bonus)',
-            border: '1px solid var(--color-bonus-border)',
-            fontWeight: 600,
-          }}
-        >
-          {stripConstraintHint(g.description)}
-        </span>
-      ))}
+      {gains.map((g, idx) => {
+        const isNeg = isNegativeConsequenceGain(g.description)
+        return (
+          <span
+            key={`${g.id}-${idx}`}
+            style={{
+              padding: '0.125rem 0.5rem',
+              borderRadius: '9999px',
+              background: isNeg ? 'var(--color-malus-bg)' : 'var(--color-bonus-bg)',
+              color: isNeg ? 'var(--color-malus)' : 'var(--color-bonus)',
+              border: `1px solid ${isNeg ? 'var(--color-malus-border)' : 'var(--color-bonus-border)'}`,
+              fontWeight: 600,
+            }}
+          >
+            {stripConstraintHint(g.description)}
+          </span>
+        )
+      })}
     </div>
   )
 }

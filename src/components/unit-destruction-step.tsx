@@ -17,6 +17,7 @@ export type DestructionResult = {
     | 'rancune'
     | 'fureur_vengeresse'
   bannerLost: boolean
+  championKilled: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -24,12 +25,12 @@ export type DestructionResult = {
 // ---------------------------------------------------------------------------
 
 const DESTRUCTION_OPTIONS = [
-  { type: 'deroute_sanglante', label: '2-3 — Déroute Sanglante' },
-  { type: 'pertes_catastrophiques', label: '4-6 — Pertes Catastrophiques' },
-  { type: 'moral_brise', label: '7-8 — Moral Brisé' },
-  { type: 'survivants_endurcis', label: '9-10 — Survivants Endurcis' },
-  { type: 'rancune', label: '11 — Rancune' },
-  { type: 'fureur_vengeresse', label: '12 — Fureur Vengeresse' },
+  { type: 'deroute_sanglante', label: '2-3 — Déroute Sanglante', ruleText: "L'unité perd 10/10/15/20/30 XP selon son palier. La perte d'XP se fait après l'ajout des gains de la bataille." },
+  { type: 'pertes_catastrophiques', label: '4-6 — Pertes Catastrophiques', ruleText: "L'unité est à moitié d'effectif (arrondi à l'inférieur) pour la bataille suivante." },
+  { type: 'moral_brise', label: '7-8 — Moral Brisé', ruleText: "L'unité perd 2 points de Commandement pour la bataille suivante." },
+  { type: 'survivants_endurcis', label: '9-10 — Survivants Endurcis', ruleText: 'Aucune conséquence.' },
+  { type: 'rancune', label: '11 — Rancune', ruleText: "L'unité gagne Haine contre l'armée qui l'a vaincue." },
+  { type: 'fureur_vengeresse', label: '12 — Fureur Vengeresse', ruleText: '+2 XP.' },
 ] as const
 
 // ---------------------------------------------------------------------------
@@ -39,16 +40,16 @@ const DESTRUCTION_OPTIONS = [
 export type UnitDestructionStepProps = {
   unitName: string
   onConfirm: (result: DestructionResult) => void
-  onBack?: () => void
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function UnitDestructionStep({ unitName, onConfirm, onBack }: UnitDestructionStepProps) {
+export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStepProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [bannerLost, setBannerLost] = useState(false)
+  const [championKilled, setChampionKilled] = useState(false)
 
   const isConfirmEnabled = selectedType !== null
 
@@ -57,6 +58,7 @@ export function UnitDestructionStep({ unitName, onConfirm, onBack }: UnitDestruc
     onConfirm({
       type: selectedType as DestructionResult['type'],
       bannerLost,
+      championKilled,
     })
   }
 
@@ -90,79 +92,107 @@ export function UnitDestructionStep({ unitName, onConfirm, onBack }: UnitDestruc
       {/* 2D6 destruction table */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {DESTRUCTION_OPTIONS.map((option) => (
-          <label
-            key={option.type}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.9rem',
-              color: 'var(--color-text-primary)',
-              padding: '0.4rem 0.5rem',
-              borderRadius: '4px',
-              background: selectedType === option.type ? 'rgba(184,44,44,0.08)' : 'transparent',
-            }}
-          >
-            <input
-              type="radio"
-              name="destruction-type"
-              value={option.type}
-              checked={selectedType === option.type}
-              onChange={() => setSelectedType(option.type)}
-              style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
-            />
-            {option.label}
-          </label>
+          <div key={option.type}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.9rem',
+                color: 'var(--color-text-primary)',
+                padding: '0.4rem 0.5rem',
+                borderRadius: '4px',
+                background: selectedType === option.type ? 'rgba(184,44,44,0.08)' : 'transparent',
+              }}
+            >
+              <input
+                type="radio"
+                name="destruction-type"
+                value={option.type}
+                checked={selectedType === option.type}
+                onChange={() => setSelectedType(option.type)}
+                style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
+              />
+              {option.label}
+            </label>
+            {selectedType === option.type && (
+              <p
+                data-testid="rule-text"
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.8rem',
+                  fontStyle: 'italic',
+                  color: 'var(--color-text-secondary)',
+                  margin: '0 0 0.25rem',
+                  padding: '0.375rem 0.75rem',
+                  background: 'rgba(184,44,44,0.05)',
+                  borderRadius: '4px',
+                  borderLeft: '2px solid rgba(184,44,44,0.3)',
+                }}
+              >
+                {option.ruleText}
+              </p>
+            )}
+          </div>
         ))}
       </div>
 
-      {/* Banner checkbox — independent of main selection */}
-      <label
+      {/* Additional checkboxes — banner and champion, independent of main selection */}
+      <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          cursor: 'pointer',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.875rem',
-          color: 'var(--color-text-secondary)',
+          flexDirection: 'column',
+          gap: '0.375rem',
           paddingTop: '0.25rem',
           borderTop: '1px solid rgba(184,44,44,0.2)',
         }}
       >
-        <input
-          data-testid="banner-lost-checkbox"
-          type="checkbox"
-          checked={bannerLost}
-          onChange={(e) => setBannerLost(e.target.checked)}
-          style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
-        />
-        L'unité possédait une bannière
-      </label>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          <input
+            data-testid="banner-lost-checkbox"
+            type="checkbox"
+            checked={bannerLost}
+            onChange={(e) => setBannerLost(e.target.checked)}
+            style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
+          />
+          L'unité possédait une bannière
+        </label>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          <input
+            data-testid="champion-killed-checkbox"
+            type="checkbox"
+            checked={championKilled}
+            onChange={(e) => setChampionKilled(e.target.checked)}
+            style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
+          />
+          Champion tué en défi
+        </label>
+      </div>
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-        {onBack && (
-          <button
-            data-testid="consequence-back"
-            type="button"
-            onClick={onBack}
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.875rem',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              border: '1px solid #e0d5c8',
-              background: 'transparent',
-              color: 'var(--color-text-secondary)',
-              cursor: 'pointer',
-            }}
-          >
-            ‹ Retour
-          </button>
-        )}
         <button
           data-testid="consequence-confirm"
           type="button"

@@ -3,7 +3,7 @@
 // Story 3.3: Interactive result entry (isEditable, onResultSubmit).
 
 import { useState } from 'react'
-import { stripConstraintHint } from '../lib/format'
+import { stripConstraintHint, isNegativeConsequenceGain } from '../lib/format'
 
 export type TimelineEntryProps = {
   matchId: string
@@ -18,7 +18,7 @@ export type TimelineEntryProps = {
   isEditable?: boolean
   onResultSubmit?: (matchId: string, result: 'victory' | 'defeat' | 'draw') => Promise<void>
   onEvolutionStart?: (matchId: string) => void
-  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[] }>
+  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
 }
 
 const RESULT_CONFIG = {
@@ -255,7 +255,7 @@ export function TimelineEntry({
       {/* XP + gains per unit — one line per unit/character */}
       {(() => {
         const xpLines = hasEvolutions
-          ? (unitXpEntries ?? []).filter((e) => e.xpGained > 0 || e.gains.length > 0)
+          ? (unitXpEntries ?? []).filter((e) => e.xpGained > 0 || e.gains.length > 0 || (e.statChanges?.length ?? 0) > 0)
           : []
         return xpLines.length > 0 ? (
           <div
@@ -286,22 +286,49 @@ export function TimelineEntry({
                     +{e.xpGained} XP
                   </span>
                 )}
-                {e.gains.map((g, gi) => (
-                  <span
-                    key={gi}
-                    style={{
-                      padding: '0 0.375rem',
-                      borderRadius: '9999px',
-                      background: 'var(--color-bonus-bg)',
-                      color: 'var(--color-bonus)',
-                      border: '1px solid var(--color-bonus-border)',
-                      fontWeight: 600,
-                      fontSize: '0.6875rem',
-                    }}
-                  >
-                    {stripConstraintHint(g)}
-                  </span>
-                ))}
+                {e.gains.map((g, gi) => {
+                  const isNeg = isNegativeConsequenceGain(g)
+                  return (
+                    <span
+                      key={gi}
+                      style={{
+                        padding: '0 0.375rem',
+                        borderRadius: '9999px',
+                        background: isNeg ? 'var(--color-malus-bg)' : 'var(--color-bonus-bg)',
+                        color: isNeg ? 'var(--color-malus)' : 'var(--color-bonus)',
+                        border: `1px solid ${isNeg ? 'var(--color-malus-border)' : 'var(--color-bonus-border)'}`,
+                        fontWeight: 600,
+                        fontSize: '0.6875rem',
+                      }}
+                    >
+                      {stripConstraintHint(g)}
+                    </span>
+                  )
+                })}
+                {(e.statChanges ?? []).map((sc, si) => {
+                  const isTemporary = sc.temporary
+                  const prefix = sc.delta > 0 ? '+' : ''
+                  const label = isTemporary
+                    ? `${prefix}${sc.delta} ${sc.stat.toUpperCase()} (prochaine bataille)`
+                    : `${prefix}${sc.delta} ${sc.stat.toUpperCase()}`
+                  return (
+                    <span
+                      key={`sc-${si}`}
+                      data-testid="timeline-stat-change"
+                      style={{
+                        padding: '0 0.375rem',
+                        borderRadius: '9999px',
+                        background: isTemporary ? '#fff3eb' : 'var(--color-malus-bg)',
+                        color: isTemporary ? '#e07b30' : 'var(--color-malus)',
+                        border: `1px solid ${isTemporary ? '#f0a870' : 'var(--color-malus-border)'}`,
+                        fontWeight: 600,
+                        fontSize: '0.6875rem',
+                      }}
+                    >
+                      {label}
+                    </span>
+                  )
+                })}
               </div>
             ))}
           </div>

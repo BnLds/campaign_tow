@@ -14,6 +14,22 @@ const STAT_ABBREV_RE = new RegExp(
     .join('|'),
 )
 
+// Negative consequence gains — displayed in red instead of green
+const NEGATIVE_CONSEQUENCE_PREFIXES = [
+  'Mort',
+  'Pertes Catastrophiques',
+  'Bannière perdue',
+  'Déroute Sanglante',
+  'Haine',
+  'Rancune', // legacy format for existing data
+]
+
+export function isNegativeConsequenceGain(description: string): boolean {
+  return NEGATIVE_CONSEQUENCE_PREFIXES.some((prefix) =>
+    description.startsWith(prefix),
+  )
+}
+
 /** Format an improvement label for compact display:
  *  1. Strip trailing parenthetical constraint hints
  *  2. Abbreviate stat names to match column headers

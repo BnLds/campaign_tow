@@ -286,11 +286,13 @@ describe('[AC26][P1] InjuryBonusStep — red theme (Task 1.7)', () => {
 // [AC3] Back button callback (Task 1)
 // ---------------------------------------------------------------------------
 
-describe('[AC9][P1] InjuryBonusStep — back button (Task 1)', () => {
+// Back button is now rendered by PostMatchWizard (not inline in InjuryBonusStep)
+describe.skip('[AC9][P1] InjuryBonusStep — back button (Task 1)', () => {
   it('[4.3-INJ-020] calls onBack when back button is clicked', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
     const onBack = vi.fn()
+    // @ts-expect-error onBack prop removed — back button is handled by wizard
     render(<InjuryBonusStep unitName="Capitaine Renard" onConfirm={onConfirm} onBack={onBack} />)
 
     await user.click(screen.getByTestId('consequence-back'))

@@ -240,8 +240,8 @@ describe('[AC9,AC22][P1] PostMatchWizard — back button in Phase 1.5 (Task 11.8
       expect(screen.getByText('Mage Corbeau')).toBeDefined()
     })
 
-    // Press back
-    await user.click(screen.getByTestId('consequence-back'))
+    // Press back (button now rendered by wizard with wizard-back-button testid)
+    await user.click(screen.getByTestId('wizard-back-button'))
 
     // Should return to Capitaine Renard's consequence step
     await waitFor(() => {
@@ -431,7 +431,7 @@ describe('[AC9][P1] PostMatchWizard — Phase 1.5 back to Phase 1 (Task 11.14)',
     })
 
     // Press back (at consequenceIndex 0)
-    await user.click(screen.getByTestId('consequence-back'))
+    await user.click(screen.getByTestId('wizard-back-button'))
 
     // Should return to Phase 1 (XP input for last unit)
     await waitFor(() => {

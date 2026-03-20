@@ -99,7 +99,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
     await user.click(screen.getByText(/2-3 — Déroute Sanglante/))
     await user.click(screen.getByTestId('consequence-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith({ type: 'deroute_sanglante', bannerLost: false })
+    expect(onConfirm).toHaveBeenCalledWith({ type: 'deroute_sanglante', bannerLost: false, championKilled: false })
   })
 
   it('[4.3-DES-007] "Pertes Catastrophiques" → onConfirm({ type: "pertes_catastrophiques" })', async () => {
@@ -110,7 +110,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
     await user.click(screen.getByText(/4-6 — Pertes Catastrophiques/))
     await user.click(screen.getByTestId('consequence-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith({ type: 'pertes_catastrophiques', bannerLost: false })
+    expect(onConfirm).toHaveBeenCalledWith({ type: 'pertes_catastrophiques', bannerLost: false, championKilled: false })
   })
 
   it('[4.3-DES-008] "Moral Brisé" → onConfirm({ type: "moral_brise" })', async () => {
@@ -121,7 +121,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
     await user.click(screen.getByText(/7-8 — Moral Brisé/))
     await user.click(screen.getByTestId('consequence-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith({ type: 'moral_brise', bannerLost: false })
+    expect(onConfirm).toHaveBeenCalledWith({ type: 'moral_brise', bannerLost: false, championKilled: false })
   })
 
   it('[4.3-DES-009] "Survivants Endurcis" → onConfirm({ type: "survivants_endurcis" })', async () => {
@@ -132,7 +132,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
     await user.click(screen.getByText(/9-10 — Survivants Endurcis/))
     await user.click(screen.getByTestId('consequence-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith({ type: 'survivants_endurcis', bannerLost: false })
+    expect(onConfirm).toHaveBeenCalledWith({ type: 'survivants_endurcis', bannerLost: false, championKilled: false })
   })
 
   it('[4.3-DES-010] "Rancune" → onConfirm({ type: "rancune" })', async () => {
@@ -143,7 +143,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
     await user.click(screen.getByText(/11 — Rancune/))
     await user.click(screen.getByTestId('consequence-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith({ type: 'rancune', bannerLost: false })
+    expect(onConfirm).toHaveBeenCalledWith({ type: 'rancune', bannerLost: false, championKilled: false })
   })
 
   it('[4.3-DES-011] "Fureur Vengeresse" → onConfirm({ type: "fureur_vengeresse" })', async () => {
@@ -154,7 +154,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
     await user.click(screen.getByText(/12 — Fureur Vengeresse/))
     await user.click(screen.getByTestId('consequence-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith({ type: 'fureur_vengeresse', bannerLost: false })
+    expect(onConfirm).toHaveBeenCalledWith({ type: 'fureur_vengeresse', bannerLost: false, championKilled: false })
   })
 })
 
@@ -172,7 +172,7 @@ describe('[AC21][P0] UnitDestructionStep — banner lost flag (Task 10.6)', () =
     await user.click(screen.getByTestId('banner-lost-checkbox'))
     await user.click(screen.getByTestId('consequence-confirm'))
 
-    expect(onConfirm).toHaveBeenCalledWith({ type: 'survivants_endurcis', bannerLost: true })
+    expect(onConfirm).toHaveBeenCalledWith({ type: 'survivants_endurcis', bannerLost: true, championKilled: false })
   })
 })
 
@@ -203,15 +203,13 @@ describe('[AC26][P1] UnitDestructionStep — red theme', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// [AC22] Back button callback
-// ---------------------------------------------------------------------------
-
-describe('[AC22][P1] UnitDestructionStep — back button', () => {
+// Back button is now rendered by PostMatchWizard (not inline in UnitDestructionStep)
+describe.skip('[AC22][P1] UnitDestructionStep — back button', () => {
   it('[4.3-DES-015] calls onBack when back button is clicked', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
     const onBack = vi.fn()
+    // @ts-expect-error onBack prop removed — back button is handled by wizard
     render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} onBack={onBack} />)
 
     await user.click(screen.getByTestId('consequence-back'))
