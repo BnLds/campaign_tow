@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stripConstraintHint } from '../format'
+import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../format'
 
 describe('stripConstraintHint', () => {
   describe('strips constraint hints', () => {
@@ -63,6 +63,38 @@ describe('stripConstraintHint', () => {
       expect(stripConstraintHint('+1 Niveau de magie (sorcier, max 4)')).toBe('+1 Magie')
     })
   })
+
+describe('isNegativeConsequenceGain', () => {
+  it('Mort is negative', () => {
+    expect(isNegativeConsequenceGain('Mort (MHC)')).toBe(true)
+  })
+
+  it('Bannière perdue is negative', () => {
+    expect(isNegativeConsequenceGain('Bannière perdue (destruction)')).toBe(true)
+  })
+
+  it('Pertes Catastrophiques is NOT negative (it is temporary)', () => {
+    expect(isNegativeConsequenceGain('Pertes Catastrophiques (effectif réduit de moitié pour la prochaine bataille)')).toBe(false)
+  })
+
+  it('+1 CC is not negative', () => {
+    expect(isNegativeConsequenceGain('+1 CC')).toBe(false)
+  })
+})
+
+describe('isTemporaryConsequenceGain', () => {
+  it('Pertes Catastrophiques is temporary', () => {
+    expect(isTemporaryConsequenceGain('Pertes Catastrophiques (effectif réduit de moitié pour la prochaine bataille)')).toBe(true)
+  })
+
+  it('Mort is not temporary', () => {
+    expect(isTemporaryConsequenceGain('Mort (MHC)')).toBe(false)
+  })
+
+  it('+1 CC is not temporary', () => {
+    expect(isTemporaryConsequenceGain('+1 CC')).toBe(false)
+  })
+})
 
   describe('leaves already-short labels unchanged', () => {
     it('+1 CC stays as is', () => {

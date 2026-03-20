@@ -133,6 +133,7 @@ export async function completeEvolutionsWithGainsTransaction(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     // AC24: Delete all temporary injury/destruction modifiers for this army's units
+    // Also delete temporary unit_gains (Pertes Catastrophiques) from previous match
     if (armyId) {
       const armyUnitRows = await tx
         .select({ id: units.id })
@@ -145,6 +146,11 @@ export async function completeEvolutionsWithGainsTransaction(
             inArray(statModifiers.unitId, armyUnitIds),
             eq(statModifiers.temporary, true),
             or(eq(statModifiers.source, 'injury'), eq(statModifiers.source, 'destruction')),
+          ))
+        await tx.delete(unitGains)
+          .where(and(
+            inArray(unitGains.unitId, armyUnitIds),
+            sql`${unitGains.description} LIKE 'Pertes Catastrophiques%'`,
           ))
       }
     }

@@ -4,7 +4,7 @@
 import React from 'react'
 import type { ComposedUnitView, ComposedSubProfile, StatDelta, UnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
-import { stripConstraintHint, isNegativeConsequenceGain } from '../lib/format'
+import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
 import type { TierLevel } from '../lib/tier'
 
 // ---------------------------------------------------------------------------
@@ -265,9 +265,9 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
             }
           : isMalusTemporary
             ? {
-                background: '#fff3eb',
-                color: '#e07b30',
-                border: '1px solid #f0a870',
+                background: 'var(--color-temporary-bg)',
+                color: 'var(--color-temporary)',
+                border: '1px solid var(--color-temporary-border)',
               }
             : isMalusPermanent
               ? {
@@ -298,16 +298,22 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
         )
       })}
       {gains.map((g, idx) => {
+        const isTemp = isTemporaryConsequenceGain(g.description)
         const isNeg = isNegativeConsequenceGain(g.description)
+        const chipColors = isTemp
+          ? { bg: 'var(--color-temporary-bg)', fg: 'var(--color-temporary)', border: 'var(--color-temporary-border)' }
+          : isNeg
+            ? { bg: 'var(--color-malus-bg)', fg: 'var(--color-malus)', border: 'var(--color-malus-border)' }
+            : { bg: 'var(--color-bonus-bg)', fg: 'var(--color-bonus)', border: 'var(--color-bonus-border)' }
         return (
           <span
             key={`${g.id}-${idx}`}
             style={{
               padding: '0.125rem 0.5rem',
               borderRadius: '9999px',
-              background: isNeg ? 'var(--color-malus-bg)' : 'var(--color-bonus-bg)',
-              color: isNeg ? 'var(--color-malus)' : 'var(--color-bonus)',
-              border: `1px solid ${isNeg ? 'var(--color-malus-border)' : 'var(--color-bonus-border)'}`,
+              background: chipColors.bg,
+              color: chipColors.fg,
+              border: `1px solid ${chipColors.border}`,
               fontWeight: 600,
             }}
           >

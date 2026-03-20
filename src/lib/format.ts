@@ -17,15 +17,25 @@ const STAT_ABBREV_RE = new RegExp(
 // Negative consequence gains — displayed in red instead of green
 const NEGATIVE_CONSEQUENCE_PREFIXES = [
   'Mort',
-  'Pertes Catastrophiques',
   'Bannière perdue',
   'Déroute Sanglante',
   'Haine',
   'Rancune', // legacy format for existing data
 ]
 
+// Temporary consequence gains — displayed in orange, auto-cleared next match
+const TEMPORARY_CONSEQUENCE_PREFIXES = [
+  'Pertes Catastrophiques',
+]
+
 export function isNegativeConsequenceGain(description: string): boolean {
   return NEGATIVE_CONSEQUENCE_PREFIXES.some((prefix) =>
+    description.startsWith(prefix),
+  )
+}
+
+export function isTemporaryConsequenceGain(description: string): boolean {
+  return TEMPORARY_CONSEQUENCE_PREFIXES.some((prefix) =>
     description.startsWith(prefix),
   )
 }

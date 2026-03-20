@@ -3,7 +3,7 @@
 // Story 3.3: Interactive result entry (isEditable, onResultSubmit).
 
 import { useState } from 'react'
-import { stripConstraintHint, isNegativeConsequenceGain } from '../lib/format'
+import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
 
 export type TimelineEntryProps = {
   matchId: string
@@ -287,16 +287,22 @@ export function TimelineEntry({
                   </span>
                 )}
                 {e.gains.map((g, gi) => {
+                  const isTemp = isTemporaryConsequenceGain(g)
                   const isNeg = isNegativeConsequenceGain(g)
+                  const chipColors = isTemp
+                    ? { bg: 'var(--color-temporary-bg)', fg: 'var(--color-temporary)', border: 'var(--color-temporary-border)' }
+                    : isNeg
+                      ? { bg: 'var(--color-malus-bg)', fg: 'var(--color-malus)', border: 'var(--color-malus-border)' }
+                      : { bg: 'var(--color-bonus-bg)', fg: 'var(--color-bonus)', border: 'var(--color-bonus-border)' }
                   return (
                     <span
                       key={gi}
                       style={{
                         padding: '0 0.375rem',
                         borderRadius: '9999px',
-                        background: isNeg ? 'var(--color-malus-bg)' : 'var(--color-bonus-bg)',
-                        color: isNeg ? 'var(--color-malus)' : 'var(--color-bonus)',
-                        border: `1px solid ${isNeg ? 'var(--color-malus-border)' : 'var(--color-bonus-border)'}`,
+                        background: chipColors.bg,
+                        color: chipColors.fg,
+                        border: `1px solid ${chipColors.border}`,
                         fontWeight: 600,
                         fontSize: '0.6875rem',
                       }}
@@ -318,9 +324,9 @@ export function TimelineEntry({
                       style={{
                         padding: '0 0.375rem',
                         borderRadius: '9999px',
-                        background: isTemporary ? '#fff3eb' : 'var(--color-malus-bg)',
-                        color: isTemporary ? '#e07b30' : 'var(--color-malus)',
-                        border: `1px solid ${isTemporary ? '#f0a870' : 'var(--color-malus-border)'}`,
+                        background: isTemporary ? 'var(--color-temporary-bg)' : 'var(--color-malus-bg)',
+                        color: isTemporary ? 'var(--color-temporary)' : 'var(--color-malus)',
+                        border: `1px solid ${isTemporary ? 'var(--color-temporary-border)' : 'var(--color-malus-border)'}`,
                         fontWeight: 600,
                         fontSize: '0.6875rem',
                       }}
