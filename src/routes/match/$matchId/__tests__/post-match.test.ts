@@ -84,9 +84,9 @@ describe('[AC7][P0] loadPostMatchDataFn — server function contract (Task 3.2)'
   })
 
   // 10.28 — rejects non-participant armies
-  it('[4.1-SFN-009] loadPostMatchDataFn calls getMatchParticipantForEvolution to verify participation', () => {
+  it('[4.1-SFN-009] loadPostMatchDataFn calls getMatchParticipantForEvolutionByPlayer to verify participation', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/loadPostMatchDataFn[\s\S]{0,2000}getMatchParticipantForEvolution/)
+    expect(code).toMatch(/loadPostMatchDataFn[\s\S]{0,2000}getMatchParticipantForEvolutionByPlayer/)
   })
 
   // 10.28 — throws FORBIDDEN when not a participant
@@ -205,10 +205,10 @@ describe.skip('[AC5][P0] completeEvolutionsFn — server function contract (Task
     expect(code).toMatch(/completeEvolutionsFn[\s\S]{0,2000}FORBIDDEN/)
   })
 
-  // 10.15 — uses getMatchParticipantForEvolution for participant check (single query — Fix 7)
-  it('[4.1-SFN-026] completeEvolutionsFn uses getMatchParticipantForEvolution to verify participation', () => {
+  // 10.15 — uses getMatchParticipantForEvolutionByPlayer for participant check (single query — Fix 7)
+  it('[4.1-SFN-026] completeEvolutionsFn uses getMatchParticipantForEvolutionByPlayer to verify participation', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/completeEvolutionsFn[\s\S]{0,2000}getMatchParticipantForEvolution/)
+    expect(code).toMatch(/completeEvolutionsFn[\s\S]{0,2000}getMatchParticipantForEvolutionByPlayer/)
   })
 
   // 10.16 — calls markEvolutionsEntered

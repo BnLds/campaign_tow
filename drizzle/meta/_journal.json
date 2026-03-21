@@ -85,6 +85,13 @@
       "when": 1774016175477,
       "tag": "0011_bizarre_giant_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774081591141,
+      "tag": "0012_late_nightshade",
+      "breakpoints": true
     }
   ]
 }

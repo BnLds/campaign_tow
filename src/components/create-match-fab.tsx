@@ -1,6 +1,7 @@
 // Campaign TOW — CreateMatchFab component
 // Story 3.2: Floating action button for match creation.
 // Co-locates server functions (loadOpponentsFn, createMatchFn) per story dev notes.
+// Player-first: select an opponent player, not an army.
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from '@tanstack/react-router'
@@ -16,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 
 // ---------------------------------------------------------------------------
-// Server function: loadOpponentsFn — fetches opponent list for match creation
+// Server function: loadOpponentsFn — fetches opponent player list for match creation
 // ---------------------------------------------------------------------------
 
 export const loadOpponentsFn = createServerFn({ method: 'GET' })
@@ -25,29 +26,28 @@ export const loadOpponentsFn = createServerFn({ method: 'GET' })
     // H2 — Reject guest users
     if (context.session.isGuest) throw new Error('UNAUTHORIZED')
 
-    const { getAllArmies } = await import('../db/queries')
-    const allArmies = await getAllArmies()
+    const { getAllPlayersWithArmyInfo } = await import('../db/queries')
+    const allPlayers = await getAllPlayersWithArmyInfo()
 
-    // L3 — Find own army in-memory using playerId (no extra DB call)
-    const myArmyId = allArmies.find((a) => a.playerId === context.session.playerId)?.id
-
-    return allArmies
-      .filter((army) => army.playerId !== null && army.playerId !== context.session.playerId && army.id !== myArmyId)
-      .map((army) => ({
-        armyId: army.id,
-        armyName: army.name,
-        faction: army.faction,
-        playerDisplayName: army.playerDisplayName ?? '',
+    return allPlayers
+      .filter((p) => p.playerId !== context.session.playerId)
+      .map((p) => ({
+        playerId: p.playerId,
+        playerDisplayName: p.displayName,
+        armyId: p.armyId,
+        armyName: p.armyName,
+        faction: p.faction,
+        hasArmy: p.armyId !== null,
       }))
   })
 
 // ---------------------------------------------------------------------------
-// Server function: createMatchFn — creates a new match between two armies
+// Server function: createMatchFn — creates a new match between two players
 // ---------------------------------------------------------------------------
 
 export const createMatchFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ opponentArmyId: z.string(), date: z.string().optional() }))
+  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().optional() }))
   .handler(async ({ context, data }) => {
     const { session } = context
 
@@ -56,7 +56,7 @@ export const createMatchFn = createServerFn({ method: 'POST' })
       throw new Error('UNAUTHORIZED')
     }
 
-    const { getPlayerArmy, getArmyById, createMatchWithParticipants } = await import('../db/queries')
+    const { getPlayerArmy, createMatchWithParticipants } = await import('../db/queries')
 
     // AC10 — Reject players without army
     const playerArmy = await getPlayerArmy(session.playerId)
@@ -65,20 +65,17 @@ export const createMatchFn = createServerFn({ method: 'POST' })
     }
 
     // AC8 — Reject self-match
-    if (data.opponentArmyId === playerArmy.id) {
-      throw new Error('Vous ne pouvez pas jouer contre votre propre armee')
+    if (data.opponentPlayerId === session.playerId) {
+      throw new Error('Vous ne pouvez pas jouer contre vous-meme')
     }
 
-    // AC8 — Validate opponent army exists in DB
-    const opponentArmy = await getArmyById(data.opponentArmyId)
-    if (!opponentArmy) {
-      throw new Error("L'armee adverse n'existe pas")
+    // Validate opponent player exists, lookup their army (may be null)
+    const { getPlayerById } = await import('../db/queries')
+    const opponentPlayer = await getPlayerById(data.opponentPlayerId)
+    if (!opponentPlayer) {
+      throw new Error("Le joueur adverse n'existe pas")
     }
-
-    // M2 — Validate opponent army has an assigned player (not orphan)
-    if (!opponentArmy.playerId) {
-      throw new Error("L'armee adverse n'est assignee a aucun joueur")
-    }
+    const opponentArmy = await getPlayerArmy(data.opponentPlayerId)
 
     // AC3 — Parse and validate date, normalize to midnight UTC
     const matchDate = data.date
@@ -91,9 +88,11 @@ export const createMatchFn = createServerFn({ method: 'POST' })
 
     // AC4 — Create match + 2 participants in transaction
     const { matchId } = await createMatchWithParticipants({
+      player1Id: session.playerId,
       army1Id: playerArmy.id,
       result1: null,
-      army2Id: data.opponentArmyId,
+      player2Id: data.opponentPlayerId,
+      army2Id: opponentArmy?.id ?? null,
       result2: null,
       matchDate,
       evolutionsEntered: false,
@@ -113,10 +112,11 @@ type CreateMatchFabProps = {
 }
 
 type OpponentItem = {
-  armyId: string
-  armyName: string
-  faction: string
+  playerId: string
   playerDisplayName: string
+  armyName: string | null
+  faction: string | null
+  hasArmy: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -200,7 +200,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await createMatchFn({ data: { opponentArmyId: selectedOpponent, date } })
+      await createMatchFn({ data: { opponentPlayerId: selectedOpponent, date } })
       setOpen(false)
       setSelectedOpponent(null)
       // H1 — reset isSubmitting on success path (finally will also run but setOpen triggers useEffect reset)
@@ -316,23 +316,25 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto' }}>
                 {opponents.map((opponent) => (
                   <button
-                    key={opponent.armyId}
-                    onClick={() => setSelectedOpponent(opponent.armyId)}
+                    key={opponent.playerId}
+                    onClick={() => setSelectedOpponent(opponent.playerId)}
                     style={{
                       textAlign: 'left',
-                      background: selectedOpponent === opponent.armyId ? '#eef4ff' : '#fffbf5',
-                      border: selectedOpponent === opponent.armyId ? '2px solid #2a5ab8' : '1px solid #e0d5c8',
+                      background: selectedOpponent === opponent.playerId ? '#eef4ff' : '#fffbf5',
+                      border: selectedOpponent === opponent.playerId ? '2px solid #2a5ab8' : '1px solid #e0d5c8',
                       borderRadius: 8,
                       padding: '10px 12px',
                       cursor: 'pointer',
                     }}
                   >
-                    {/* armyName displayed with Cinzel (font-display) for army name */}
+                    {/* playerDisplayName displayed with Cinzel (font-display) */}
                     <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>
-                      {opponent.armyName}
+                      {opponent.playerDisplayName}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                      {opponent.faction} — {opponent.playerDisplayName}
+                      {opponent.hasArmy
+                        ? `${opponent.armyName} — ${opponent.faction}`
+                        : 'Armee non attribuee'}
                     </div>
                   </button>
                 ))}

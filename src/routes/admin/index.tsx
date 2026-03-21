@@ -194,14 +194,24 @@ const createMatchFn = createServerFn({ method: 'POST' })
         return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Résultats incohérents (victoire/victoire ou défaite/défaite non autorisé)' } }
       }
     }
-    const { createMatchWithParticipants } = await import('../../db/queries')
+    const { createMatchWithParticipants, getArmyById } = await import('../../db/queries')
     const matchDate = new Date(data.date)
     if (isNaN(matchDate.getTime())) {
       return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Date invalide' } }
     }
+    const army1 = await getArmyById(data.army1Id)
+    const army2 = await getArmyById(data.army2Id)
+    if (!army1 || !army1.playerId) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 1 n'est assignee a aucun joueur" } }
+    }
+    if (!army2 || !army2.playerId) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 2 n'est assignee a aucun joueur" } }
+    }
     const result = await createMatchWithParticipants({
+      player1Id: army1.playerId,
       army1Id: data.army1Id,
       result1: data.result1,
+      player2Id: army2.playerId,
       army2Id: data.army2Id,
       result2: data.result2,
       matchDate,

@@ -119,10 +119,10 @@ describe('[AC4][P0] submitMatchResultFn — no army rejection (Task 7.10)', () =
 // ---------------------------------------------------------------------------
 
 describe('[AC4][P0] submitMatchResultFn — non-participant rejection (Task 7.11)', () => {
-  // AC: 4 — Task 7.11: calls getMatchParticipantByMatchAndArmy to verify participation
-  it('[3.3-SFN-011] submitMatchResultFn calls getMatchParticipantByMatchAndArmy inside dynamic import', () => {
+  // AC: 4 — Task 7.11: calls getMatchParticipantByMatchAndPlayer to verify participation
+  it('[3.3-SFN-011] submitMatchResultFn calls getMatchParticipantByMatchAndPlayer inside dynamic import', () => {
     const route = getCampaignRoute()
-    expect(route).toMatch(/submitMatchResultFn[\s\S]{0,3000}getMatchParticipantByMatchAndArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    expect(route).toMatch(/submitMatchResultFn[\s\S]{0,3000}getMatchParticipantByMatchAndPlayer[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
   // AC: 4 — Task 7.11: returns FORBIDDEN when not a participant

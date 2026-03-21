@@ -3,7 +3,7 @@
 // Status: RED — written before implementation (TDD)
 //
 // Static file-contract tests for the new DB query functions added to src/db/queries.ts:
-//   - getMatchParticipantForEvolution(matchId, armyId)
+//   - getMatchParticipantForEvolutionByPlayer(matchId, playerId)
 //   - incrementUnitXp(unitId, xpGained)
 //   - markEvolutionsEntered(matchParticipantId)
 //
@@ -135,57 +135,57 @@ describe('[AC5][P0] DB queries — markEvolutionsEntered — src/db/queries.ts',
 })
 
 // ---------------------------------------------------------------------------
-// 10.6, 10.7 — getMatchParticipantForEvolution function (Task 1.1)
+// 10.6, 10.7 — getMatchParticipantForEvolutionByPlayer function (Task 1.1, player-first refactor)
 // AC: 3, 4, 5, 7
 // ---------------------------------------------------------------------------
 
-describe('[AC3][AC4][AC5][AC7][P0] DB queries — getMatchParticipantForEvolution — src/db/queries.ts', () => {
+describe('[AC3][AC4][AC5][AC7][P0] DB queries — getMatchParticipantForEvolutionByPlayer — src/db/queries.ts', () => {
   // 10.6 — returns participant with evolutionsEnteredAt field
-  it('[4.1-QRY-017] queries.ts exports getMatchParticipantForEvolution as async function', () => {
+  it('[4.1-QRY-017] queries.ts exports getMatchParticipantForEvolutionByPlayer as async function', () => {
     const queries = getQueries()
-    expect(queries).toContain('export async function getMatchParticipantForEvolution')
+    expect(queries).toContain('export async function getMatchParticipantForEvolutionByPlayer')
   })
 
-  // 10.6 — accepts matchId and armyId parameters
-  it('[4.1-QRY-018] getMatchParticipantForEvolution accepts matchId and armyId parameters', () => {
+  // 10.6 — accepts matchId and playerId parameters
+  it('[4.1-QRY-018] getMatchParticipantForEvolutionByPlayer accepts matchId and playerId parameters', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,300}matchId[\s\S]{0,100}armyId/)
+    expect(queries).toMatch(/getMatchParticipantForEvolutionByPlayer[\s\S]{0,300}matchId[\s\S]{0,100}playerId/)
   })
 
   // 10.6 — returns row with evolutionsEnteredAt field
-  it('[4.1-QRY-019] getMatchParticipantForEvolution selects evolutionsEnteredAt field', () => {
+  it('[4.1-QRY-019] getMatchParticipantForEvolutionByPlayer selects evolutionsEnteredAt field', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,1500}evolutionsEnteredAt/)
+    expect(queries).toMatch(/getMatchParticipantForEvolutionByPlayer[\s\S]{0,1500}evolutionsEnteredAt/)
   })
 
-  // 10.6 — returns { id, matchId, armyId, result, evolutionsEnteredAt } shape
-  it('[4.1-QRY-020] getMatchParticipantForEvolution returns row with id, matchId, armyId, result, evolutionsEnteredAt', () => {
+  // 10.6 — returns { id, matchId, playerId, armyId, result, evolutionsEnteredAt } shape
+  it('[4.1-QRY-020] getMatchParticipantForEvolutionByPlayer returns row with id, matchId, playerId, armyId, result, evolutionsEnteredAt', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,2000}id[\s\S]{0,200}matchId[\s\S]{0,200}armyId[\s\S]{0,200}result[\s\S]{0,200}evolutionsEnteredAt/)
+    expect(queries).toMatch(/getMatchParticipantForEvolutionByPlayer[\s\S]{0,2000}id[\s\S]{0,200}matchId[\s\S]{0,200}playerId[\s\S]{0,200}armyId[\s\S]{0,200}result[\s\S]{0,200}evolutionsEnteredAt/)
   })
 
   // 10.6 — queries matchParticipants table
-  it('[4.1-QRY-021] getMatchParticipantForEvolution queries matchParticipants table', () => {
+  it('[4.1-QRY-021] getMatchParticipantForEvolutionByPlayer queries matchParticipants table', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,1000}matchParticipants/)
+    expect(queries).toMatch(/getMatchParticipantForEvolutionByPlayer[\s\S]{0,1000}matchParticipants/)
   })
 
-  // 10.6 — filters by both matchId AND armyId
-  it('[4.1-QRY-022] getMatchParticipantForEvolution filters by both matchId AND armyId using and()', () => {
+  // 10.6 — filters by both matchId AND playerId
+  it('[4.1-QRY-022] getMatchParticipantForEvolutionByPlayer filters by both matchId AND playerId using and()', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,1500}and\(/)
+    expect(queries).toMatch(/getMatchParticipantForEvolutionByPlayer[\s\S]{0,1500}and\(/)
   })
 
   // 10.7 — returns null for non-participant
-  it('[4.1-QRY-023] getMatchParticipantForEvolution returns null when army is not a participant', () => {
+  it('[4.1-QRY-023] getMatchParticipantForEvolutionByPlayer returns null when player is not a participant', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,1500}null/)
+    expect(queries).toMatch(/getMatchParticipantForEvolutionByPlayer[\s\S]{0,1500}null/)
   })
 
   // 10.6 — uses limit(1) for efficiency
-  it('[4.1-QRY-024] getMatchParticipantForEvolution uses limit(1) for single-row lookup', () => {
+  it('[4.1-QRY-024] getMatchParticipantForEvolutionByPlayer uses limit(1) for single-row lookup', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantForEvolution[\s\S]{0,1500}\.limit\(1\)/)
+    expect(queries).toMatch(/getMatchParticipantForEvolutionByPlayer[\s\S]{0,1500}\.limit\(1\)/)
   })
 })
 

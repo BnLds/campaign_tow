@@ -35,19 +35,19 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getMatchParticipantByMatchAndArmy, updateMatchResults } = await import('../db/queries')
+    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults } = await import('../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
     }
-    const participant = await getMatchParticipantByMatchAndArmy(data.matchId, army.id)
+    const participant = await getMatchParticipantByMatchAndPlayer(data.matchId, context.session.playerId)
     if (!participant) {
       return {
         success: false,
         error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
       }
     }
-    const updated = await updateMatchResults(data.matchId, army.id, data.result)
+    const updated = await updateMatchResults(data.matchId, context.session.playerId, data.result)
     if (!updated) {
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Echec de la mise a jour du resultat' } }
     }
@@ -71,9 +71,7 @@ const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
     const timeline: TimelineEntryData[] = army
       ? await getTimelineForArmy(army.id)
       : []
-    const pendingMatches: PendingMatchData[] = army
-      ? await getPendingMatches(army.id)
-      : []
+    const pendingMatches: PendingMatchData[] = await getPendingMatches(session.playerId)
     return { isGuest: false as const, army, timeline, pendingMatches }
   })
 
@@ -206,9 +204,11 @@ function CampaignView() {
                     formattedDate = match.date
                   }
 
+                  const opponentLabel = match.opponentArmyName ?? match.opponentPlayerName
+
                   const label = match.myResult === null
-                    ? `Resultat a entrer -- vs ${match.opponentArmyName} . ${formattedDate}`
-                    : `Rapport de bataille -- vs ${match.opponentArmyName} . ${formattedDate}`
+                    ? `Resultat a entrer -- vs ${opponentLabel} . ${formattedDate}`
+                    : `Rapport de bataille -- vs ${opponentLabel} . ${formattedDate}`
 
                   // myResult !== null → result entered, evolutions pending → navigate to post-match
                   if (match.myResult !== null) {
@@ -259,8 +259,8 @@ function CampaignView() {
                       key={entry.matchId}
                       matchId={entry.matchId}
                       opponent={{
-                        name: entry.opponent.name,
-                        faction: entry.opponent.faction,
+                        name: entry.opponent.name ?? entry.opponent.playerName,
+                        faction: entry.opponent.faction ?? '',
                         playerName: entry.opponent.playerName ?? undefined,
                       }}
                       result={toValidResult(entry.result)}

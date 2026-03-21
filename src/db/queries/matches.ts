@@ -12,9 +12,9 @@ export type TimelineEntryData = {
   result: string | null
   hasEvolutions: boolean
   opponent: {
-    name: string
-    faction: string
-    playerName: string | null
+    name: string | null
+    faction: string | null
+    playerName: string
   }
   unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>
 }
@@ -37,9 +37,9 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
-    .innerJoin(oppParticipant, and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.armyId, matchParticipants.armyId)))
-    .innerJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
-    .leftJoin(oppPlayer, eq(oppArmy.playerId, oppPlayer.id))
+    .innerJoin(oppParticipant, and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.playerId, matchParticipants.playerId)))
+    .leftJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
+    .innerJoin(oppPlayer, eq(oppParticipant.playerId, oppPlayer.id))
     .where(eq(matchParticipants.armyId, armyId))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
@@ -50,9 +50,9 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     result: row.result,
     hasEvolutions: row.evolutionsEnteredAt !== null,
     opponent: {
-      name: row.opponentName,
-      faction: row.opponentFaction,
-      playerName: row.opponentPlayerName ?? null,
+      name: row.opponentName ?? null,
+      faction: row.opponentFaction ?? null,
+      playerName: row.opponentPlayerName ?? 'Adversaire',
     },
     unitXpEntries: [] as Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>,
   }))
@@ -139,9 +139,11 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
 }
 
 export async function createMatchWithParticipants(params: {
-  army1Id: string
+  player1Id: string
+  army1Id: string | null
   result1: 'victory' | 'defeat' | 'draw' | null
-  army2Id: string
+  player2Id: string
+  army2Id: string | null
   result2: 'victory' | 'defeat' | 'draw' | null
   matchDate: Date
   evolutionsEntered: boolean
@@ -156,8 +158,8 @@ export async function createMatchWithParticipants(params: {
       .returning({ id: matches.id })
 
     await tx.insert(matchParticipants).values([
-      { matchId: inserted.id, armyId: params.army1Id, result: params.result1, evolutionsEnteredAt },
-      { matchId: inserted.id, armyId: params.army2Id, result: params.result2, evolutionsEnteredAt },
+      { matchId: inserted.id, playerId: params.player1Id, armyId: params.army1Id, result: params.result1, evolutionsEnteredAt },
+      { matchId: inserted.id, playerId: params.player2Id, armyId: params.army2Id, result: params.result2, evolutionsEnteredAt },
     ])
 
     return { matchId: inserted.id }
@@ -192,6 +194,7 @@ export async function getAllArmyRecords(): Promise<Map<string, { wins: number; d
     .groupBy(matchParticipants.armyId)
   const map = new Map<string, { wins: number; draws: number; losses: number }>()
   for (const row of rows) {
+    if (!row.armyId) continue
     map.set(row.armyId, {
       wins: Number(row.wins ?? 0),
       draws: Number(row.draws ?? 0),
@@ -204,15 +207,17 @@ export async function getAllArmyRecords(): Promise<Map<string, { wins: number; d
 export type PendingMatchData = {
   matchId: string
   date: string // ISO 8601
-  opponentArmyName: string
-  opponentFaction: string
+  opponentArmyName: string | null
+  opponentFaction: string | null
+  opponentPlayerName: string
   myResult: string | null
   myEvolutionsEnteredAt: string | null
 }
 
-export async function getPendingMatches(armyId: string): Promise<PendingMatchData[]> {
+export async function getPendingMatches(playerId: string): Promise<PendingMatchData[]> {
   const oppParticipant = alias(matchParticipants, 'opp')
   const oppArmy = alias(armies, 'opp_army')
+  const oppPlayer = alias(players, 'opp_player')
 
   const rows = await db
     .select({
@@ -222,17 +227,19 @@ export async function getPendingMatches(armyId: string): Promise<PendingMatchDat
       myEvolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
       opponentArmyName: oppArmy.name,
       opponentFaction: oppArmy.faction,
+      opponentPlayerName: oppPlayer.displayName,
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
     .innerJoin(
       oppParticipant,
-      and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.armyId, matchParticipants.armyId)),
+      and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.playerId, matchParticipants.playerId)),
     )
-    .innerJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
+    .leftJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
+    .innerJoin(oppPlayer, eq(oppParticipant.playerId, oppPlayer.id))
     .where(
       and(
-        eq(matchParticipants.armyId, armyId),
+        eq(matchParticipants.playerId, playerId),
         or(isNull(matchParticipants.result), isNull(matchParticipants.evolutionsEnteredAt)),
       ),
     )
@@ -241,26 +248,28 @@ export async function getPendingMatches(armyId: string): Promise<PendingMatchDat
   return rows.map((row) => ({
     matchId: row.matchId,
     date: row.date.toISOString(),
-    opponentArmyName: row.opponentArmyName,
-    opponentFaction: row.opponentFaction,
+    opponentArmyName: row.opponentArmyName ?? null,
+    opponentFaction: row.opponentFaction ?? null,
+    opponentPlayerName: row.opponentPlayerName ?? 'Adversaire',
     myResult: row.myResult,
     myEvolutionsEnteredAt: row.myEvolutionsEnteredAt ? row.myEvolutionsEnteredAt.toISOString() : null,
   }))
 }
 
-export async function getMatchParticipantByMatchAndArmy(
+export async function getMatchParticipantByMatchAndPlayer(
   matchId: string,
-  armyId: string,
-): Promise<{ id: string; matchId: string; armyId: string; result: string | null } | null> {
+  playerId: string,
+): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null } | null> {
   const rows = await db
     .select({
       id: matchParticipants.id,
       matchId: matchParticipants.matchId,
+      playerId: matchParticipants.playerId,
       armyId: matchParticipants.armyId,
       result: matchParticipants.result,
     })
     .from(matchParticipants)
-    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, armyId)))
+    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))
     .limit(1)
 
   return rows.length > 0 ? rows[0] : null
@@ -277,14 +286,14 @@ export function invertResult(r: 'victory' | 'defeat' | 'draw'): 'victory' | 'def
 
 export async function updateMatchResults(
   matchId: string,
-  myArmyId: string,
+  myPlayerId: string,
   myResult: 'victory' | 'defeat' | 'draw',
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     const mine = await tx
       .update(matchParticipants)
       .set({ result: myResult })
-      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, myArmyId), isNull(matchParticipants.result)))
+      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, myPlayerId), isNull(matchParticipants.result)))
       .returning({ id: matchParticipants.id })
 
     if (mine.length === 0) {
@@ -294,7 +303,7 @@ export async function updateMatchResults(
     const opp = await tx
       .update(matchParticipants)
       .set({ result: invertResult(myResult) })
-      .where(and(eq(matchParticipants.matchId, matchId), ne(matchParticipants.armyId, myArmyId), isNull(matchParticipants.result)))
+      .where(and(eq(matchParticipants.matchId, matchId), ne(matchParticipants.playerId, myPlayerId), isNull(matchParticipants.result)))
       .returning({ id: matchParticipants.id })
 
     return opp.length === 1

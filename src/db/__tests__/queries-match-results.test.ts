@@ -3,9 +3,9 @@
 // Status: RED — written before implementation (TDD)
 //
 // Static file-contract tests for the new DB query functions and helper added to src/db/queries.ts:
-//   - getMatchParticipantByMatchAndArmy(matchId, armyId)
+//   - getMatchParticipantByMatchAndPlayer(matchId, playerId)
 //   - invertResult(r)
-//   - updateMatchResults(matchId, myArmyId, myResult)
+//   - updateMatchResults(matchId, myPlayerId, myResult)
 //
 // Follows the pattern established in src/db/__tests__/queries-record.test.ts.
 // These are structural contract tests (file-content assertions).
@@ -17,59 +17,56 @@ import { describe, it, expect } from 'vitest'
 import { readAllQueries as getQueries } from '../../../tests/helpers/read-queries'
 
 // ---------------------------------------------------------------------------
-// AC1, AC4 — getMatchParticipantByMatchAndArmy (Task 7.1, 7.2, 7.3)
+// AC1, AC4 — getMatchParticipantByMatchAndPlayer (Task 7.1, 7.2, 7.3 — player-first refactor)
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC4][P0] DB queries — getMatchParticipantByMatchAndArmy — src/db/queries.ts', () => {
+describe('[AC1][AC4][P0] DB queries — getMatchParticipantByMatchAndPlayer — src/db/queries.ts', () => {
   // AC: 1, 4
-  it('[3.3-QRY-001] queries.ts exports getMatchParticipantByMatchAndArmy as async function', () => {
+  it('[3.3-QRY-001] queries.ts exports getMatchParticipantByMatchAndPlayer as async function', () => {
     const queries = getQueries()
-    expect(queries).toContain('export async function getMatchParticipantByMatchAndArmy')
-  })
-
-  // AC: 1, 4
-  it('[3.3-QRY-002] getMatchParticipantByMatchAndArmy accepts matchId and armyId parameters', () => {
-    const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantByMatchAndArmy[\s\S]{0,200}matchId[\s\S]{0,100}armyId/)
+    expect(queries).toContain('export async function getMatchParticipantByMatchAndPlayer')
   })
 
   // AC: 1, 4
-  it('[3.3-QRY-003] getMatchParticipantByMatchAndArmy queries matchParticipants table', () => {
+  it('[3.3-QRY-002] getMatchParticipantByMatchAndPlayer accepts matchId and playerId parameters', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantByMatchAndArmy[\s\S]{0,1000}matchParticipants/)
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,200}matchId[\s\S]{0,100}playerId/)
   })
 
-  // AC: 1, 4 — Task 7.1: returns { id, matchId, armyId, result } shape
-  it('[3.3-QRY-004] getMatchParticipantByMatchAndArmy returns row with id, matchId, armyId, result fields', () => {
+  // AC: 1, 4
+  it('[3.3-QRY-003] getMatchParticipantByMatchAndPlayer queries matchParticipants table', () => {
     const queries = getQueries()
-    // Selects these four fields from matchParticipants
-    expect(queries).toMatch(/getMatchParticipantByMatchAndArmy[\s\S]{0,1500}id[\s\S]{0,500}matchId[\s\S]{0,500}armyId[\s\S]{0,500}result/)
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,1000}matchParticipants/)
   })
 
-  // AC: 4 — Task 7.1: filters by both matchId AND armyId
-  it('[3.3-QRY-005] getMatchParticipantByMatchAndArmy filters by both matchId AND armyId using and()', () => {
+  // AC: 1, 4 — Task 7.1: returns { id, matchId, playerId, armyId, result } shape
+  it('[3.3-QRY-004] getMatchParticipantByMatchAndPlayer returns row with id, matchId, playerId, armyId, result fields', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantByMatchAndArmy[\s\S]{0,1500}and\(/)
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,1500}id[\s\S]{0,500}matchId[\s\S]{0,500}playerId[\s\S]{0,500}armyId[\s\S]{0,500}result/)
+  })
+
+  // AC: 4 — Task 7.1: filters by both matchId AND playerId
+  it('[3.3-QRY-005] getMatchParticipantByMatchAndPlayer filters by both matchId AND playerId using and()', () => {
+    const queries = getQueries()
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,1500}and\(/)
   })
 
   // AC: 4 — Task 7.1 and 7.2: returns null when no row found
-  it('[3.3-QRY-006] getMatchParticipantByMatchAndArmy returns null when army is not a participant', () => {
+  it('[3.3-QRY-006] getMatchParticipantByMatchAndPlayer returns null when player is not a participant', () => {
     const queries = getQueries()
-    // Function must have a null return path (rows.length === 0 → null)
-    expect(queries).toMatch(/getMatchParticipantByMatchAndArmy[\s\S]{0,1500}null/)
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,1500}null/)
   })
 
   // AC: 4 — Task 7.2: uses limit(1) for efficient lookup
-  it('[3.3-QRY-007] getMatchParticipantByMatchAndArmy uses limit(1) for single-row lookup', () => {
+  it('[3.3-QRY-007] getMatchParticipantByMatchAndPlayer uses limit(1) for single-row lookup', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantByMatchAndArmy[\s\S]{0,1500}limit\(1\)/)
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,1500}limit\(1\)/)
   })
 
   // AC: 4 — Task 7.3: returns null when matchId does not exist (same null path)
-  it('[3.3-QRY-008] getMatchParticipantByMatchAndArmy return type is { id, matchId, armyId, result } | null', () => {
+  it('[3.3-QRY-008] getMatchParticipantByMatchAndPlayer return type is { id, matchId, playerId, armyId, result } | null', () => {
     const queries = getQueries()
-    // The function uses a ternary or conditional returning null for the zero-row case
-    expect(queries).toMatch(/getMatchParticipantByMatchAndArmy[\s\S]{0,2000}(length > 0[\s\S]{0,100}null|null[\s\S]{0,100}length > 0|\? rows\[0\] : null)/)
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,2000}(length > 0[\s\S]{0,100}null|null[\s\S]{0,100}length > 0|\? rows\[0\] : null)/)
   })
 })
 
@@ -121,10 +118,10 @@ describe('[AC3][AC5][P0] DB queries — updateMatchResults — src/db/queries.ts
     expect(queries).toContain('export async function updateMatchResults')
   })
 
-  // AC: 1, 3 — accepts matchId, myArmyId, myResult params
-  it('[3.3-QRY-015] updateMatchResults accepts matchId, myArmyId, myResult parameters', () => {
+  // AC: 1, 3 — accepts matchId, myPlayerId, myResult params
+  it('[3.3-QRY-015] updateMatchResults accepts matchId, myPlayerId, myResult parameters', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/updateMatchResults[\s\S]{0,300}matchId[\s\S]{0,200}myArmyId[\s\S]{0,200}myResult/)
+    expect(queries).toMatch(/updateMatchResults[\s\S]{0,300}matchId[\s\S]{0,200}myPlayerId[\s\S]{0,200}myResult/)
   })
 
   // AC: 3 — Task 7.5: wraps both updates in a db.transaction()
@@ -133,16 +130,16 @@ describe('[AC3][AC5][P0] DB queries — updateMatchResults — src/db/queries.ts
     expect(queries).toMatch(/updateMatchResults[\s\S]{0,1500}db\.transaction/)
   })
 
-  // AC: 3 — Task 7.5: updates MY result (eq on both matchId and armyId)
-  it('[3.3-QRY-017] updateMatchResults updates the requesting army result with eq(matchParticipants.armyId, myArmyId)', () => {
+  // AC: 3 — Task 7.5: updates MY result (eq on both matchId and playerId)
+  it('[3.3-QRY-017] updateMatchResults updates the requesting player result with eq(matchParticipants.playerId, myPlayerId)', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/updateMatchResults[\s\S]{0,2000}eq\(matchParticipants\.armyId,\s*myArmyId\)/)
+    expect(queries).toMatch(/updateMatchResults[\s\S]{0,2000}eq\(matchParticipants\.playerId,\s*myPlayerId\)/)
   })
 
   // AC: 3 — Task 7.5: updates opponent result with ne() condition
-  it('[3.3-QRY-018] updateMatchResults updates opponent result using ne(matchParticipants.armyId, myArmyId)', () => {
+  it('[3.3-QRY-018] updateMatchResults updates opponent result using ne(matchParticipants.playerId, myPlayerId)', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/updateMatchResults[\s\S]{0,2500}ne\(matchParticipants\.armyId,\s*myArmyId\)/)
+    expect(queries).toMatch(/updateMatchResults[\s\S]{0,2500}ne\(matchParticipants\.playerId,\s*myPlayerId\)/)
   })
 
   // AC: 3 — Task 7.5: sets opponent result to invertResult(myResult)

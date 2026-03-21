@@ -212,29 +212,28 @@ describe('[AC2][AC8][AC11][P0] CreateMatchFab — loadOpponentsFn server functio
     expect(code).toMatch(/loadOpponentsFn[\s\S]{0,1500}(armyName|armyId|playerDisplayName)/)
   })
 
-  it('[3.2-FAB-025] loadOpponentsFn uses getAllArmies from db/queries (dynamic import)', () => {
+  it('[3.2-FAB-025] loadOpponentsFn uses getAllPlayersWithArmyInfo from db/queries (dynamic import)', () => {
     // AC: 2 — Test 8.23
     const code = getFab()
-    expect(code).toMatch(/getAllArmies[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    expect(code).toMatch(/getAllPlayersWithArmyInfo[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
-  it('[3.2-FAB-026] loadOpponentsFn excludes current player army using getPlayerArmy', () => {
+  it('[3.2-FAB-026] loadOpponentsFn excludes current player from opponent list', () => {
     // AC: 8 — Test 8.23, 8.25
-    const code = getFab()
-    expect(code).toMatch(/getPlayerArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
-  })
-
-  it('[3.2-FAB-027] Opponent list filters out armies where playerId === current player (exclude self) — Test 8.25', () => {
-    // AC: 8 — Test 8.25
     const code = getFab()
     expect(code).toMatch(/(playerId[\s\S]{0,200}session\.playerId|session\.playerId[\s\S]{0,200}playerId)/)
   })
 
-  it('[3.2-FAB-028] loadOpponentsFn only returns armies with a player assigned — Test 8.24', () => {
-    // AC: 2 — Test 8.24 (no orphan armies)
+  it('[3.2-FAB-027] Opponent list filters out player where playerId === current player (exclude self) — Test 8.25', () => {
+    // AC: 8 — Test 8.25
     const code = getFab()
-    // Must filter armies that have a playerId (non-null check)
-    expect(code).toMatch(/loadOpponentsFn[\s\S]{0,2000}(playerId[\s\S]{0,100}null|filter[\s\S]{0,200}playerId)/)
+    expect(code).toMatch(/(playerId[\s\S]{0,200}context\.session\.playerId|context\.session\.playerId[\s\S]{0,200}playerId)/)
+  })
+
+  it('[3.2-FAB-028] loadOpponentsFn returns hasArmy flag per opponent — Test 8.24', () => {
+    // AC: 2 — Test 8.24 (player may or may not have an army)
+    const code = getFab()
+    expect(code).toMatch(/loadOpponentsFn[\s\S]{0,2000}hasArmy/)
   })
 })
 
@@ -256,10 +255,10 @@ describe('[AC4][AC9][P0] CreateMatchFab — createMatchFn server function (Task 
     expect(code).toMatch(/createMatchFn[\s\S]{0,400}authMiddleware/)
   })
 
-  it('[3.2-FAB-031] createMatchFn validates input with opponentArmyId and optional date', () => {
+  it('[3.2-FAB-031] createMatchFn validates input with opponentPlayerId and optional date', () => {
     // AC: 4
     const code = getFab()
-    expect(code).toMatch(/createMatchFn[\s\S]{0,600}opponentArmyId/)
+    expect(code).toMatch(/createMatchFn[\s\S]{0,600}opponentPlayerId/)
   })
 
   it('[3.2-FAB-032] createMatchFn rejects guest users with UNAUTHORIZED error — Test 8.11', () => {
@@ -274,16 +273,16 @@ describe('[AC4][AC9][P0] CreateMatchFab — createMatchFn server function (Task 
     expect(code).toMatch(/createMatchFn[\s\S]{0,2000}Vous devez avoir une armee/)
   })
 
-  it('[3.2-FAB-034] createMatchFn rejects self-match (same army on both sides) — Test 8.13', () => {
+  it('[3.2-FAB-034] createMatchFn rejects self-match (same player) — Test 8.13', () => {
     // AC: 8 — Test 8.13
     const code = getFab()
-    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}Vous ne pouvez pas jouer contre votre propre armee/)
+    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}Vous ne pouvez pas jouer contre vous-meme/)
   })
 
-  it('[3.2-FAB-035] createMatchFn validates opponent army exists in DB — Test 8.14', () => {
-    // AC: 8 — Test 8.14
+  it('[3.2-FAB-035] createMatchFn looks up opponent army via getPlayerArmy — Test 8.14', () => {
+    // AC: 8 — Test 8.14 (opponent army may be null)
     const code = getFab()
-    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}(L'armee adverse n'existe pas|armee adverse)/)
+    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}getPlayerArmy\(data\.opponentPlayerId\)/)
   })
 
   it('[3.2-FAB-036] createMatchFn validates date is not invalid (NaN check) — Test 8.15', () => {
@@ -450,11 +449,11 @@ describe('[AC9][P0] __root.tsx — FAB conditionally rendered for non-guest (Tas
 // ---------------------------------------------------------------------------
 
 describe('[AC2][AC8][P0] CreateMatchFab — opponent list in dialog (Task 3.4, 8.25)', () => {
-  it('[3.2-FAB-057] Dialog renders opponent selectable items (radio or tappable cards)', () => {
+  it('[3.2-FAB-057] Dialog renders opponent selectable items with player name (Cinzel)', () => {
     // AC: 2, 8 — Test 8.25
     const code = getFab()
-    // Must render army name (Cinzel) and faction per opponent item
-    expect(code).toMatch(/(armyName|army\.name|faction)[\s\S]{0,300}(Cinzel|font-display)/)
+    // Must render player name (Cinzel) and army info per opponent item
+    expect(code).toMatch(/(playerDisplayName|armyName|faction)[\s\S]{0,300}(Cinzel|font-display)/)
   })
 
   it('[3.2-FAB-058] Dialog uses router.invalidate() after successful match creation (Task 3.8)', () => {

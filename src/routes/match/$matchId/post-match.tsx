@@ -35,30 +35,28 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolution, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
-      throw new Error('FORBIDDEN')
+      throw new Error('ARMY_REQUIRED')
     }
-    const participant = await getMatchParticipantForEvolution(data.matchId, army.id)
+    const participant = await getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId)
     if (!participant) {
       throw new Error('FORBIDDEN')
     }
 
     // Load opponent player name for Haine/Rancune descriptions
     const { db } = await import('../../../db/index')
-    const { matchParticipants: mpTable, armies: armiesTable, players: playersTable } = await import('../../../db/schema')
+    const { matchParticipants: mpTable, players: playersTable } = await import('../../../db/schema')
     const { and: dbAnd, eq: dbEq, ne: dbNe } = await import('drizzle-orm')
     const { alias } = await import('drizzle-orm/pg-core')
     const oppParticipant = alias(mpTable, 'opp_mp')
-    const oppArmy = alias(armiesTable, 'opp_army')
     const oppPlayerAlias = alias(playersTable, 'opp_player')
     const oppRows = await db
       .select({ playerName: oppPlayerAlias.displayName })
       .from(oppParticipant)
-      .innerJoin(oppArmy, dbEq(oppParticipant.armyId, oppArmy.id))
-      .leftJoin(oppPlayerAlias, dbEq(oppArmy.playerId, oppPlayerAlias.id))
-      .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.armyId, army.id)))
+      .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
+      .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
       .limit(1)
     const opponentPlayerName = oppRows[0]?.playerName ?? 'Adversaire'
 
@@ -227,12 +225,12 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getMatchParticipantForEvolution, completeEvolutionsWithGainsTransaction } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, completeEvolutionsWithGainsTransaction } = await import('../../../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
     }
-    const participant = await getMatchParticipantForEvolution(data.matchId, army.id)
+    const participant = await getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId)
     if (!participant) {
       return {
         success: false,

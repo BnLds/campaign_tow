@@ -3,20 +3,21 @@ import { db } from '../index'
 import { units, statModifiers, unitGains, matchParticipants, matchXpEntries } from '../schema'
 import type { ConsequenceEntry } from '../../lib/validators'
 
-export async function getMatchParticipantForEvolution(
+export async function getMatchParticipantForEvolutionByPlayer(
   matchId: string,
-  armyId: string,
-): Promise<{ id: string; matchId: string; armyId: string; result: string | null; evolutionsEnteredAt: Date | null } | null> {
+  playerId: string,
+): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null; evolutionsEnteredAt: Date | null } | null> {
   const rows = await db
     .select({
       id: matchParticipants.id,
       matchId: matchParticipants.matchId,
+      playerId: matchParticipants.playerId,
       armyId: matchParticipants.armyId,
       result: matchParticipants.result,
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
     })
     .from(matchParticipants)
-    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.armyId, armyId)))
+    .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))
     .limit(1)
   return rows.length > 0 ? rows[0] : null
 }

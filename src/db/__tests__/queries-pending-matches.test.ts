@@ -40,16 +40,22 @@ describe('[AC5][AC6][P0] DB queries — PendingMatchData type export (Task 5.2)'
     expect(queries).toMatch(/PendingMatchData[\s\S]{0,400}date[\s]*:[\s]*string/)
   })
 
-  it('[3.2-QRY-004] PendingMatchData has opponentArmyName field (string)', () => {
+  it('[3.2-QRY-004] PendingMatchData has opponentArmyName field (string | null)', () => {
     // AC: 5 — Test 8.8
     const queries = getQueries()
-    expect(queries).toMatch(/PendingMatchData[\s\S]{0,500}opponentArmyName[\s]*:[\s]*string/)
+    expect(queries).toMatch(/PendingMatchData[\s\S]{0,500}opponentArmyName[\s]*:[\s]*(string \| null|null \| string)/)
   })
 
-  it('[3.2-QRY-005] PendingMatchData has opponentFaction field (string)', () => {
+  it('[3.2-QRY-005] PendingMatchData has opponentFaction field (string | null)', () => {
     // AC: 5 — Test 8.8
     const queries = getQueries()
-    expect(queries).toMatch(/PendingMatchData[\s\S]{0,500}opponentFaction[\s]*:[\s]*string/)
+    expect(queries).toMatch(/PendingMatchData[\s\S]{0,600}opponentFaction[\s]*:[\s]*(string \| null|null \| string)/)
+  })
+
+  it('[3.2-QRY-005b] PendingMatchData has opponentPlayerName field (string)', () => {
+    // Player-first: always have the player name
+    const queries = getQueries()
+    expect(queries).toMatch(/PendingMatchData[\s\S]{0,700}opponentPlayerName[\s]*:[\s]*string/)
   })
 
   it('[3.2-QRY-006] PendingMatchData has myResult field (string | null)', () => {
@@ -77,10 +83,10 @@ describe('[AC5][P0] DB queries — getPendingMatches — src/db/queries.ts (Task
     expect(queries).toContain('export async function getPendingMatches')
   })
 
-  it('[3.2-QRY-009] getPendingMatches accepts armyId parameter (string)', () => {
+  it('[3.2-QRY-009] getPendingMatches accepts playerId parameter (string)', () => {
     // AC: 5
     const queries = getQueries()
-    expect(queries).toMatch(/getPendingMatches[\s\S]{0,200}armyId/)
+    expect(queries).toMatch(/getPendingMatches[\s\S]{0,200}playerId/)
   })
 
   it('[3.2-QRY-010] getPendingMatches return type is Promise<PendingMatchData[]>', () => {
@@ -121,16 +127,16 @@ describe('[AC5][P0] DB queries — getPendingMatches — self-join pattern (Task
     expect(queries).toMatch(/import[\s\S]{0,200}alias[\s\S]{0,200}drizzle-orm\/pg-core/)
   })
 
-  it('[3.2-QRY-015] getPendingMatches uses ne() to exclude own army from opponent join — Test 8.10', () => {
+  it('[3.2-QRY-015] getPendingMatches uses ne() to exclude own player from opponent join — Test 8.10', () => {
     // AC: 5 — Test 8.10
     const queries = getQueries()
     expect(queries).toMatch(/getPendingMatches[\s\S]{0,3000}ne\(/)
   })
 
-  it('[3.2-QRY-016] getPendingMatches joins opponent armies table to get opponent name/faction — Test 8.8', () => {
+  it('[3.2-QRY-016] getPendingMatches joins opponent player/armies tables to get opponent info — Test 8.8', () => {
     // AC: 5 — Test 8.8
     const queries = getQueries()
-    expect(queries).toMatch(/getPendingMatches[\s\S]{0,3000}alias\(armies/)
+    expect(queries).toMatch(/getPendingMatches[\s\S]{0,3000}alias\((armies|players)/)
   })
 })
 
@@ -140,10 +146,10 @@ describe('[AC5][P0] DB queries — getPendingMatches — self-join pattern (Task
 // ---------------------------------------------------------------------------
 
 describe('[AC5][AC6][P0] DB queries — getPendingMatches — WHERE filter (Task 5.1)', () => {
-  it('[3.2-QRY-017] getPendingMatches filters by armyId on matchParticipants', () => {
+  it('[3.2-QRY-017] getPendingMatches filters by playerId on matchParticipants', () => {
     // AC: 5
     const queries = getQueries()
-    expect(queries).toMatch(/getPendingMatches[\s\S]{0,3000}(where|eq)[\s\S]{0,300}armyId/)
+    expect(queries).toMatch(/getPendingMatches[\s\S]{0,3000}(where|eq)[\s\S]{0,300}playerId/)
   })
 
   it('[3.2-QRY-018] getPendingMatches includes matches where result IS NULL (case 1) — Test 8.5', () => {

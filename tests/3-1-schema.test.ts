@@ -82,14 +82,19 @@ describe('[AC1][AC3][AC4][AC6][P0] DB schema — match_participants table — sr
     expect(schema).toMatch(/matchParticipants[\s\S]{0,600}matchId[\s\S]{0,300}\.notNull\(\)/)
   })
 
-  it('[3.1-SCH-010] match_participants has armyId FK to armies.id with onDelete cascade (not null)', () => {
+  it('[3.1-SCH-010] match_participants has playerId FK to players.id with onDelete cascade (not null)', () => {
     const schema = getSchema()
-    expect(schema).toMatch(/matchParticipants[\s\S]{0,800}armyId[\s\S]{0,300}references\(\(\)\s*=>\s*armies\.id,\s*\{\s*onDelete:\s*'cascade'\s*\}/)
+    expect(schema).toMatch(/matchParticipants[\s\S]{0,800}playerId[\s\S]{0,300}references\(\(\)\s*=>\s*players\.id,\s*\{\s*onDelete:\s*'cascade'\s*\}/)
   })
 
-  it('[3.1-SCH-011] armyId column is notNull in match_participants', () => {
+  it('[3.1-SCH-011] playerId column is notNull in match_participants', () => {
     const schema = getSchema()
-    expect(schema).toMatch(/matchParticipants[\s\S]{0,800}armyId[\s\S]{0,300}\.notNull\(\)/)
+    expect(schema).toMatch(/matchParticipants[\s\S]{0,800}playerId[\s\S]{0,300}\.notNull\(\)/)
+  })
+
+  it('[3.1-SCH-011b] match_participants has armyId FK to armies.id with onDelete set null (nullable)', () => {
+    const schema = getSchema()
+    expect(schema).toMatch(/matchParticipants[\s\S]{0,1000}armyId[\s\S]{0,300}references\(\(\)\s*=>\s*armies\.id,\s*\{\s*onDelete:\s*'set null'\s*\}/)
   })
 
   it('[3.1-SCH-012] match_participants has result column as nullable enum (victory|defeat|draw, no .notNull())', () => {

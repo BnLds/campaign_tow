@@ -112,7 +112,8 @@ export const matches = pgTable('matches', {
 export const matchParticipants = pgTable('match_participants', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   matchId: text('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
-  armyId: text('army_id').notNull().references(() => armies.id, { onDelete: 'cascade' }),
+  playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  armyId: text('army_id').references(() => armies.id, { onDelete: 'set null' }),
   result: matchResultEnum('result'), // 'victory' | 'defeat' | 'draw' | null (pending)
   // evolutionsEnteredAt: null means evolutions not yet entered (post-match flow in epic 4)
   // nullable timestamp — set when the post-match evolution flow is completed
@@ -120,7 +121,8 @@ export const matchParticipants = pgTable('match_participants', {
   // createdAt tracks when the participant record was inserted (not the match date)
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
-  uniqueIndex('mp_match_army_unique').on(table.matchId, table.armyId),
+  uniqueIndex('mp_match_player_unique').on(table.matchId, table.playerId),
+  index('idx_mp_player_id').on(table.playerId),
   index('idx_mp_army_id').on(table.armyId),
   index('idx_mp_match_id').on(table.matchId),
 ])
@@ -150,6 +152,10 @@ export const matchParticipantsRelations = relations(matchParticipants, ({ one })
   match: one(matches, {
     fields: [matchParticipants.matchId],
     references: [matches.id],
+  }),
+  player: one(players, {
+    fields: [matchParticipants.playerId],
+    references: [players.id],
   }),
   army: one(armies, {
     fields: [matchParticipants.armyId],

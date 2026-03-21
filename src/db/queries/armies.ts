@@ -1,6 +1,6 @@
-import { eq, and, ne } from 'drizzle-orm'
+import { eq, and, ne, isNull } from 'drizzle-orm'
 import { db } from '../index'
-import { players, armies, units, subProfiles } from '../schema'
+import { players, armies, units, subProfiles, matchParticipants } from '../schema'
 import type { ParsedArmy } from '../../lib/owb-parser'
 
 export async function createArmyWithUnits(
@@ -59,7 +59,12 @@ export async function assignArmyToPlayer(armyId: string, playerId: string): Prom
       .set({ playerId })
       .where(eq(armies.id, armyId))
       .returning({ id: armies.id })
-    return result.length > 0
+    if (result.length === 0) return false
+    // Backfill: link pending matches to the newly assigned army
+    await tx.update(matchParticipants)
+      .set({ armyId })
+      .where(and(eq(matchParticipants.playerId, playerId), isNull(matchParticipants.armyId)))
+    return true
   })
 }
 

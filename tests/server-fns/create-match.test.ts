@@ -75,16 +75,16 @@ describe('[AC10][P0] createMatchFn — rejects player without army (Task 4.2, 8.
 // ---------------------------------------------------------------------------
 
 describe('[AC8][P0] createMatchFn — rejects self-match (Task 4.2, 8.13)', () => {
-  it('[3.2-SFN-005] createMatchFn compares playerArmyId with opponentArmyId — Test 8.13', () => {
+  it('[3.2-SFN-005] createMatchFn compares opponentPlayerId with session.playerId — Test 8.13', () => {
     // AC: 8 — Test 8.13
     const code = getFab()
-    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}(opponentArmyId[\s\S]{0,200}army[\s\S]{0,100}id|army[\s\S]{0,100}id[\s\S]{0,200}opponentArmyId)/)
+    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}opponentPlayerId[\s\S]{0,200}session\.playerId/)
   })
 
-  it('[3.2-SFN-006] createMatchFn throws French error "Vous ne pouvez pas jouer contre votre propre armee" — Test 8.13', () => {
+  it('[3.2-SFN-006] createMatchFn throws French error about self-match — Test 8.13', () => {
     // AC: 8 — Test 8.13
     const code = getFab()
-    expect(code).toMatch(/Vous ne pouvez pas jouer contre votre propre armee/)
+    expect(code).toMatch(/Vous ne pouvez pas jouer contre vous-meme/)
   })
 })
 
@@ -93,23 +93,23 @@ describe('[AC8][P0] createMatchFn — rejects self-match (Task 4.2, 8.13)', () =
 // Test 8.14
 // ---------------------------------------------------------------------------
 
-describe('[AC8][P0] createMatchFn — rejects nonexistent opponent army (Task 4.2, 8.14)', () => {
-  it('[3.2-SFN-007] createMatchFn calls getArmyById to validate opponent exists — Test 8.14', () => {
-    // AC: 8 — Test 8.14
+describe('[AC8][P0] createMatchFn — looks up opponent army via getPlayerArmy (Task 4.2, 8.14)', () => {
+  it('[3.2-SFN-007] createMatchFn calls getPlayerArmy for opponent army lookup — Test 8.14', () => {
+    // AC: 8 — Test 8.14 (opponent army may be null)
     const code = getFab()
-    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}getArmyById/)
+    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}getPlayerArmy/)
   })
 
-  it('[3.2-SFN-008] createMatchFn uses dynamic import of getArmyById from queries — Test 8.14', () => {
+  it('[3.2-SFN-008] createMatchFn passes opponentPlayerId to identify opponent — Test 8.14', () => {
     // AC: 8 — Test 8.14
     const code = getFab()
-    expect(code).toMatch(/getArmyById[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}opponentPlayerId/)
   })
 
-  it("[3.2-SFN-009] createMatchFn throws French error \"L'armee adverse n'existe pas\" when opponent missing — Test 8.14", () => {
+  it('[3.2-SFN-009] createMatchFn passes player2Id to createMatchWithParticipants — Test 8.14', () => {
     // AC: 8 — Test 8.14
     const code = getFab()
-    expect(code).toMatch(/L'armee adverse n'existe pas/)
+    expect(code).toMatch(/createMatchWithParticipants[\s\S]{0,500}player2Id/)
   })
 })
 
@@ -187,6 +187,13 @@ describe('[AC4][P0] createMatchFn — creates match with 2 participants (Task 4.
     expect(code).toMatch(/createMatchWithParticipants[\s\S]{0,500}createdByPlayerId/)
   })
 
+  it('[3.2-SFN-019b] createMatchFn passes player1Id and player2Id — Test 8.16', () => {
+    // Player-first: both player IDs are required
+    const code = getFab()
+    expect(code).toMatch(/createMatchWithParticipants[\s\S]{0,500}player1Id/)
+    expect(code).toMatch(/createMatchWithParticipants[\s\S]{0,500}player2Id/)
+  })
+
   it('[3.2-SFN-020] createMatchFn returns { matchId } on success — Test 8.16', () => {
     // AC: 4 — Test 8.16
     const code = getFab()
@@ -230,11 +237,10 @@ describe('[AC5][AC7][P0] Campaign view — loadCampaignTimelineFn includes pendi
     expect(code).toMatch(/(isGuest[\s\S]{0,400}pendingMatches.*\[\]|pendingMatches.*\[\][\s\S]{0,400}isGuest)/)
   })
 
-  it('[3.2-SFN-026] loadCampaignTimelineFn returns pendingMatches: [] when army is null — Test 8.22', () => {
-    // AC: 5 — Test 8.22
+  it('[3.2-SFN-026] loadCampaignTimelineFn calls getPendingMatches with session.playerId — Test 8.22', () => {
+    // AC: 5 — Test 8.22 — player-first: pending matches visible even without army
     const code = getCampaignView()
-    // When army is null, pendingMatches defaults to []
-    expect(code).toMatch(/pendingMatches[\s\S]{0,200}(\[\]|empty)/)
+    expect(code).toMatch(/getPendingMatches\(session\.playerId\)/)
   })
 })
 
@@ -300,10 +306,10 @@ describe('[AC5][P0] Campaign view — ActionChip label logic (Task 7.3, 8.21)', 
     expect(code).toContain('Rapport de bataille')
   })
 
-  it('[3.2-SFN-035] ActionChip label includes "vs {opponentArmyName}" — Test 8.21', () => {
+  it('[3.2-SFN-035] ActionChip label includes "vs {opponentLabel}" — Test 8.21', () => {
     // AC: 5 — Test 8.21
     const code = getCampaignView()
-    expect(code).toMatch(/vs[\s\S]{0,200}(opponentArmyName|opponent)/)
+    expect(code).toMatch(/vs[\s\S]{0,200}(opponentLabel|opponentArmyName|opponentPlayerName|opponent)/)
   })
 
   it('[3.2-SFN-036] ActionChip label includes formatted date using Intl.DateTimeFormat fr-FR — Task 7.3', () => {

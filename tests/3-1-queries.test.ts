@@ -86,11 +86,10 @@ describe('[AC1][AC3][AC4][AC5][AC6][P0] DB queries — getTimelineForArmy — sr
     expect(queries).toMatch(/getTimelineForArmy[\s\S]{0,2000}(where|eq)[\s\S]{0,300}armyId/)
   })
 
-  it('[3.1-QRY-026] getTimelineForArmy self-join excludes the requesting army\'s own participant row (ne condition)', () => {
+  it('[3.1-QRY-026] getTimelineForArmy self-join excludes the requesting player\'s own participant row (ne condition)', () => {
     const queries = getQueries()
-    // The oppParticipant join must use ne(oppParticipant.armyId, ...) to avoid duplicate entries
-    // where an army appears as its own opponent
-    expect(queries).toMatch(/ne\(oppParticipant\.armyId/)
+    // The oppParticipant join must use ne(oppParticipant.playerId, ...) to avoid duplicate entries
+    expect(queries).toMatch(/ne\(oppParticipant\.playerId/)
   })
 })
 
