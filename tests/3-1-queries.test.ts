@@ -12,14 +12,7 @@
 // All tests will fail until the implementation is complete.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-const root = resolve(__dirname, '..')
-
-function getQueries() {
-  return readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
-}
+import { readAllQueries as getQueries } from './helpers/read-queries'
 
 // ---------------------------------------------------------------------------
 // AC1, AC3, AC4, AC5, AC6 — getTimelineForArmy (Task 2.1)
@@ -93,11 +86,10 @@ describe('[AC1][AC3][AC4][AC5][AC6][P0] DB queries — getTimelineForArmy — sr
     expect(queries).toMatch(/getTimelineForArmy[\s\S]{0,2000}(where|eq)[\s\S]{0,300}armyId/)
   })
 
-  it('[3.1-QRY-026] getTimelineForArmy self-join excludes the requesting army\'s own participant row (ne condition)', () => {
+  it('[3.1-QRY-026] getTimelineForArmy self-join excludes the requesting player\'s own participant row (ne condition)', () => {
     const queries = getQueries()
-    // The oppParticipant join must use ne(oppParticipant.armyId, ...) to avoid duplicate entries
-    // where an army appears as its own opponent
-    expect(queries).toMatch(/ne\(oppParticipant\.armyId/)
+    // The oppParticipant join must use ne(oppParticipant.playerId, ...) to avoid duplicate entries
+    expect(queries).toMatch(/ne\(oppParticipant\.playerId/)
   })
 })
 

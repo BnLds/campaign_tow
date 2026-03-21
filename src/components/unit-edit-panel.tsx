@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from './ui/select'
 import { getTierLabel, getTierColor } from '../lib/tier'
+import type { TierLevel } from '../lib/tier'
 
 // ---------------------------------------------------------------------------
 // Types (mirroring DB schema shapes)
@@ -61,7 +62,7 @@ type RemoveUnitGainFn = (args: {
 
 type UpdateXpFn = (args: {
   data: { armyId: string; unitId: string; xp: number }
-}) => Promise<{ success: boolean; data?: { xp: number; tier: 0 | 1 | 2 | 3 }; error?: { code: string; message: string } }>
+}) => Promise<{ success: boolean; data?: { xp: number; tier: TierLevel }; error?: { code: string; message: string } }>
 
 type FetchUnitDeltasFn = (args: {
   data: { armyId: string; unitId: string }
@@ -82,6 +83,7 @@ interface UnitEditPanelProps {
   armyId: string
   unitId: string
   unitName: string
+  unitType: string
   currentXp: number
   subProfiles: SubProfileItem[]
   onClose: () => void
@@ -143,6 +145,7 @@ export function UnitEditPanel({
   armyId,
   unitId,
   unitName,
+  unitType,
   currentXp,
   subProfiles,
   onClose,
@@ -176,7 +179,7 @@ export function UnitEditPanel({
   // XP form state
   const [xpValue, setXpValue] = useState(String(currentXp))
   const [updatingXp, setUpdatingXp] = useState(false)
-  const [currentTier, setCurrentTier] = useState<0 | 1 | 2 | 3 | null>(null)
+  const [currentTier, setCurrentTier] = useState<TierLevel | null>(null)
   const [confirmedXpUpdate, setConfirmedXpUpdate] = useState(false)
   const xpFeedback = useFeedback()
 
@@ -373,7 +376,7 @@ export function UnitEditPanel({
     )
   }
 
-  const tierLabel = currentTier !== null ? getTierLabel(currentTier) : null
+  const tierLabel = currentTier !== null ? getTierLabel(currentTier, unitType) : null
   const tierColor = currentTier !== null ? getTierColor(currentTier) : undefined
 
   return (

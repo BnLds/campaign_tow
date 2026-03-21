@@ -63,6 +63,90 @@ export const createMatchSchema = z.object({
 })
 export type CreateMatchInput = z.infer<typeof createMatchSchema>
 
+// Story 3.3 — Match result entry
+export const submitMatchResultSchema = z.object({
+  matchId: z.string().min(1),
+  result: z.enum(['victory', 'defeat', 'draw']),
+})
+export type SubmitMatchResultInput = z.infer<typeof submitMatchResultSchema>
+
+// Shared result validation helper
+const VALID_RESULTS = new Set(['victory', 'defeat', 'draw'] as const)
+export type ValidResult = 'victory' | 'defeat' | 'draw'
+export function toValidResult(r: string | null): ValidResult | null {
+  if (r && VALID_RESULTS.has(r as ValidResult)) return r as ValidResult
+  return null
+}
+
+// Story 4.1 — Post-match flow: XP entry and evolution completion
+export const loadPostMatchDataSchema = z.object({
+  matchId: z.string().min(1),
+})
+export type LoadPostMatchDataInput = z.infer<typeof loadPostMatchDataSchema>
+
+export const submitUnitXpSchema = z.object({
+  matchParticipantId: z.string().min(1),
+  unitId: z.string().min(1),
+  xpGained: z.number().int().min(0).max(99),
+})
+export type SubmitUnitXpInput = z.infer<typeof submitUnitXpSchema>
+
+export const completeEvolutionsSchema = z.object({
+  matchId: z.string().min(1),
+})
+export type CompleteEvolutionsInput = z.infer<typeof completeEvolutionsSchema>
+
+// Story 4.2 — Tier-up: save selected improvements as unit_gains
+export const submitTierUpSchema = z.object({
+  unitId: z.string().min(1),
+  matchParticipantId: z.string().min(1),
+  improvements: z.array(z.object({ description: z.string().min(1) })).min(1),
+})
+export type SubmitTierUpInput = z.infer<typeof submitTierUpSchema>
+
+// Story 4.3 — Consequence type enum (shared by InjuryResult and DestructionResult)
+const consequenceTypeEnum = z.enum([
+  'death',
+  'permanent_injury',
+  'grave_injury',
+  'no_effect',
+  'haine',
+  'miracule',
+  'deroute_sanglante',
+  'pertes_catastrophiques',
+  'moral_brise',
+  'survivants_endurcis',
+  'rancune',
+  'fureur_vengeresse',
+])
+
+// Batch commit: complete evolutions with all tier-up gains in one atomic operation
+export const completeEvolutionsWithGainsSchema = z.object({
+  matchId: z.string().min(1),
+  matchParticipantId: z.string().min(1),
+  gains: z.array(z.object({
+    unitId: z.string().min(1),
+    descriptions: z.array(z.string().min(1)),
+  })),
+  // Story 4.3: optional consequences array (injuries + destruction results)
+  // armyId is NOT in schema — derived server-side from authenticated player's army
+  consequences: z.array(z.object({
+    unitId: z.string().min(1),
+    type: consequenceTypeEnum,
+    stat: z.string().optional(),
+    delta: z.number().optional(),
+    bannerLost: z.boolean().optional(),
+    // opponentPlayerName: passed by wizard for Haine / Rancune descriptions
+    opponentPlayerName: z.string().optional(),
+    // xpLostAmount: passed for deroute_sanglante to record in unit_gain description
+    xpLostAmount: z.number().optional(),
+  })).optional(),
+  // championKilledIds: unit IDs where champion was killed in challenge (Phase 1 checkbox)
+  championKilledIds: z.array(z.string().min(1)).optional(),
+})
+export type CompleteEvolutionsWithGainsInput = z.infer<typeof completeEvolutionsWithGainsSchema>
+export type ConsequenceEntry = NonNullable<CompleteEvolutionsWithGainsInput['consequences']>[number]
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),

@@ -1,8 +1,8 @@
 // Campaign TOW — Database Schema
 // This is the single source of all Drizzle table definitions.
 
-import { pgTable, text, boolean, timestamp, integer, pgEnum, uniqueIndex, index } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { pgTable, text, boolean, timestamp, integer, pgEnum, uniqueIndex, index, check } from 'drizzle-orm/pg-core'
+import { relations, sql } from 'drizzle-orm'
 
 // Story 3.1 — Enum for match result (enforces valid values at DB level)
 export const matchResultEnum = pgEnum('match_result', ['victory', 'defeat', 'draw'])
@@ -35,7 +35,10 @@ export const armies = pgTable('armies', {
   faction: text('faction').notNull(),
   playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (table) => [
+  // One army per player max — nullable unique allows multiple unassigned armies
+  uniqueIndex('armies_player_id_unique').on(table.playerId),
+])
 
 export const units = pgTable('units', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -82,12 +85,17 @@ export const statModifiers = pgTable('stat_modifiers', {
   delta: integer('delta').notNull(),
   source: text('source').notNull(),
   temporary: boolean('temporary').notNull().default(false),
+  cleared: boolean('cleared').notNull().default(false),
+  matchParticipantId: text('match_participant_id')
+    .references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
 
 export const unitGains = pgTable('unit_gains', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
+  cleared: boolean('cleared').notNull().default(false),
+  matchParticipantId: text('match_participant_id').references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
 
 // Story 3.1 — Campaign timeline: matches and participants
@@ -104,7 +112,8 @@ export const matches = pgTable('matches', {
 export const matchParticipants = pgTable('match_participants', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   matchId: text('match_id').notNull().references(() => matches.id, { onDelete: 'cascade' }),
-  armyId: text('army_id').notNull().references(() => armies.id, { onDelete: 'cascade' }),
+  playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  armyId: text('army_id').references(() => armies.id, { onDelete: 'set null' }),
   result: matchResultEnum('result'), // 'victory' | 'defeat' | 'draw' | null (pending)
   // evolutionsEnteredAt: null means evolutions not yet entered (post-match flow in epic 4)
   // nullable timestamp — set when the post-match evolution flow is completed
@@ -112,9 +121,25 @@ export const matchParticipants = pgTable('match_participants', {
   // createdAt tracks when the participant record was inserted (not the match date)
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
-  uniqueIndex('mp_match_army_unique').on(table.matchId, table.armyId),
+  uniqueIndex('mp_match_player_unique').on(table.matchId, table.playerId),
+  index('idx_mp_player_id').on(table.playerId),
   index('idx_mp_army_id').on(table.armyId),
   index('idx_mp_match_id').on(table.matchId),
+])
+
+// Story 4-1b — match XP entries: per-unit per-match XP tracking
+export const matchXpEntries = pgTable('match_xp_entries', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  matchParticipantId: text('match_participant_id')
+    .notNull()
+    .references(() => matchParticipants.id, { onDelete: 'cascade' }),
+  unitId: text('unit_id')
+    .notNull()
+    .references(() => units.id, { onDelete: 'cascade' }),
+  xpGained: integer('xp_gained').notNull(),
+}, (table) => [
+  uniqueIndex('mxe_participant_unit_unique').on(table.matchParticipantId, table.unitId),
+  check('mxe_xp_gained_non_negative', sql`${table.xpGained} >= 0`),
 ])
 
 // Drizzle relations — matches and matchParticipants
@@ -127,6 +152,10 @@ export const matchParticipantsRelations = relations(matchParticipants, ({ one })
   match: one(matches, {
     fields: [matchParticipants.matchId],
     references: [matches.id],
+  }),
+  player: one(players, {
+    fields: [matchParticipants.playerId],
+    references: [players.id],
   }),
   army: one(armies, {
     fields: [matchParticipants.armyId],

@@ -64,6 +64,11 @@
   --color-malus-bg: #fdf0f0;
   --color-malus-border: #efc2c2;
 
+  /* Semantic — temporary consequences (orange) */
+  --color-temporary: #e07b30;
+  --color-temporary-bg: #fff3eb;
+  --color-temporary-border: #f0a870;
+
   /* Semantic — match outcomes */
   --color-victory-bg: #edf8ef;
   --color-victory-text: #2d7a3a;
@@ -84,6 +89,12 @@
   /* Font families */
   --font-display: 'Cinzel', serif;
   --font-body: 'Inter', sans-serif;
+}
+
+/* Focus ring for navy-background circular buttons (back btn, FAB) */
+.nav-btn-brand:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 html,

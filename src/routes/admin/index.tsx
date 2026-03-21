@@ -187,14 +187,31 @@ const createMatchFn = createServerFn({ method: 'POST' })
     if (data.army1Id === data.army2Id) {
       return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Les deux armées doivent être différentes' } }
     }
-    const { createMatchWithParticipants } = await import('../../db/queries')
+    // Validate result coherence when both are set: (victory,defeat), (defeat,victory), or (draw,draw)
+    if (data.result1 !== null && data.result2 !== null) {
+      const validPairs: Array<[string, string]> = [['victory', 'defeat'], ['defeat', 'victory'], ['draw', 'draw']]
+      if (!validPairs.some(([r1, r2]) => r1 === data.result1 && r2 === data.result2)) {
+        return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Résultats incohérents (victoire/victoire ou défaite/défaite non autorisé)' } }
+      }
+    }
+    const { createMatchWithParticipants, getArmyById } = await import('../../db/queries')
     const matchDate = new Date(data.date)
     if (isNaN(matchDate.getTime())) {
       return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Date invalide' } }
     }
+    const army1 = await getArmyById(data.army1Id)
+    const army2 = await getArmyById(data.army2Id)
+    if (!army1 || !army1.playerId) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 1 n'est assignee a aucun joueur" } }
+    }
+    if (!army2 || !army2.playerId) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 2 n'est assignee a aucun joueur" } }
+    }
     const result = await createMatchWithParticipants({
+      player1Id: army1.playerId,
       army1Id: data.army1Id,
       result1: data.result1,
+      player2Id: army2.playerId,
       army2Id: data.army2Id,
       result2: data.result2,
       matchDate,
@@ -1043,7 +1060,7 @@ function CreateMatchSection({
 }
 
 // Story 2.2 — Shared stat field grid component
-type StatFields = { m: string; cc: string; ct: string; f: string; e: string; pv: string; i: string; a: string; cd: string }
+import type { StatFields } from '../../db/queries/units'
 const STAT_KEYS: (keyof StatFields)[] = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd']
 
 function StatFieldsGrid({ stats, setStats }: { stats: StatFields; setStats: (s: StatFields) => void }) {

@@ -60,14 +60,15 @@ development_status:
   epic-3: in-progress
   3-1-army-timeline-view: done
   3-1b-app-shell-tabbar-layout-navigation: done
-  3-2-match-creation-pending-actions: backlog
-  3-3-match-result-entry: backlog
+  3-2-match-creation-pending-actions: done
+  3-3-match-result-entry: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-post-match-flow-xp-entry-per-unit-character: backlog
-  4-2-tier-up-detection-improvement-choice: backlog
-  4-3-character-injuries-bonuses: backlog
+  epic-4: in-progress
+  4-1-post-match-flow-xp-entry-per-unit-character: done
+  4-1b-match-xp-tracking-wizard-resume: done
+  4-2-tier-up-detection-improvement-choice: done
+  4-3-character-injuries-bonuses: review
   epic-4-retrospective: optional
 
   epic-5: backlog

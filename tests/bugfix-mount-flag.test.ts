@@ -6,10 +6,12 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { composeUnitView } from '../src/lib/delta-composer'
+import { readAllQueries } from './helpers/read-queries'
 
 const ROOT = join(__dirname, '..')
 
 function readSrc(relPath: string) {
+  if (relPath === 'src/db/queries.ts') return readAllQueries()
   return readFileSync(join(ROOT, relPath), 'utf-8')
 }
 

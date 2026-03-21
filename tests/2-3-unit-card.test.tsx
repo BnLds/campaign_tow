@@ -184,15 +184,32 @@ describe('[AC1] UnitCard — tier pill Aguerri', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Test 9 — No tier pill at tier 0
+// Test 9 — XP + tier label always visible
 // ---------------------------------------------------------------------------
 
-describe('[AC1] UnitCard — no tier pill at tier 0', () => {
-  it('[2.3-COMP-009] tier=0 renders no tier pill (no data-testid="tier-pill" element)', () => {
+describe('[AC1] UnitCard — XP and tier label display', () => {
+  it('[2.3-COMP-009] tier=0 unit renders "0 XP — Bleusaille"', () => {
     const composedView = makeComposedView([makeSubProfile('Recrues')])
-    const { container } = render(<UnitCard unit={makeUnit('Recrues')} composedView={composedView} tier={0} />)
+    render(<UnitCard unit={makeUnit('Recrues', 'Unités de base', 0)} composedView={composedView} tier={0} />)
 
-    expect(container.querySelector('[data-testid="tier-pill"]')).toBeNull()
+    const label = screen.getByTestId('xp-tier-label')
+    expect(label.textContent).toBe('0 XP — Bleusaille')
+  })
+
+  it('[2.3-COMP-009b] tier=0 character renders "0 XP" without tier name', () => {
+    const composedView = makeComposedView([makeSubProfile('Sorcier')])
+    render(<UnitCard unit={makeUnit('Sorcier', 'Personnages', 0)} composedView={composedView} tier={0} />)
+
+    const label = screen.getByTestId('xp-tier-label')
+    expect(label.textContent).toBe('0 XP')
+  })
+
+  it('[2.3-COMP-009c] tier=2 unit with 30 XP renders "30 XP — ◆ Expérimenté"', () => {
+    const composedView = makeComposedView([makeSubProfile('Vétérans')])
+    render(<UnitCard unit={makeUnit('Vétérans', 'Unités de base', 30)} composedView={composedView} tier={2} />)
+
+    const label = screen.getByTestId('xp-tier-label')
+    expect(label.textContent).toBe('30 XP — ◆ Expérimenté')
   })
 })
 
@@ -216,20 +233,17 @@ describe('[AC3] UnitCard — multiple sub-profiles', () => {
 // Test 11 — Sub-profile label uppercase (always shown, even with 1 sub-profile)
 // ---------------------------------------------------------------------------
 
-describe('[AC3] UnitCard — sub-profile label uppercase', () => {
-  it('[2.3-COMP-011] sub-profile label has text-transform:uppercase inline style (always shown, even with 1 sub-profile)', () => {
-    // Fix M5: showLabel is always true — test with a single sub-profile to verify
+describe('[AC3] UnitCard — sub-profile label always shown', () => {
+  it('[2.3-COMP-011] sub-profile label is rendered even with a single sub-profile', () => {
+    // showLabel is always true — verify label text appears with 1 sub-profile
     const sp1 = makeSubProfile('infanterie')
     const composedView = makeComposedView([sp1])
-    const { container } = render(
+    render(
       <UnitCard unit={makeUnit()} composedView={composedView} tier={0} />
     )
 
-    // showLabel=true even with 1 sub-profile; label div has inline textTransform: 'uppercase'
-    const labelElements = container.querySelectorAll('.sub-profile-label')
-    expect(labelElements.length).toBeGreaterThan(0)
-    const firstLabel = labelElements[0] as HTMLElement
-    expect(firstLabel.style.textTransform).toBe('uppercase')
+    // Label is rendered in the first <td> of the stats table row
+    expect(screen.getByText('infanterie')).toBeTruthy()
   })
 })
 

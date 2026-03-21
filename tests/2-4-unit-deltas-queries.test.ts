@@ -12,18 +12,7 @@
 // All tests will fail until the implementation is complete (functions don't exist yet).
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-
-const root = resolve(__dirname, '..')
-
-// ---------------------------------------------------------------------------
-// Helper: read queries.ts once
-// ---------------------------------------------------------------------------
-
-function getQueries() {
-  return readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
-}
+import { readAllQueries as getQueries } from './helpers/read-queries'
 
 // ---------------------------------------------------------------------------
 // AC1, AC2 — insertStatModifier (Task 1.1)

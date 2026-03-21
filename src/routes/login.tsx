@@ -12,6 +12,37 @@ import type { ServerResult } from '../lib/types'
 import { loginSchema } from '../lib/validators'
 
 // ---------------------------------------------------------------------------
+// Login rate limiter — in-memory, per username
+// 10 failed attempts per 15-minute window per username.
+// Prevents brute-force on a specific account without requiring IP access.
+// ---------------------------------------------------------------------------
+
+const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000
+const LOGIN_RATE_MAX = 10
+const loginFailures = new Map<string, { count: number; resetAt: number }>()
+
+function isLoginRateLimited(username: string): boolean {
+  const now = Date.now()
+  const entry = loginFailures.get(username)
+  if (!entry || now >= entry.resetAt) return false
+  return entry.count >= LOGIN_RATE_MAX
+}
+
+function recordLoginFailure(username: string): void {
+  const now = Date.now()
+  const entry = loginFailures.get(username)
+  if (!entry || now >= entry.resetAt) {
+    loginFailures.set(username, { count: 1, resetAt: now + LOGIN_RATE_WINDOW_MS })
+  } else {
+    entry.count++
+  }
+}
+
+function clearLoginFailures(username: string): void {
+  loginFailures.delete(username)
+}
+
+// ---------------------------------------------------------------------------
 // Server functions
 // ---------------------------------------------------------------------------
 
@@ -26,15 +57,24 @@ const guestLoginFn = createServerFn({ method: 'POST' }).handler(async () => {
 const loginFn = createServerFn({ method: 'POST' })
   .inputValidator(loginSchema)
   .handler(async ({ data }): Promise<ServerResult<{ redirect: string }>> => {
-    const { loginPlayer } = await import('../lib/auth')
-    // Same error message for wrong user + wrong password — prevents username enumeration (AC3)
-    const success = await loginPlayer(data.username, data.password)
-    if (!success) {
+    // Rate limit check — same message as wrong credentials to prevent timing side-channels
+    if (isLoginRateLimited(data.username)) {
       return {
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'Identifiant ou mot de passe incorrect' },
       }
     }
+    const { loginPlayer } = await import('../lib/auth')
+    // Same error message for wrong user + wrong password — prevents username enumeration (AC3)
+    const success = await loginPlayer(data.username, data.password)
+    if (!success) {
+      recordLoginFailure(data.username)
+      return {
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Identifiant ou mot de passe incorrect' },
+      }
+    }
+    clearLoginFailures(data.username)
     return { success: true, data: { redirect: '/' } }
   })
 

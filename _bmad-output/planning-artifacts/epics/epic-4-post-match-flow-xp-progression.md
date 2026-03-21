@@ -36,6 +36,34 @@ So that my army's progression is recorded after every game.
 
 ---
 
+## Story 4.1b: Match XP Tracking & Wizard Resume
+
+As a player,
+I want each XP entry to be tracked per unit per match and the wizard to resume with pre-filled values if interrupted,
+So that I never lose progress or accidentally double-count XP, and I can see XP gained per unit on match history cards.
+
+**Acceptance Criteria:**
+
+**Given** I submit XP for a unit in the post-match wizard,
+**When** the server processes the submission,
+**Then** a `match_xp_entries` record is created (or updated via upsert) for that unit and match participant, and only the delta (new - previous) is applied to `units.xp`
+
+**Given** the wizard was interrupted after some units were submitted,
+**When** I re-open the post-match wizard for the same match,
+**Then** previously entered XP values are pre-filled in the input for each unit that was already submitted
+
+**Given** I re-submit XP for a unit with a different value than before,
+**When** the server processes the submission,
+**Then** `units.xp` is adjusted by the difference (new value - old value), not re-incremented by the full amount
+
+**Given** a match has completed evolutions with XP entries recorded,
+**When** I view the match card in the campaign timeline,
+**Then** a compact line displays XP gained per unit (e.g. "Nomarch +3 · Gardes +5 · Sorcier +2") below the match date
+
+**Sprint Change Proposal:** `sprint-change-proposal-2026-03-17.md`
+
+---
+
 ## Story 4.2: Tier-Up Detection & Improvement Choice
 
 As a player,

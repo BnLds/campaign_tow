@@ -4,17 +4,11 @@ import { useState, useEffect } from 'react'
 import { useHydrated } from '../lib/useHydrated'
 import { WelcomeModal } from '../components/welcome-modal'
 import { TimelineEntry } from '../components/timeline-entry'
+import { ActionChip } from '../components/action-chip'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
-import type { TimelineEntryData } from '../db/queries'
-import { updateDisplayNameSchema } from '../lib/validators'
-
-const VALID_RESULTS = new Set(['victory', 'defeat', 'draw'] as const)
-type ValidResult = 'victory' | 'defeat' | 'draw'
-function toValidResult(r: string | null): ValidResult | null {
-  if (r && VALID_RESULTS.has(r as ValidResult)) return r as ValidResult
-  return null
-}
+import type { TimelineEntryData, PendingMatchData } from '../db/queries'
+import { updateDisplayNameSchema, submitMatchResultSchema, toValidResult } from '../lib/validators'
 
 const markWelcomeSeenFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -34,19 +28,51 @@ const updateDisplayNameFn = createServerFn({ method: 'POST' })
     return { success: true, data: { displayName: data.displayName } }
   })
 
+export const submitMatchResultFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(submitMatchResultSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<{ participantId: string; result: string }>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults } = await import('../db/queries')
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+    }
+    const participant = await getMatchParticipantByMatchAndPlayer(data.matchId, context.session.playerId)
+    if (!participant) {
+      return {
+        success: false,
+        error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
+      }
+    }
+    const updated = await updateMatchResults(data.matchId, context.session.playerId, data.result)
+    if (!updated) {
+      return { success: false, error: { code: 'SERVER_ERROR', message: 'Echec de la mise a jour du resultat' } }
+    }
+    return { success: true, data: { participantId: participant.id, result: data.result } }
+  })
+
 const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const { session } = context
     if (session.isGuest) {
-      return { isGuest: true as const, army: null, timeline: [] as TimelineEntryData[] }
+      return {
+        isGuest: true as const,
+        army: null,
+        timeline: [] as TimelineEntryData[],
+        pendingMatches: [] as PendingMatchData[],
+      }
     }
-    const { getPlayerArmy, getTimelineForArmy } = await import('../db/queries')
+    const { getPlayerArmy, getTimelineForArmy, getPendingMatches } = await import('../db/queries')
     const army = await getPlayerArmy(session.playerId)
     const timeline: TimelineEntryData[] = army
       ? await getTimelineForArmy(army.id)
       : []
-    return { isGuest: false as const, army, timeline }
+    const pendingMatches: PendingMatchData[] = await getPendingMatches(session.playerId)
+    return { isGuest: false as const, army, timeline, pendingMatches }
   })
 
 export const Route = createFileRoute('/')({
@@ -61,8 +87,9 @@ function CampaignView() {
   const context = useRouteContext({ from: '__root__' })
   const { session } = context
   const [modalOpen, setModalOpen] = useState(session?.hasSeenWelcome === false)
+  const [resultPickerMatchId, setResultPickerMatchId] = useState<string | null>(null)
   const hydrated = useHydrated()
-  const { isGuest, army, timeline } = Route.useLoaderData()
+  const { isGuest, army, timeline, pendingMatches } = Route.useLoaderData()
 
   useEffect(() => {
     if (hydrated) {
@@ -86,6 +113,18 @@ function CampaignView() {
     }
   }
 
+  const handleResultSubmit = async (matchId: string, result: 'victory' | 'defeat' | 'draw') => {
+    const response = await submitMatchResultFn({ data: { matchId, result } })
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+    await router.invalidate()
+  }
+
+  const handleEvolutionStart = (matchId: string) => {
+    void router.navigate({ to: '/match/$matchId/post-match', params: { matchId } })
+  }
+
   return (
     <>
       {!session?.isGuest && (
@@ -95,6 +134,36 @@ function CampaignView() {
           onDismiss={handleDismiss}
           onUpdateDisplayName={handleUpdateDisplayName}
         />
+      )}
+      {resultPickerMatchId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text-primary)' }}>
+              Résultat de la partie
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {(['victory', 'defeat', 'draw'] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={async () => {
+                    const matchId = resultPickerMatchId
+                    setResultPickerMatchId(null)
+                    await handleResultSubmit(matchId, r)
+                  }}
+                  style={{ padding: '0.6rem 1rem', borderRadius: 8, border: '1px solid var(--color-separator)', background: 'var(--color-background)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.9rem', textAlign: 'left' }}
+                >
+                  {r === 'victory' ? 'Victoire' : r === 'defeat' ? 'Défaite' : 'Nul'}
+                </button>
+              ))}
+              <button
+                onClick={() => setResultPickerMatchId(null)}
+                style={{ marginTop: '0.25rem', padding: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)', fontSize: '0.85rem' }}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
         {isGuest ? (
@@ -117,6 +186,52 @@ function CampaignView() {
         ) : (
           /* Logged in with an army */
           <>
+            {/* Action strip — pending matches */}
+            {pendingMatches.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 12, alignItems: 'center', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+              >
+                {pendingMatches.map((match) => {
+                  // H4 — safe date formatting: fallback to raw date string if parsing fails
+                  let formattedDate: string
+                  try {
+                    const parsed = new Date(match.date)
+                    if (isNaN(parsed.getTime())) throw new Error('invalid date')
+                    formattedDate = new Intl.DateTimeFormat('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                    }).format(parsed)
+                  } catch {
+                    formattedDate = match.date
+                  }
+
+                  const opponentLabel = match.opponentArmyName ?? match.opponentPlayerName
+
+                  const label = match.myResult === null
+                    ? `Resultat a entrer -- vs ${opponentLabel} . ${formattedDate}`
+                    : `Rapport de bataille -- vs ${opponentLabel} . ${formattedDate}`
+
+                  // myResult !== null → result entered, evolutions pending → navigate to post-match
+                  if (match.myResult !== null) {
+                    return (
+                      <ActionChip
+                        key={match.matchId}
+                        label={label}
+                        href={'/match/' + match.matchId + '/post-match'}
+                      />
+                    )
+                  }
+
+                  return (
+                    <ActionChip
+                      key={match.matchId}
+                      label={label}
+                      onClick={() => setResultPickerMatchId(match.matchId)}
+                    />
+                  )
+                })}
+              </div>
+            )}
+
             {/* Timeline */}
             <section>
               <h2
@@ -144,13 +259,17 @@ function CampaignView() {
                       key={entry.matchId}
                       matchId={entry.matchId}
                       opponent={{
-                        name: entry.opponent.name,
-                        faction: entry.opponent.faction,
+                        name: entry.opponent.name ?? entry.opponent.playerName,
+                        faction: entry.opponent.faction ?? '',
                         playerName: entry.opponent.playerName ?? undefined,
                       }}
                       result={toValidResult(entry.result)}
                       date={entry.date}
                       hasEvolutions={entry.hasEvolutions}
+                      isEditable={!isGuest && army !== null}
+                      onResultSubmit={handleResultSubmit}
+                      onEvolutionStart={handleEvolutionStart}
+                      unitXpEntries={entry.unitXpEntries}
                     />
                   ))}
                 </div>

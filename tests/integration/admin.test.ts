@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readAllQueries } from '../helpers/read-queries'
 
 // Project root = two levels up from tests/integration/
 const root = resolve(__dirname, '../..')
@@ -72,28 +73,28 @@ describe('[AC2][AC5][P0] Validator — createPlayerSchema', () => {
 
 describe('[AC2][AC5][P0] DB queries — src/db/queries.ts', () => {
   it('[1.4-INT-008] queries.ts exports checkUsernameExists as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function checkUsernameExists')
   })
 
   it('[1.4-INT-009] queries.ts exports createPlayer as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function createPlayer')
   })
 
   it('[1.4-INT-010] queries.ts does NOT import bcryptjs — password hashing belongs in the handler, not DB layer', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).not.toContain('bcryptjs')
   })
 
   it('[1.4-INT-011] createPlayer inserts isAdmin: false — new players are never admins by default', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // isAdmin: false must be inside the createPlayer function body
     expect(queries).toMatch(/createPlayer[\s\S]{0,600}isAdmin:\s*false/)
   })
 
   it('[1.4-INT-012] createPlayer inserts hasSeenWelcome: false — new players get the welcome modal (AC3)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // hasSeenWelcome: false must be inside the createPlayer function body
     expect(queries).toMatch(/createPlayer[\s\S]{0,600}hasSeenWelcome:\s*false/)
   })

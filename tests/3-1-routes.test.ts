@@ -135,54 +135,9 @@ describe('[AC1][P0] Campaign view — TimelineEntry component usage', () => {
 
 // ---------------------------------------------------------------------------
 // AC4, AC5, AC6, AC8 — Army detail view timeline section (Task 5)
+// REMOVED: Historique section was removed from army detail view.
+// Timeline is only shown on the campaign home page (index.tsx).
 // ---------------------------------------------------------------------------
-
-describe('[AC4][AC5][AC6][AC8][P0] Army detail view — Historique section — src/routes/armies/$armyId.tsx', () => {
-  it('[3.1-ARY-001] $armyId.tsx loadArmyFn now calls getTimelineForArmy (extended loader — Task 5.1)', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/getTimelineForArmy/)
-  })
-
-  it('[3.1-ARY-002] $armyId.tsx loadArmyFn returns timeline in its response', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/loadArmyFn[\s\S]{0,2000}timeline/)
-  })
-
-  it('[3.1-ARY-003] $armyId.tsx imports TimelineEntry component', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/import[\s\S]{0,200}TimelineEntry[\s\S]{0,100}timeline-entry/)
-  })
-
-  it('[3.1-ARY-004] $armyId.tsx renders "Historique" section heading (AC4 — Task 5.2)', () => {
-    const route = getArmyRoute()
-    expect(route).toContain('Historique')
-  })
-
-  it('[3.1-ARY-005] $armyId.tsx renders TimelineEntry components for each match (Task 5.3)', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/TimelineEntry[\s\S]{0,300}(map|matchId)/)
-  })
-
-  it('[3.1-ARY-006] $armyId.tsx has empty state "Aucune partie jouee" for army with no matches (Task 5.4, AC5)', () => {
-    const route = getArmyRoute()
-    expect(route).toContain('Aucune partie jouee')
-  })
-
-  it('[3.1-ARY-007] $armyId.tsx timeline is visible to all users — no isOwner guard on timeline (AC8, Task 5.5)', () => {
-    const route = getArmyRoute()
-    // The Historique section must NOT be wrapped in an isOwner condition
-    // Strategy: check that "Historique" and "isOwner" are not immediately adjacent
-    // (i.e., "Historique" appears outside the isOwner conditional blocks)
-    const code = route
-    const historiqueIdx = code.indexOf('Historique')
-    const isOwnerIdx = code.lastIndexOf('isOwner', historiqueIdx)
-    // If isOwner is within 200 chars before "Historique", it might gate it — check actual gap
-    // This is a best-effort test; if isOwner is 200+ chars away, it's likely not gating it
-    expect(historiqueIdx).toBeGreaterThan(-1)
-    // Key check: Historique string is present in the file (not missing)
-    expect(code.includes('Historique')).toBe(true)
-  })
-})
 
 // ---------------------------------------------------------------------------
 // AC4, AC7, AC8 — Armies list route (Task 6)

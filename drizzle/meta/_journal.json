@@ -57,6 +57,41 @@
       "when": 1773658342019,
       "tag": "0007_skinny_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773907975778,
+      "tag": "0008_public_dorian_gray",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1773997217772,
+      "tag": "0009_loud_mother_askani",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774001790421,
+      "tag": "0010_goofy_electro",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1774016175477,
+      "tag": "0011_bizarre_giant_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774081591141,
+      "tag": "0012_late_nightshade",
+      "breakpoints": true
     }
   ]
 }

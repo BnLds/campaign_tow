@@ -2,8 +2,10 @@
 // Displays a unit's base stats, campaign deltas, tier pill and border.
 
 import React from 'react'
-import type { ComposedUnitView, StatDelta, UnitGain } from '../lib/delta-composer'
+import type { ComposedUnitView, ComposedSubProfile, StatDelta, UnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
+import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
+import type { TierLevel } from '../lib/tier'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -12,7 +14,7 @@ import { getTierLabel, getTierColor } from '../lib/tier'
 interface UnitCardProps {
   unit: { id: string; name: string; type: string; xp: number }
   composedView: ComposedUnitView
-  tier: 0 | 1 | 2 | 3
+  tier: TierLevel
   action?: React.ReactNode
 }
 
@@ -20,8 +22,13 @@ interface UnitCardProps {
 // Tier border styles
 // ---------------------------------------------------------------------------
 
-function tierBorderStyle(tier: 0 | 1 | 2 | 3): React.CSSProperties {
+function tierBorderStyle(tier: TierLevel): React.CSSProperties {
   switch (tier) {
+    case 4:
+      return {
+        border: '2px solid var(--color-gold)',
+        boxShadow: '0 0 12px 4px #fffcf3',
+      }
     case 3:
       return {
         border: '2px solid var(--color-gold)',
@@ -43,90 +50,138 @@ function tierBorderStyle(tier: 0 | 1 | 2 | 3): React.CSSProperties {
 const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
 
 // ---------------------------------------------------------------------------
-// Sub-profile section
+// Stats table (compact layout — single header, all profiles as rows)
 // ---------------------------------------------------------------------------
 
-interface SubProfileSectionProps {
-  label: string
-  isMount: boolean
-  stats: Record<string, { value: string; delta: number | null; modified: boolean }>
-  showLabel: boolean
-}
+function StatsTable({ subProfiles }: { subProfiles: ComposedSubProfile[] }) {
+  if (subProfiles.length === 0) return null
 
-function SubProfileSection({ label, isMount, stats, showLabel }: SubProfileSectionProps) {
-  // Fix E1: fallback for empty sub-profile label
-  const displayLabel = label.trim() || 'Profil'
+  // Sort: non-mount first, mount last (immutable)
+  const sorted = [...subProfiles].sort(
+    (a, b) => Number(a.isMount) - Number(b.isMount),
+  )
+  const hasMount = subProfiles.some((sp) => sp.isMount)
+
+  // Profil column width: fit longest label (ch ≈ character width) + padding
+  const maxLabelLen = Math.max(
+    'Profil'.length,
+    ...sorted.map((sp) => ((sp.label || '').trim() || 'Profil').length),
+  )
+  const profilWidth = `${maxLabelLen + 2}ch`
 
   return (
-    <div>
-      {showLabel && (
-        <div
-          className="sub-profile-label"
+    <>
+      <div style={{ overflowX: 'auto' }}>
+        <table
           style={{
-            textTransform: 'uppercase',
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            color: 'var(--color-section-label)',
-            letterSpacing: '0.08em',
-            padding: '0.375rem 0.5rem 0.25rem',
-            borderTop: '1px solid var(--color-separator)',
+            tableLayout: 'fixed',
+            width: '100%',
+            borderCollapse: 'collapse',
             fontFamily: 'var(--font-body)',
+            fontSize: '0.75rem',
           }}
         >
-          {displayLabel}
-          {isMount && (
-            <span
-              style={{
-                textTransform: 'none',
-                fontStyle: 'italic',
-                fontWeight: 400,
-                color: 'var(--color-text-secondary)',
-                marginLeft: '0.375rem',
-                fontSize: '0.65rem',
-                letterSpacing: '0.02em',
-              }}
-            >
-              · Monture
-            </span>
-          )}
-        </div>
-      )}
-      <div
-        style={{
-          display: 'flex',
-          background: 'var(--color-stats-bg)',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.75rem',
-        }}
-      >
-        {/* Header row */}
-        <div style={{ display: 'contents' }}>
-          {STAT_KEYS.map((key, idx) => (
-            <div
-              key={key}
-              style={{
-                flex: 1,
-                textAlign: 'center',
-                borderLeft: idx > 0 ? '1px solid var(--color-border)' : undefined,
-              }}
-            >
-              <div
+          <thead>
+            <tr>
+              <th
+                scope="col"
                 style={{
-                  padding: '0.2rem 0',
-                  color: 'var(--color-text-secondary)',
-                  fontWeight: 600,
+                  width: profilWidth,
+                  whiteSpace: 'nowrap',
+                  textAlign: 'left',
+                  fontFamily: 'var(--font-body)',
                   fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color: 'var(--color-text-secondary)',
+                  padding: '0.2rem 0.375rem',
                   borderBottom: '1px solid var(--color-border)',
                 }}
               >
-                {key.toUpperCase()}
-              </div>
-              <StatCell statKey={key} entry={stats[key]} />
-            </div>
-          ))}
-        </div>
+                Profil
+              </th>
+              {STAT_KEYS.map((key) => (
+                <th
+                  key={key}
+                  scope="col"
+                  style={{
+                    textAlign: 'center',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    color: 'var(--color-text-secondary)',
+                    padding: '0.2rem 0',
+                    borderBottom: '1px solid var(--color-border)',
+                  }}
+                >
+                  {key.toUpperCase()}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((sp, idx) => {
+              const displayLabel = (sp.label || '').trim() || 'Profil'
+              return (
+                <tr key={`${sp.label}-${sp.isMount}-${idx}`}>
+                  <td
+                    style={{
+                      textAlign: 'left',
+                      fontSize: '0.75rem',
+                      fontFamily: 'var(--font-body)',
+                      padding: '0.25rem 0.375rem',
+                      whiteSpace: 'nowrap',
+                      background: 'var(--color-stats-bg)',
+                      ...(idx > 0 ? { borderTop: '1px solid var(--color-border)' } : {}),
+                      ...(sp.isMount
+                        ? { borderLeft: '2px solid var(--color-info)' }
+                        : {}),
+                    }}
+                  >
+                    {displayLabel}
+                  </td>
+                  {STAT_KEYS.map((key) => (
+                    <td
+                      key={key}
+                      style={{
+                        textAlign: 'center',
+                        borderLeft: '1px solid var(--color-border)',
+                        background: 'var(--color-stats-bg)',
+                        padding: 0,
+                        ...(idx > 0 ? { borderTop: '1px solid var(--color-border)' } : {}),
+                      }}
+                    >
+                      <StatCell statKey={key} entry={sp.stats[key]} />
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
-    </div>
+      {hasMount && (
+        <div
+          style={{
+            fontSize: '0.7rem',
+            color: 'var(--color-info)',
+            padding: '0.25rem 0.5rem',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-block',
+              width: '8px',
+              height: '8px',
+              background: 'var(--color-info)',
+              marginRight: '0.375rem',
+              verticalAlign: 'middle',
+            }}
+          />
+          Monture
+        </div>
+      )}
+    </>
   )
 }
 
@@ -199,7 +254,8 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
     >
       {deltas.map((d, idx) => {
         const isBonus = d.delta > 0
-        const isMalus = d.delta < 0
+        const isMalusTemporary = d.delta < 0 && d.temporary
+        const isMalusPermanent = d.delta < 0 && !d.temporary
 
         const chipStyle: React.CSSProperties = isBonus
           ? {
@@ -207,17 +263,23 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
               color: 'var(--color-bonus)',
               border: '1px solid var(--color-bonus-border)',
             }
-          : isMalus
+          : isMalusTemporary
             ? {
-                background: 'var(--color-malus-bg)',
-                color: 'var(--color-malus)',
-                border: '1px solid var(--color-malus-border)',
+                background: 'var(--color-temporary-bg)',
+                color: 'var(--color-temporary)',
+                border: '1px solid var(--color-temporary-border)',
               }
-            : {
-                background: '#f3f4f6',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
-              }
+            : isMalusPermanent
+              ? {
+                  background: 'var(--color-malus-bg)',
+                  color: 'var(--color-malus)',
+                  border: '1px solid var(--color-malus-border)',
+                }
+              : {
+                  background: '#f3f4f6',
+                  color: '#6b7280',
+                  border: '1px solid #d1d5db',
+                }
 
         const prefix = d.delta > 0 ? '+' : ''
 
@@ -231,25 +293,34 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
               ...chipStyle,
             }}
           >
-            {d.stat.toUpperCase()} {prefix}{d.delta} ({d.source})
+            {prefix}{d.delta} {d.stat.toUpperCase()}
           </span>
         )
       })}
-      {gains.map((g, idx) => (
-        <span
-          key={`${g.id}-${idx}`}
-          style={{
-            padding: '0.125rem 0.5rem',
-            borderRadius: '9999px',
-            background: 'var(--color-bonus-bg)',
-            color: 'var(--color-bonus)',
-            border: '1px solid var(--color-bonus-border)',
-            fontWeight: 600,
-          }}
-        >
-          {g.description}
-        </span>
-      ))}
+      {gains.map((g, idx) => {
+        const isTemp = isTemporaryConsequenceGain(g.description)
+        const isNeg = isNegativeConsequenceGain(g.description)
+        const chipColors = isTemp
+          ? { bg: 'var(--color-temporary-bg)', fg: 'var(--color-temporary)', border: 'var(--color-temporary-border)' }
+          : isNeg
+            ? { bg: 'var(--color-malus-bg)', fg: 'var(--color-malus)', border: 'var(--color-malus-border)' }
+            : { bg: 'var(--color-bonus-bg)', fg: 'var(--color-bonus)', border: 'var(--color-bonus-border)' }
+        return (
+          <span
+            key={`${g.id}-${idx}`}
+            style={{
+              padding: '0.125rem 0.5rem',
+              borderRadius: '9999px',
+              background: chipColors.bg,
+              color: chipColors.fg,
+              border: `1px solid ${chipColors.border}`,
+              fontWeight: 600,
+            }}
+          >
+            {stripConstraintHint(g.description)}
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -259,7 +330,7 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
 // ---------------------------------------------------------------------------
 
 export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
-  const tierLabel = getTierLabel(tier)
+  const tierLabel = getTierLabel(tier, unit.type)
   const tierColor = getTierColor(tier)
   const borderStyle = tierBorderStyle(tier)
 
@@ -274,7 +345,7 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
         ...borderStyle,
       }}
     >
-      {/* Header: unit name on top, tier pill + action below */}
+      {/* Header: unit name on top, XP + tier label + action below */}
       <div style={{ padding: '0.625rem 0.75rem' }}>
         <div
           style={{
@@ -286,45 +357,33 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
         >
           {unit.name}
         </div>
-        {(tier > 0 || action) && (
-          <div
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginTop: '0.25rem',
+          }}
+        >
+          <span
+            data-testid="xp-tier-label"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginTop: '0.25rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: tierColor,
+              fontFamily: 'var(--font-body)',
             }}
           >
-            {tier > 0 && (
-              <span
-                data-testid="tier-pill"
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  color: tierColor,
-                  fontFamily: 'var(--font-body)',
-                }}
-              >
-                {tierLabel}
-              </span>
-            )}
-            {action && (
-              <div style={{ marginLeft: 'auto' }}>{action}</div>
-            )}
-          </div>
-        )}
+            {unit.xp} XP{tierLabel ? ` — ${tierLabel}` : ''}
+          </span>
+          {action && (
+            <div style={{ marginLeft: 'auto' }}>{action}</div>
+          )}
+        </div>
       </div>
 
-      {/* Sub-profile sections — Fix M5: showLabel always true */}
-      {composedView.subProfiles.map((sp, idx) => (
-        <SubProfileSection
-          key={idx}
-          label={sp.label}
-          isMount={sp.isMount}
-          stats={sp.stats}
-          showLabel={true}
-        />
-      ))}
+      {/* Compact stats table — all profiles as rows under single header */}
+      <StatsTable subProfiles={composedView.subProfiles} />
 
       {/* Delta chips */}
       <DeltaChips deltas={composedView.deltas} gains={composedView.gains} />

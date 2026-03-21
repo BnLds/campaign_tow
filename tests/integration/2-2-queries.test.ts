@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readAllQueries } from '../helpers/read-queries'
 
 // Project root = two levels up from tests/integration/
 const root = resolve(__dirname, '../..')
@@ -21,53 +22,53 @@ const root = resolve(__dirname, '../..')
 
 describe('[AC1][P0] DB queries — insertUnit — src/db/queries.ts', () => {
   it('[2.2-QRY-001] queries.ts exports insertUnit as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function insertUnit')
   })
 
   it('[2.2-QRY-002] insertUnit accepts armyId, name, type, and stats parameters', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // Function signature must have armyId, name, type and stats object
     expect(queries).toMatch(/insertUnit[\s\S]{0,400}armyId[\s\S]{0,200}name[\s\S]{0,200}type/)
   })
 
   it('[2.2-QRY-003] insertUnit uses db.transaction for atomic unit + sub_profile insert (AC1 — no partial data on failure)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // transaction must be inside the insertUnit function body
     expect(queries).toMatch(/insertUnit[\s\S]{0,800}\.transaction/)
   })
 
   it('[2.2-QRY-004] insertUnit inserts into units table with xp default 0', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // xp: 0 must appear in the insertUnit context
     expect(queries).toMatch(/insertUnit[\s\S]{0,1000}xp[\s\S]{0,50}0/)
   })
 
   it('[2.2-QRY-005] insertUnit inserts into sub_profiles table (via subProfiles relation)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // subProfiles insert must appear inside insertUnit
     expect(queries).toMatch(/insertUnit[\s\S]{0,1200}subProfiles/)
   })
 
   it('[2.2-QRY-006] insertUnit sets sub_profile label to unit name (Task 2.1 spec)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // label must be assigned from name inside insertUnit
     expect(queries).toMatch(/insertUnit[\s\S]{0,1200}label[\s\S]{0,100}name/)
   })
 
   it('[2.2-QRY-007] insertUnit sets sub_profile sortOrder to 0 for first profile', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toMatch(/insertUnit[\s\S]{0,1200}sortOrder[\s\S]{0,50}0/)
   })
 
   it('[2.2-QRY-008] insertUnit returns both unitId and subProfileId in the same return expression (contract for server function)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // Both ids must be returned together in the same object expression
     expect(queries).toMatch(/insertUnit[\s\S]{0,1500}return\s*\{[^}]*unitId[^}]*subProfileId[^}]*\}|insertUnit[\s\S]{0,1500}return\s*\{[^}]*subProfileId[^}]*unitId[^}]*\}/)
   })
 
   it('[2.2-QRY-009] insertUnit does NOT verify armyId existence before insert (FK constraint handles this)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // Should NOT contain a manual armyId existence check like getArmyById inside insertUnit
     // (FK constraint is the guard — explicit check would be redundant and incorrect per spec)
     // This test ensures no army lookup inside the transaction (it delegates to FK)
@@ -83,27 +84,27 @@ describe('[AC1][P0] DB queries — insertUnit — src/db/queries.ts', () => {
 
 describe('[AC2][P0] DB queries — updateSubProfileStats — src/db/queries.ts', () => {
   it('[2.2-QRY-010] queries.ts exports updateSubProfileStats as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function updateSubProfileStats')
   })
 
   it('[2.2-QRY-011] updateSubProfileStats accepts subProfileId and stats parameters', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toMatch(/updateSubProfileStats[\s\S]{0,400}subProfileId[\s\S]{0,200}stats/)
   })
 
   it('[2.2-QRY-012] updateSubProfileStats updates subProfiles table (not units)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toMatch(/updateSubProfileStats[\s\S]{0,600}subProfiles/)
   })
 
   it('[2.2-QRY-013] updateSubProfileStats uses .returning() to detect missing row', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toMatch(/updateSubProfileStats[\s\S]{0,800}\.returning\(\)/)
   })
 
   it('[2.2-QRY-014] updateSubProfileStats returns boolean (true if updated, false if not found)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // Must return true or false based on returning() result
     expect(queries).toMatch(/updateSubProfileStats[\s\S]{0,1000}(return true|return false|\? true : false|\.length > 0)/)
   })
@@ -115,29 +116,29 @@ describe('[AC2][P0] DB queries — updateSubProfileStats — src/db/queries.ts',
 
 describe('[AC2][P0] DB queries — getUnitsForArmy — src/db/queries.ts', () => {
   it('[2.2-QRY-015] queries.ts exports getUnitsForArmy as async function', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toContain('export async function getUnitsForArmy')
   })
 
   it('[2.2-QRY-016] getUnitsForArmy accepts armyId parameter', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     expect(queries).toMatch(/getUnitsForArmy[\s\S]{0,200}armyId/)
   })
 
   it('[2.2-QRY-017] getUnitsForArmy queries units table filtered by armyId', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // units table and armyId filter must be coupled inside getUnitsForArmy
     expect(queries).toMatch(/getUnitsForArmy[\s\S]{0,600}units[\s\S]{0,200}armyId/)
   })
 
   it('[2.2-QRY-018] getUnitsForArmy returns units with their sub-profiles (joined query)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // subProfiles must be included in getUnitsForArmy — joined or nested
     expect(queries).toMatch(/getUnitsForArmy[\s\S]{0,800}subProfiles/)
   })
 
   it('[2.2-QRY-019] getUnitsForArmy returns empty array (not error) for non-existent armyId (Task 7.7)', () => {
-    const queries = readFileSync(resolve(root, 'src/db/queries.ts'), 'utf-8')
+    const queries = readAllQueries()
     // The function must exist and return normally even for unknown armyIds
     // (verified by DB filter returning 0 rows naturally — no throw)
     expect(queries).toContain('export async function getUnitsForArmy')

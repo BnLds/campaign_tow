@@ -45,12 +45,6 @@ export interface ComposedUnitView {
   gains: UnitGain[]
 }
 
-export interface UnitCardProps {
-  unit: { id: string; name: string; type: string; xp: number }
-  composedView: ComposedUnitView
-  tier: 0 | 1 | 2 | 3
-}
-
 // ---------------------------------------------------------------------------
 // SubProfile input shape (matches Drizzle schema row)
 // ---------------------------------------------------------------------------
@@ -78,6 +72,50 @@ interface SubProfile {
 
 const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
 type StatKey = (typeof STAT_KEYS)[number]
+
+export const STAT_CAP = 10
+// UNCAPPED_STATS: no floor at 0 and no upper cap in display. Only Mouvement is uncapped.
+// Upper cap at STAT_CAP applies only to Commandement per campaign rules (checked separately in tier-up).
+export const UNCAPPED_STATS: StatKey[] = ['m']
+// CD_CAPPED: only Commandement is capped at STAT_CAP per campaign rules.
+export const CD_STAT: StatKey = 'cd'
+
+// ---------------------------------------------------------------------------
+// Gain description → stat modifier mapping
+// Parses unit_gain descriptions (e.g. "+1 CC") into stat deltas.
+// Returns null for non-stat gains (Champion, Bannière, Compétence, etc.)
+// ---------------------------------------------------------------------------
+
+const GAIN_STAT_PATTERNS: Array<{ pattern: RegExp; stat: StatKey }> = [
+  { pattern: /^\+(\d+) Initiative/i, stat: 'i' },
+  { pattern: /^\+(\d+) CC(?:\s|$)/i, stat: 'cc' },
+  { pattern: /^\+(\d+) CT(?:\s|$)/i, stat: 'ct' },
+  { pattern: /^\+(\d+) Mouvement/i, stat: 'm' },
+  { pattern: /^\+(\d+) Commandement/i, stat: 'cd' },
+  { pattern: /^\+(\d+) Force/i, stat: 'f' },
+  { pattern: /^\+(\d+) Endurance/i, stat: 'e' },
+  { pattern: /^\+(\d+) Attaque/i, stat: 'a' },
+  { pattern: /^\+(\d+) PV/i, stat: 'pv' },
+]
+
+// Legacy pattern: "+1 CC ou +1 CT" was stored as a single combined label before the split.
+// We map it to CC by convention (the choice was made at selection time).
+const LEGACY_COMBINED_PATTERN = /^\+(\d+) CC ou \+\d+ CT$/i
+
+export function parseGainStat(description: string): { stat: StatKey; delta: number } | null {
+  // Check legacy combined pattern first
+  const legacyMatch = LEGACY_COMBINED_PATTERN.exec(description)
+  if (legacyMatch) {
+    return { stat: 'cc', delta: parseInt(legacyMatch[1], 10) }
+  }
+  for (const { pattern, stat } of GAIN_STAT_PATTERNS) {
+    const match = pattern.exec(description)
+    if (match) {
+      return { stat, delta: parseInt(match[1], 10) }
+    }
+  }
+  return null
+}
 
 // ---------------------------------------------------------------------------
 // Helper: is a stat value numeric?
@@ -109,9 +147,27 @@ export function composeUnitView(
 
   const gains = unitGains
 
+  // Convert stat-affecting gains into virtual stat modifiers
+  const gainMods: StatModifier[] = []
+  for (const gain of unitGains) {
+    const parsed = parseGainStat(gain.description)
+    if (parsed) {
+      gainMods.push({
+        id: `gain-${gain.id}`,
+        unitId: gain.unitId,
+        stat: parsed.stat,
+        delta: parsed.delta,
+        source: 'Progression',
+        temporary: false,
+      })
+    }
+  }
+
+  const allModifiers = [...statModifiers, ...gainMods]
+
   // Pre-group modifiers by stat key for O(1) lookup
   const modsByStat = new Map<string, StatModifier[]>()
-  for (const mod of statModifiers) {
+  for (const mod of allModifiers) {
     const existing = modsByStat.get(mod.stat)
     if (existing) {
       existing.push(mod)
@@ -128,14 +184,24 @@ export function composeUnitView(
       const baseValue = sp[key] ?? '-'
       const mods = sp.isMount ? [] : (modsByStat.get(key) ?? [])
 
-      if (mods.length === 0) {
+      // "-" means the unit doesn't have this stat — ignore all modifiers
+      if (baseValue === '-' || mods.length === 0) {
         stats[key] = { value: baseValue, delta: null, modified: false }
       } else {
         const netDelta = mods.reduce((sum, m) => sum + m.delta, 0)
         const numeric = isNumeric(baseValue)
-        const displayValue = numeric
-          ? String(parseInt(baseValue, 10) + netDelta)
-          : baseValue
+        let displayValue: string
+        if (numeric) {
+          const rawValue = parseInt(baseValue, 10) + netDelta
+          // AC25: stat floor at 0 for all non-uncapped stats (injury/destruction modifiers can be large negatives)
+          // Upper cap at STAT_CAP applies only to Commandement per campaign rules.
+          const floored = UNCAPPED_STATS.includes(key) ? rawValue : Math.max(0, rawValue)
+          displayValue = key === CD_STAT ? String(Math.min(floored, STAT_CAP)) : String(floored)
+        } else {
+          // Non-numeric stat (e.g. "3D6", "D6", "3+"): append +N or -N suffix
+          const sign = netDelta >= 0 ? '+' : ''
+          displayValue = `${baseValue}${sign}${netDelta}`
+        }
 
         stats[key] = { value: displayValue, delta: netDelta, modified: true }
       }
@@ -145,4 +211,25 @@ export function composeUnitView(
   })
 
   return { subProfiles: composedSubProfiles, deltas, gains }
+}
+
+// ---------------------------------------------------------------------------
+// computeEffectiveStats — compute effective stat values from base + gains
+// ---------------------------------------------------------------------------
+
+export function computeEffectiveStats(
+  baseStats: Record<string, number | null>,
+  gains: string[],
+): Record<string, number | null> {
+  const result: Record<string, number | null> = { ...baseStats }
+
+  for (const gain of gains) {
+    const parsed = parseGainStat(gain)
+    if (!parsed) continue
+    const current = result[parsed.stat]
+    if (current == null) continue
+    result[parsed.stat] = current + parsed.delta
+  }
+
+  return result
 }
