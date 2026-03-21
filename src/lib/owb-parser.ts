@@ -64,13 +64,71 @@ function parseSubProfile(line: string): ParsedSubProfile | null {
   }
 }
 
+// Detect format: markdown (## header) vs plain text (trailing comma on header)
+function detectFormat(text: string): 'markdown' | 'plaintext' {
+  const firstLine = text.trimStart().split('\n')[0] ?? ''
+  if (firstLine.startsWith('## ')) return 'markdown'
+  if (/^.+ \[\d+ pts\],\s*$/.test(firstLine)) return 'plaintext'
+  return 'markdown' // fallback — let the markdown parser produce a descriptive error
+}
+
+// Convert plain text OWB format to markdown format for the existing parser.
+export function normalizePlainText(text: string): string {
+  const lines = text.replace(/\u00a0/g, ' ').split('\n')
+  const out: string[] = []
+
+  // Line 0: army header — strip trailing comma, prepend "## "
+  out.push('## ' + (lines[0] ?? '').replace(/,\s*$/, ''))
+  // Line 1: faction line — pass through
+  if (lines.length > 1) out.push(lines[1])
+
+  for (let i = 2; i < lines.length; i++) {
+    const line = lines[i]
+
+    // Lone comma separator — drop
+    if (/^,\s*$/.test(line)) continue
+
+    // Section header: "SectionName [N pts]," (trailing comma, no "[" start, no "M(")
+    if (/^[A-Za-z\u00C0-\u017F].+ \[\d+ pts\],\s*$/.test(line) && !line.includes('M(')) {
+      out.push('### ' + line.replace(/,\s*$/, ''))
+      continue
+    }
+
+    // Sub-profile: "[Label] M(..." with optional trailing comma
+    if (/^\[.+\] M\(/.test(line)) {
+      out.push(' - ' + line.replace(/,\s*$/, ''))
+      continue
+    }
+
+    // Options: "(stuff)" on its own line
+    if (/^\(.*\)\s*$/.test(line)) {
+      out.push(' -# ' + line.trim())
+      continue
+    }
+
+    // Unit line: "[count ]Name [N pts]" (no markdown prefix, no trailing comma)
+    if (/^(\d+ )?.+ \[\d+ pts\]\s*$/.test(line)) {
+      out.push('- ' + line.trimEnd())
+      continue
+    }
+
+    // Everything else — pass through (empty lines, footer, etc.)
+    out.push(line)
+  }
+
+  return out.join('\n')
+}
+
 export function parseOwbExport(text: string): ParsedArmy {
   if (!text || !text.trim()) {
     throw new Error('OWB export is empty — veuillez coller un export texte Old World Builder valide')
   }
 
+  // Auto-detect and normalize plain text format
+  const normalized = detectFormat(text) === 'plaintext' ? normalizePlainText(text) : text
+
   // OWB exports use NBSP (U+00A0) between tokens — normalize to regular spaces for parsing
-  const lines = text.replace(/\u00a0/g, ' ').split('\n')
+  const lines = normalized.replace(/\u00a0/g, ' ').split('\n')
 
   // Line 1: ## Army Name [500 pts]
   const headerMatch = lines[0]?.match(/^## (.+?) \[(\d+) pts\]/)

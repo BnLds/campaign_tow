@@ -1,0 +1,31 @@
+Royaumes Hauts Elfes [599 pts],
+Warhammer: The Old World, Royaumes Hauts Elfes, Colonne de Bataille
+
+Personnages [186 pts],
+Noble [106 pts] 
+(Arme de base, Épée de Hoeth, Armure de plate complète, Général, À Pied, Graine de Renaissance, Gardien de Saphery)
+,
+[Noble] M(5) CC(6) CT(6) F(4) E(3) PV(2) I(5) A(3) Cd(9),
+Mage [80 pts] 
+(Arc de guerre, Sorcier [Level 1 Wizard], À Pied, Garde Maritime, Élémentalisme)
+,
+[Mage] M(5) CC(4) CT(4) F(3) E(3) PV(2) I(4) A(1) Cd(8),
+Unités de base [170 pts],
+15 Garde Maritime de Lothern [170 pts] 
+(Armes de base, Lances d’infanterie, Arcs de guerre, Armure légère, Musicien)
+,
+[Sea Guard] M(5) CC(4) CT(4) F(3) E(3) PV(1) I(4) A(1) Cd(8),
+[Sea Master] M(5) CC(4) CT(5) F(3) E(3) PV(1) I(4) A(2) Cd(8),
+Unités spéciales [118 pts],
+8 Maîtres des Épées de Hoeth [118 pts] 
+(Épées de Hoeth, Armure lourde, Musicien)
+,
+[Swordmaster] M(5) CC(6) CT(4) F(3) E(3) PV(1) I(6) A(1) Cd(8),
+[Bladelord] M(5) CC(6) CT(4) F(3) E(3) PV(1) I(6) A(2) Cd(8),
+Unités rares [125 pts],
+Char à Lions de Chrace [125 pts] 
+(Armes de base, Grandes lames de Chrace)
+,
+[Lion Chariot] M(-) CC(-) CT(-) F(5) E(4) PV(4) I(-) A(-) Cd(-),
+[Lion Charioteer (x2)] M(-) CC(5) CT(4) F(4) E(-) PV(-) I(4) A(1) Cd(8),
+[War Lion (x2)] M(8) CC(5) CT(-) F(4) E(-) PV(-) I(4) A(2) Cd(-)
