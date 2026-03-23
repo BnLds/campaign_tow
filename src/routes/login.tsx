@@ -5,6 +5,7 @@
 
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { useState, useEffect } from 'react'
 import {useHydrated} from '../lib/useHydrated'
@@ -102,12 +103,15 @@ function LoginPage() {
     }
   }, [hydrated])
 
+  const queryClient = useQueryClient()
+
   const handleGuestLogin = async () => {
     if (isSubmitting) return
     setIsSubmitting(true)
     setErrorMessage(null)
     try {
       await guestLoginFn()
+      queryClient.invalidateQueries({ queryKey: ['session'] })
       await router.navigate({ to: '/' })
     } catch {
       setErrorMessage('Erreur lors de la connexion invité')
@@ -130,6 +134,7 @@ function LoginPage() {
         return
       }
 
+      queryClient.invalidateQueries({ queryKey: ['session'] })
       await router.navigate({ to: result.data.redirect as '/' })
     },
   })

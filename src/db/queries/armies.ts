@@ -133,3 +133,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
 
   return rows.length > 0 ? rows[0] : null
 }
+
+export async function deleteArmy(armyId: string): Promise<void> {
+  await db.delete(armies).where(eq(armies.id, armyId))
+}

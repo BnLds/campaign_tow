@@ -1,10 +1,12 @@
 import { createFileRoute, useRouteContext, useRouter, Link } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { useState, useEffect } from 'react'
 import { useHydrated } from '../lib/useHydrated'
 import { WelcomeModal } from '../components/welcome-modal'
 import { TimelineEntry } from '../components/timeline-entry'
 import { ActionChip } from '../components/action-chip'
+import { ArmyImportForm } from '../components/army-import-form'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
 import type { TimelineEntryData, PendingMatchData } from '../db/queries'
@@ -76,6 +78,7 @@ const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
   })
 
 export const Route = createFileRoute('/')({
+  staleTime: 30_000,
   loader: async () => {
     return loadCampaignTimelineFn()
   },
@@ -83,6 +86,7 @@ export const Route = createFileRoute('/')({
 })
 
 function CampaignView() {
+  const queryClient = useQueryClient()
   const router = useRouter()
   const context = useRouteContext({ from: '__root__' })
   const { session } = context
@@ -102,7 +106,8 @@ function CampaignView() {
       await markWelcomeSeenFn()
     } finally {
       setModalOpen(false)
-      await router.invalidate()
+      queryClient.invalidateQueries({ queryKey: ['session'] })
+      await router.invalidate({ filter: (d) => d.routeId === '__root__' })
     }
   }
 
@@ -118,7 +123,9 @@ function CampaignView() {
     if (!response.success) {
       throw new Error(response.error.message)
     }
-    await router.invalidate()
+    queryClient.invalidateQueries({ queryKey: ['session'] })
+    queryClient.invalidateQueries({ queryKey: ['army-info'] })
+    await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
   }
 
   const handleEvolutionStart = (matchId: string) => {
@@ -178,11 +185,11 @@ function CampaignView() {
           </div>
         ) : army === null ? (
           /* Logged in but no army assigned */
-          <div style={{ padding: '2rem', textAlign: 'center' }}>
-            <p style={{ color: 'var(--color-text-secondary)' }}>
-              Aucune armee assignee — contactez l'administrateur
-            </p>
-          </div>
+          <ArmyImportForm onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['session'] })
+            queryClient.invalidateQueries({ queryKey: ['army-info'] })
+            router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+          }} />
         ) : (
           /* Logged in with an army */
           <>

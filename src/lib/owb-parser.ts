@@ -64,9 +64,10 @@ function parseSubProfile(line: string): ParsedSubProfile | null {
   }
 }
 
-// Detect format: markdown (## header) vs plain text (trailing comma on header)
-function detectFormat(text: string): 'markdown' | 'plaintext' {
+// Detect format: markdown (## header) vs plain text (trailing comma) vs block text (=== delimiters)
+function detectFormat(text: string): 'markdown' | 'plaintext' | 'blocktext' {
   const firstLine = text.trimStart().split('\n')[0] ?? ''
+  if (firstLine.trim() === '===') return 'blocktext'
   if (firstLine.startsWith('## ')) return 'markdown'
   if (/^.+ \[\d+ pts\],\s*$/.test(firstLine)) return 'plaintext'
   return 'markdown' // fallback — let the markdown parser produce a descriptive error
@@ -119,13 +120,104 @@ export function normalizePlainText(text: string): string {
   return out.join('\n')
 }
 
+// Convert block text OWB format (=== delimiters, ++ sections ++, bare unit lines) to markdown.
+export function normalizeBlockText(text: string): string {
+  const lines = text.replace(/\u00a0/g, ' ').split('\n')
+  const out: string[] = []
+  let pendingEquipment: string[] = []
+  let sepCount = 0
+  let armyNameEmitted = false
+  let factionEmitted = false
+
+  function flushEquipment() {
+    if (pendingEquipment.length > 0) {
+      out.push(' -# (' + pendingEquipment.join(', ') + ')')
+      pendingEquipment = []
+    }
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    // Footer: stop at ---
+    if (trimmed === '---') break
+
+    // === separators
+    if (trimmed === '===') {
+      sepCount++
+      continue
+    }
+
+    // Skip blank lines before body
+    if (sepCount < 2 && !trimmed) continue
+
+    // Header zone (between first and second ===)
+    if (sepCount === 1) {
+      if (!armyNameEmitted && trimmed) {
+        out.push('## ' + trimmed)
+        armyNameEmitted = true
+      } else if (!factionEmitted && trimmed) {
+        out.push(trimmed)
+        factionEmitted = true
+      }
+      continue
+    }
+
+    // Body zone (after second ===)
+
+    // Empty line
+    if (!trimmed) {
+      out.push('')
+      continue
+    }
+
+    // Section header: ++ Section [pts] ++
+    if (trimmed.startsWith('++') && trimmed.endsWith('++')) {
+      flushEquipment()
+      out.push('### ' + trimmed.replace(/^\+\+\s*/, '').replace(/\s*\+\+$/, ''))
+      continue
+    }
+
+    // Sub-profile: [Label] M(...) — starts with [ and contains M(
+    if (trimmed.startsWith('[') && trimmed.includes('M(')) {
+      flushEquipment()
+      out.push(' - ' + trimmed)
+      continue
+    }
+
+    // Equipment line: - item (checked before unit line since unit lines never start with -)
+    if (trimmed.startsWith('-')) {
+      const item = trimmed.replace(/^-\s*/, '').trim()
+      if (item) pendingEquipment.push(item)
+      continue
+    }
+
+    // Unit line: [Count ]Name [pts pts]
+    if (/^(\d+ )?.+ \[\d+ pts\]\s*$/.test(trimmed)) {
+      flushEquipment()
+      out.push('- ' + trimmed)
+      continue
+    }
+
+    // Everything else: pass through
+    out.push(line)
+  }
+
+  flushEquipment()
+  return out.join('\n')
+}
+
 export function parseOwbExport(text: string): ParsedArmy {
   if (!text || !text.trim()) {
     throw new Error('OWB export is empty — veuillez coller un export texte Old World Builder valide')
   }
 
-  // Auto-detect and normalize plain text format
-  const normalized = detectFormat(text) === 'plaintext' ? normalizePlainText(text) : text
+  // Auto-detect and normalize to markdown format
+  const detected = detectFormat(text)
+  const normalized =
+    detected === 'plaintext' ? normalizePlainText(text) :
+    detected === 'blocktext' ? normalizeBlockText(text) :
+    text
 
   // OWB exports use NBSP (U+00A0) between tokens — normalize to regular spaces for parsing
   const lines = normalized.replace(/\u00a0/g, ' ').split('\n')
@@ -223,6 +315,13 @@ export function parseOwbExport(text: string): ParsedArmy {
   if (units.length === 0) {
     throw new Error(
       "Aucune unité trouvée dans l'export OWB — vérifiez que le texte contient des entrées d'unités",
+    )
+  }
+
+  const hasStats = units.some(u => u.subProfiles.length > 0)
+  if (!hasStats) {
+    throw new Error(
+      'Les statistiques des unités sont manquantes — lors de l\'export depuis Old World Builder, cochez "Afficher les caractéristiques"',
     )
   }
 

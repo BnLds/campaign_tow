@@ -456,9 +456,9 @@ describe('[AC2][AC8][P0] CreateMatchFab — opponent list in dialog (Task 3.4, 8
     expect(code).toMatch(/(playerDisplayName|armyName|faction)[\s\S]{0,300}(Cinzel|font-display)/)
   })
 
-  it('[3.2-FAB-058] Dialog uses router.invalidate() after successful match creation (Task 3.8)', () => {
+  it('[3.2-FAB-058] Dialog uses scoped router.invalidate() with filter after match creation (Task 3.8)', () => {
     // AC: 4
     const code = getFab()
-    expect(code).toMatch(/router\.invalidate\(\)/)
+    expect(code).toMatch(/router\.invalidate\(\s*\{\s*filter/)
   })
 })

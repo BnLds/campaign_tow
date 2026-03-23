@@ -36,28 +36,41 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       throw redirect({ to: '/' })
     }
     const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
-    const army = await getPlayerArmy(context.session.playerId)
+
+    // Load drizzle deps before round 1 (needed for opponent query)
+    const [
+      { db },
+      { matchParticipants: mpTable, players: playersTable },
+      { and: dbAnd, eq: dbEq, ne: dbNe },
+      { alias },
+    ] = await Promise.all([
+      import('../../../db/index'),
+      import('../../../db/schema'),
+      import('drizzle-orm'),
+      import('drizzle-orm/pg-core'),
+    ])
+    const oppParticipant = alias(mpTable, 'opp_mp')
+    const oppPlayerAlias = alias(playersTable, 'opp_player')
+
+    // Round 1 (parallel): army + participant + opponent name
+    const [army, participant, oppRows] = await Promise.all([
+      getPlayerArmy(context.session.playerId),
+      getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId),
+      db
+        .select({ playerName: oppPlayerAlias.displayName })
+        .from(oppParticipant)
+        .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
+        .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
+        .limit(1),
+    ])
+
     if (!army) {
       throw new Error('ARMY_REQUIRED')
     }
-    const participant = await getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId)
     if (!participant) {
       throw new Error('FORBIDDEN')
     }
 
-    // Load opponent player name for Haine/Rancune descriptions
-    const { db } = await import('../../../db/index')
-    const { matchParticipants: mpTable, players: playersTable } = await import('../../../db/schema')
-    const { and: dbAnd, eq: dbEq, ne: dbNe } = await import('drizzle-orm')
-    const { alias } = await import('drizzle-orm/pg-core')
-    const oppParticipant = alias(mpTable, 'opp_mp')
-    const oppPlayerAlias = alias(playersTable, 'opp_player')
-    const oppRows = await db
-      .select({ playerName: oppPlayerAlias.displayName })
-      .from(oppParticipant)
-      .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
-      .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
-      .limit(1)
     const opponentPlayerName = oppRows[0]?.playerName ?? 'Adversaire'
 
     if (participant.evolutionsEnteredAt !== null) {
@@ -71,8 +84,12 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     }
     // Returns all army units (no per-match composition tracking exists yet).
     // The player enters 0 XP for units that didn't participate.
-    const unitsRaw = await getUnitsForArmy(army.id)
-    const existingEntries = await getMatchXpEntries(participant.id)
+
+    // Round 2 (parallel): units + xp entries
+    const [unitsRaw, existingEntries] = await Promise.all([
+      getUnitsForArmy(army.id),
+      getMatchXpEntries(participant.id),
+    ])
     const entryMap = new Map(existingEntries.map((e) => [e.unitId, e.xpGained]))
     // Load existing unit_gains — filter out gains from the current participant
     // (defense in depth: with batch commit there should be no partial gains,

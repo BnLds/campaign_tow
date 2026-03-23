@@ -5,9 +5,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from '@tanstack/react-router'
+import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { authMiddleware } from '../lib/middleware'
+import { STALE_TIME_SESSION } from '../lib/query-constants'
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+// ---------------------------------------------------------------------------
+// Query options: opponents list
+// ---------------------------------------------------------------------------
+
+const opponentsQueryOptions = () =>
+  queryOptions({
+    queryKey: ['opponents'],
+    queryFn: () => loadOpponentsFn(),
+    staleTime: STALE_TIME_SESSION,
+  })
 
 // ---------------------------------------------------------------------------
 // Server function: loadOpponentsFn — fetches opponent player list for match creation
@@ -125,20 +138,28 @@ type OpponentItem = {
 
 export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [noArmyMessage, setNoArmyMessage] = useState(false)
   const noArmyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Dialog state
-  const [opponents, setOpponents] = useState<OpponentItem[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // Fetch opponents when dialog opens; reset state when dialog closes
+  const {
+    data: opponents = [] as OpponentItem[],
+    isLoading,
+    error: loadError,
+    refetch: retryOpponents,
+  } = useQuery({
+    ...opponentsQueryOptions(),
+    enabled: open, // fetch uniquement quand le dialog est ouvert
+  })
+
+  // Reset dialog state when it opens/closes; no fetch needed (handled by useQuery)
   useEffect(() => {
     if (!open) {
       // H1 — reset isSubmitting when dialog is closed/reopened
@@ -147,20 +168,8 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
     }
     // M5 — reset date to today when dialog opens
     setDate(new Date().toISOString().split('T')[0])
-    setIsLoading(true)
-    setLoadError(null)
     setSelectedOpponent(null)
     setSubmitError(null)
-
-    loadOpponentsFn()
-      .then((data) => {
-        setOpponents(data)
-        setIsLoading(false)
-      })
-      .catch(() => {
-        setLoadError('Impossible de charger la liste des adversaires.')
-        setIsLoading(false)
-      })
   }, [open])
 
   // M3 — cleanup no-army toast timeout on unmount
@@ -182,17 +191,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
   }
 
   const handleRetry = () => {
-    setIsLoading(true)
-    setLoadError(null)
-    loadOpponentsFn()
-      .then((data) => {
-        setOpponents(data)
-        setIsLoading(false)
-      })
-      .catch(() => {
-        setLoadError('Impossible de charger la liste des adversaires.')
-        setIsLoading(false)
-      })
+    retryOpponents()
   }
 
   const handleConfirm = async () => {
@@ -205,7 +204,10 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
       setSelectedOpponent(null)
       // H1 — reset isSubmitting on success path (finally will also run but setOpen triggers useEffect reset)
       setIsSubmitting(false)
-      router.invalidate()
+      queryClient.invalidateQueries({ queryKey: ['opponents'] })
+      queryClient.invalidateQueries({ queryKey: ['session'] })
+      queryClient.invalidateQueries({ queryKey: ['army-info'] })
+      router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la creation de la partie.')
     } finally {
@@ -291,7 +293,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
             ) : loadError ? (
               <div>
                 <p style={{ color: 'var(--color-malus)', fontSize: 14, marginBottom: 8 }}>
-                  {loadError}
+                  Impossible de charger la liste des adversaires.
                 </p>
                 <button
                   onClick={handleRetry}

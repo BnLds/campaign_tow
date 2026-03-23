@@ -58,6 +58,7 @@ export function TabBar({ currentPath }: TabBarProps) {
       {/* Campagne tab */}
       <Link
         to="/"
+        preload="intent"
         data-testid="tab-campagne"
         aria-current={isCampagne ? 'page' : undefined}
         style={tabStyle(isCampagne)}
@@ -83,6 +84,7 @@ export function TabBar({ currentPath }: TabBarProps) {
       {/* Armees tab */}
       <Link
         to="/armies"
+        preload="intent"
         data-testid="tab-armees"
         aria-current={isArmees ? 'page' : undefined}
         style={tabStyle(isArmees)}
@@ -108,6 +110,7 @@ export function TabBar({ currentPath }: TabBarProps) {
       {/* References tab */}
       <Link
         to="/references"
+        preload="intent"
         data-testid="tab-references"
         aria-current={isReferences ? 'page' : undefined}
         style={tabStyle(isReferences)}

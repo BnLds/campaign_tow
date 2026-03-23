@@ -10,21 +10,15 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { z } from 'zod'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import { TabBar } from '../components/tab-bar'
 import { CreateMatchFab } from '../components/create-match-fab'
 import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 import type { SessionData } from '../lib/auth'
-
-// Server function: reads session server-side.
-// Dynamic import keeps auth.ts (server-only) out of the client bundle.
-const getSessionFn = createServerFn({ method: 'GET' }).handler(async () => {
-  const { getSession } = await import('../lib/auth')
-  return getSession()
-})
+import { sessionQueryOptions, armyInfoQueryOptions } from '../lib/session-queries'
 
 // Server function: clears session server-side (cookie + DB row).
 // Dynamic import pattern (import-protection) — do NOT throw redirect here;
@@ -33,21 +27,6 @@ const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
   const { deleteSession } = await import('../lib/auth')
   await deleteSession()
 })
-
-// Server function: loads a player's army info + win/draw/loss record.
-// Accepts playerId as input to avoid a redundant session read (beforeLoad already has it).
-const getPlayerArmyInfoFn = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ playerId: z.string() }))
-  .handler(async ({ data: { playerId } }) => {
-    const { getPlayerArmy, getArmyRecord } = await import('../db/queries')
-    const army = await getPlayerArmy(playerId)
-    if (!army) return { army: null, record: null }
-    const record = await getArmyRecord(army.id)
-    return {
-      army: { id: army.id, name: army.name, faction: army.faction },
-      record,
-    }
-  })
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -62,34 +41,30 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async ({ location, context: { queryClient } }) => {
     // Always return { session } so TanStack Router updates context on every navigation.
     // Returning undefined for /login would leave stale session in context → AppHeader
     // would persist across login/logout transitions (bug: header visible on /login page).
-    if (location.pathname === '/login') return { session: null as SessionData | null, army: null, record: null }
+    if (location.pathname === '/login') {
+      return { session: null as SessionData | null, army: null, record: null }
+    }
 
-    const session = await getSessionFn()
+    const session = await queryClient.ensureQueryData(sessionQueryOptions())
     if (!session) {
       throw redirect({ to: '/login' })
     }
 
     // Guests have no army — skip the server call entirely
     if (session.isGuest) {
-      return { session: session as SessionData | null, army: null, record: null }
+      return { session, army: null, record: null }
     }
 
-    // Load army info for the header — degrade gracefully on failure
-    let army: { id: string; name: string; faction: string } | null = null
-    let record: { wins: number; draws: number; losses: number } | null = null
-    try {
-      const info = await getPlayerArmyInfoFn({ data: { playerId: session.playerId } })
-      army = info.army
-      record = info.record
-    } catch (err) {
-      console.error('[root beforeLoad] Failed to load army info:', err)
+    const info = await queryClient.ensureQueryData(armyInfoQueryOptions(session.playerId))
+    return {
+      session,
+      army: info.army,
+      record: info.record,
     }
-
-    return { session: session as SessionData | null, army, record }
   },
   component: RootLayout,
   shellComponent: RootDocument,
@@ -142,6 +117,7 @@ function AppHeader({
   record: { wins: number; draws: number; losses: number } | null
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [loggingOut, setLoggingOut] = useState(false)
 
   const handleLogout = async () => {
@@ -149,6 +125,8 @@ function AppHeader({
     setLoggingOut(true)
     try {
       await logoutFn()
+      queryClient.removeQueries({ queryKey: ['session'] })
+      queryClient.removeQueries({ queryKey: ['army-info'] })
       await router.navigate({ to: '/login' })
     } catch {
       setLoggingOut(false)

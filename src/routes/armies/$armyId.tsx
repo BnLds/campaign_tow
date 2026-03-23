@@ -261,6 +261,7 @@ const updateXpFn = createServerFn({ method: 'POST' })
 // ---------------------------------------------------------------------------
 
 export const Route = createFileRoute('/armies/$armyId')({
+  staleTime: 30_000,
   loader: async ({ params }) => {
     return loadArmyFn({ data: { armyId: params.armyId } })
   },
@@ -335,7 +336,7 @@ function ArmyView() {
   const groups = groupUnitsByType(unitCards)
 
   const handleMutationSuccess = async () => {
-    await router.invalidate()
+    await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
   }
 
   return (
