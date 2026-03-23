@@ -18,6 +18,7 @@ import type { ServerResult } from '../../../lib/types'
 
 type PostMatchLoaderData = {
   alreadyCompleted: boolean
+  reentry: boolean
   matchId: string
   matchParticipantId: string
   opponentPlayerName: string
@@ -35,7 +36,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
 
     // Load drizzle deps before round 1 (needed for opponent query)
     const [
@@ -73,13 +74,19 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
 
     const opponentPlayerName = oppRows[0]?.playerName ?? 'Adversaire'
 
-    if (participant.evolutionsEnteredAt !== null) {
-      return {
-        alreadyCompleted: true,
-        matchId: data.matchId,
-        matchParticipantId: participant.id,
-        opponentPlayerName,
-        units: [],
+    // Check re-entry eligibility: only the army's latest match can be re-entered
+    const isReentry = participant.evolutionsEnteredAt !== null
+    if (isReentry) {
+      const latestMatchId = await getLatestMatchIdForArmy(army.id)
+      if (data.matchId !== latestMatchId) {
+        return {
+          alreadyCompleted: true,
+          reentry: false,
+          matchId: data.matchId,
+          matchParticipantId: participant.id,
+          opponentPlayerName,
+          units: [],
+        }
       }
     }
     // Returns all army units (no per-match composition tracking exists yet).
@@ -173,6 +180,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     })
     return {
       alreadyCompleted: false,
+      reentry: isReentry,
       matchId: data.matchId,
       matchParticipantId: participant.id,
       opponentPlayerName,
@@ -191,7 +199,7 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getUnitById, getMatchParticipantArmyId, upsertMatchXpEntry, incrementUnitXp } = await import('../../../db/queries')
+    const { getPlayerArmy, getUnitById, getMatchParticipantArmyId, upsertMatchXpEntryWithIncrement } = await import('../../../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
@@ -200,29 +208,12 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
     if (participantArmyId !== army.id) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Participant invalide' } }
     }
-    // Note: we verify unit ownership (same army), but cannot verify the unit was
-    // actually fielded in this match — no per-match composition table exists yet.
-    // The wizard presents all army units; the player assigns XP only to those that fought.
     const unit = await getUnitById(data.unitId)
     if (!unit || unit.armyId !== army.id) {
       return { success: false, error: { code: 'FORBIDDEN', message: "Cette unite n'appartient pas a votre armee" } }
     }
-    const { previousXpGained } = await upsertMatchXpEntry(data.matchParticipantId, data.unitId, data.xpGained)
-    const delta = data.xpGained - (previousXpGained ?? 0)
-    let newXp: number
-    if (delta !== 0) {
-      const result = await incrementUnitXp(data.unitId, delta)
-      if (!result) {
-        return { success: false, error: { code: 'NOT_FOUND', message: 'Unite introuvable' } }
-      }
-      newXp = result.xp
-    } else {
-      // delta === 0: refetch current XP to avoid returning a stale value
-      // (unit was fetched before the upsert — another request may have changed xp since)
-      const freshUnit = await getUnitById(data.unitId)
-      newXp = freshUnit!.xp
-    }
-    return { success: true, data: { unitId: data.unitId, newXp } }
+    const { newUnitXp } = await upsertMatchXpEntryWithIncrement(data.matchParticipantId, data.unitId, data.xpGained)
+    return { success: true, data: { unitId: data.unitId, newXp: newUnitXp } }
   })
 
 // completeEvolutionsFn and submitTierUpFn have been removed.
@@ -242,7 +233,7 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, completeEvolutionsWithGainsTransaction } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, completeEvolutionsWithGainsTransaction } = await import('../../../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
@@ -258,9 +249,12 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     if (data.matchParticipantId !== participant.id) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Participant invalide' } }
     }
-    // Idempotent: return success if already completed
+    // Re-entry guard: only the army's latest match can be re-entered
     if (participant.evolutionsEnteredAt !== null) {
-      return { success: true, data: { matchId: data.matchId } }
+      const latestMatchId = await getLatestMatchIdForArmy(army.id)
+      if (data.matchId !== latestMatchId) {
+        return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la derniere partie peut etre modifiee' } }
+      }
     }
     // Verify all unitIds in gains and consequences belong to this army
     if (data.gains.length > 0 || (data.consequences && data.consequences.length > 0)) {
@@ -277,7 +271,14 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
       }
     }
     // Story 4.3: pass consequences, armyId, championKilledIds for full post-match processing
-    await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.gains, data.consequences ?? [], army.id, data.championKilledIds)
+    try {
+      await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.matchId, data.gains, data.consequences ?? [], army.id, data.championKilledIds)
+    } catch (err) {
+      if (err instanceof Error && err.message === 'NOT_LATEST_MATCH') {
+        return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la derniere partie peut etre modifiee' } }
+      }
+      throw err
+    }
     return { success: true, data: { matchId: data.matchId } }
   })
 
@@ -298,7 +299,7 @@ export const Route = createFileRoute('/match/$matchId/post-match')({
 
 function PostMatchRoute() {
   const loaderData = Route.useLoaderData()
-  const { alreadyCompleted, matchId, matchParticipantId, opponentPlayerName, units } = loaderData as PostMatchLoaderData
+  const { alreadyCompleted, reentry: _reentry, matchId, matchParticipantId, opponentPlayerName, units } = loaderData as PostMatchLoaderData
   const hydrated = useHydrated()
   const router = useRouter()
 

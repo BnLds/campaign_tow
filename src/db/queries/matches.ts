@@ -11,12 +11,24 @@ export type TimelineEntryData = {
   date: string // ISO 8601 string
   result: string | null
   hasEvolutions: boolean
+  isLatestMatch: boolean
   opponent: {
     name: string | null
     faction: string | null
     playerName: string
   }
   unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>
+}
+
+export async function getLatestMatchIdForArmy(armyId: string): Promise<string | null> {
+  const rows = await db
+    .select({ matchId: matchParticipants.matchId })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+    .where(eq(matchParticipants.armyId, armyId))
+    .orderBy(desc(matches.date), desc(matches.createdAt))
+    .limit(1)
+  return rows.length > 0 ? rows[0].matchId : null
 }
 
 export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryData[]> {
@@ -43,12 +55,15 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     .where(eq(matchParticipants.armyId, armyId))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
+  const latestMatchId = await getLatestMatchIdForArmy(armyId)
+
   const entries = rows.map((row) => ({
     matchId: row.matchId,
     matchParticipantId: row.matchParticipantId,
     date: row.date.toISOString(),
     result: row.result,
     hasEvolutions: row.evolutionsEnteredAt !== null,
+    isLatestMatch: row.matchId === latestMatchId,
     opponent: {
       name: row.opponentName ?? null,
       faction: row.opponentFaction ?? null,
@@ -304,6 +319,49 @@ export async function updateMatchResults(
       .update(matchParticipants)
       .set({ result: invertResult(myResult) })
       .where(and(eq(matchParticipants.matchId, matchId), ne(matchParticipants.playerId, myPlayerId), isNull(matchParticipants.result)))
+      .returning({ id: matchParticipants.id })
+
+    return opp.length === 1
+  })
+}
+
+export async function updateMatchResultOnLatest(
+  matchId: string,
+  myPlayerId: string,
+  armyId: string,
+  myResult: 'victory' | 'defeat' | 'draw',
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    // Lock my participant row to serialize concurrent re-edits
+    const [myRow] = await tx
+      .select({ id: matchParticipants.id })
+      .from(matchParticipants)
+      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, myPlayerId)))
+      .for('update')
+    if (!myRow) return false
+
+    // Re-verify latest match inside transaction (prevents TOCTOU race)
+    const latestRows = await tx
+      .select({ matchId: matchParticipants.matchId })
+      .from(matchParticipants)
+      .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+      .where(eq(matchParticipants.armyId, armyId))
+      .orderBy(desc(matches.date), desc(matches.createdAt))
+      .limit(1)
+    if (latestRows.length === 0 || latestRows[0].matchId !== matchId) return false
+
+    const mine = await tx
+      .update(matchParticipants)
+      .set({ result: myResult })
+      .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, myPlayerId)))
+      .returning({ id: matchParticipants.id })
+
+    if (mine.length === 0) return false
+
+    const opp = await tx
+      .update(matchParticipants)
+      .set({ result: invertResult(myResult) })
+      .where(and(eq(matchParticipants.matchId, matchId), ne(matchParticipants.playerId, myPlayerId)))
       .returning({ id: matchParticipants.id })
 
     return opp.length === 1

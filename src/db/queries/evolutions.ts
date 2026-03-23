@@ -1,6 +1,6 @@
-import { eq, and, inArray, or, sql } from 'drizzle-orm'
+import { eq, and, inArray, or, sql, desc } from 'drizzle-orm'
 import { db } from '../index'
-import { units, statModifiers, unitGains, matchParticipants, matchXpEntries } from '../schema'
+import { units, statModifiers, unitGains, matchParticipants, matchXpEntries, matches } from '../schema'
 import type { ConsequenceEntry } from '../../lib/validators'
 
 export async function getMatchParticipantForEvolutionByPlayer(
@@ -113,6 +113,51 @@ export async function upsertMatchXpEntry(
   })
 }
 
+export async function upsertMatchXpEntryWithIncrement(
+  matchParticipantId: string,
+  unitId: string,
+  xpGained: number,
+): Promise<{ previousXpGained: number | null; newUnitXp: number }> {
+  return db.transaction(async (tx) => {
+    // Upsert match XP entry
+    const existing = await tx.select({ xpGained: matchXpEntries.xpGained })
+      .from(matchXpEntries)
+      .where(
+        and(
+          eq(matchXpEntries.matchParticipantId, matchParticipantId),
+          eq(matchXpEntries.unitId, unitId),
+        ),
+      )
+      .limit(1)
+
+    const previousXpGained = existing.length > 0 ? existing[0].xpGained : null
+
+    await tx.insert(matchXpEntries)
+      .values({ matchParticipantId, unitId, xpGained })
+      .onConflictDoUpdate({
+        target: [matchXpEntries.matchParticipantId, matchXpEntries.unitId],
+        set: { xpGained },
+      })
+
+    // Increment unit XP atomically
+    const delta = xpGained - (previousXpGained ?? 0)
+    if (delta !== 0) {
+      const [updated] = await tx.update(units)
+        .set({ xp: sql`${units.xp} + ${delta}` })
+        .where(eq(units.id, unitId))
+        .returning({ xp: units.xp })
+      return { previousXpGained, newUnitXp: updated.xp }
+    }
+
+    // delta === 0: read current XP
+    const [current] = await tx.select({ xp: units.xp })
+      .from(units)
+      .where(eq(units.id, unitId))
+      .limit(1)
+    return { previousXpGained, newUnitXp: current.xp }
+  })
+}
+
 export async function getMatchXpEntries(
   matchParticipantId: string,
 ): Promise<Array<{ unitId: string; xpGained: number }>> {
@@ -127,12 +172,41 @@ export async function getMatchXpEntries(
 
 export async function completeEvolutionsWithGainsTransaction(
   matchParticipantId: string,
+  matchId: string,
   gains: Array<{ unitId: string; descriptions: string[] }>,
   consequences: ConsequenceEntry[] = [],
   armyId?: string,
   championKilledIds?: string[],
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    // Lock participant row to serialize concurrent commits
+    const [mpRow] = await tx
+      .select({ evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt })
+      .from(matchParticipants)
+      .where(eq(matchParticipants.id, matchParticipantId))
+      .for('update')
+    const isReentry = mpRow?.evolutionsEnteredAt !== null
+
+    if (isReentry) {
+      // Re-verify this is the army's latest match inside the transaction (prevents TOCTOU)
+      if (armyId) {
+        const latestRows = await tx
+          .select({ matchId: matchParticipants.matchId })
+          .from(matchParticipants)
+          .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+          .where(eq(matchParticipants.armyId, armyId))
+          .orderBy(desc(matches.date), desc(matches.createdAt))
+          .limit(1)
+        if (latestRows.length === 0 || latestRows[0].matchId !== matchId) {
+          throw new Error('NOT_LATEST_MATCH')
+        }
+      }
+      // Delete old gains and stat modifiers for this participant
+      await tx.delete(unitGains)
+        .where(eq(unitGains.matchParticipantId, matchParticipantId))
+      await tx.delete(statModifiers)
+        .where(eq(statModifiers.matchParticipantId, matchParticipantId))
+    }
     // AC24: Clear (soft-delete) temporary injury/destruction modifiers for this army's units
     // Also clear temporary unit_gains (Pertes Catastrophiques) from previous match
     // Cleared entries remain in DB for timeline history but are excluded from army view

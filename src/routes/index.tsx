@@ -38,7 +38,7 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults } = await import('../db/queries')
+    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults, updateMatchResultOnLatest } = await import('../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
@@ -50,7 +50,10 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
         error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
       }
     }
-    const updated = await updateMatchResults(data.matchId, context.session.playerId, data.result)
+    // First-time result entry (result is null) or re-edit on latest match
+    const updated = participant.result === null
+      ? await updateMatchResults(data.matchId, context.session.playerId, data.result)
+      : await updateMatchResultOnLatest(data.matchId, context.session.playerId, army.id, data.result)
     if (!updated) {
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Echec de la mise a jour du resultat' } }
     }
@@ -97,6 +100,7 @@ function CampaignView() {
   const [modalDismissed, setModalDismissed] = useState(false)
   const modalOpen = !hasSeenWelcome && !modalDismissed
   const [resultPickerMatchId, setResultPickerMatchId] = useState<string | null>(null)
+  const [reentryConfirmMatchId, setReentryConfirmMatchId] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
   const hydrated = useHydrated()
   const { isGuest, army, timeline, pendingMatches } = Route.useLoaderData()
@@ -137,6 +141,18 @@ function CampaignView() {
     void router.navigate({ to: '/match/$matchId/post-match', params: { matchId } })
   }
 
+  const handlePostMatchReentry = (matchId: string) => {
+    setReentryConfirmMatchId(matchId)
+  }
+
+  const confirmReentry = () => {
+    if (reentryConfirmMatchId) {
+      const matchId = reentryConfirmMatchId
+      setReentryConfirmMatchId(null)
+      void router.navigate({ to: '/match/$matchId/post-match', params: { matchId } })
+    }
+  }
+
   return (
     <>
       {!session?.isGuest && (
@@ -146,6 +162,33 @@ function CampaignView() {
           onDismiss={handleDismiss}
           onUpdateDisplayName={handleUpdateDisplayName}
         />
+      )}
+      {reentryConfirmMatchId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, maxWidth: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--color-text-primary)' }}>
+              Modifier le rapport ?
+            </p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
+              Les ameliorations et consequences devront etre re-saisies. Les XP seront pre-remplis.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setReentryConfirmMatchId(null)}
+                style={{ padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid var(--color-separator)', background: 'var(--color-background)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.875rem' }}
+              >
+                Annuler
+              </button>
+              <button
+                data-testid="confirm-reentry"
+                onClick={confirmReentry}
+                style={{ padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: '#334155', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.875rem' }}
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {resultPickerMatchId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -295,9 +338,11 @@ function CampaignView() {
                       result={toValidResult(entry.result)}
                       date={entry.date}
                       hasEvolutions={entry.hasEvolutions}
-                      isEditable={!isGuest && army !== null}
+                      isEditable={!isGuest && army !== null && (!entry.hasEvolutions || entry.isLatestMatch)}
+                      isLatestMatch={entry.isLatestMatch}
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}
+                      onPostMatchReentry={handlePostMatchReentry}
                       unitXpEntries={entry.unitXpEntries}
                     />
                   ))}

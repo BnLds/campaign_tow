@@ -16,8 +16,10 @@ export type TimelineEntryProps = {
   date: string // ISO 8601
   hasEvolutions: boolean
   isEditable?: boolean
+  isLatestMatch?: boolean
   onResultSubmit?: (matchId: string, result: 'victory' | 'defeat' | 'draw') => Promise<void>
   onEvolutionStart?: (matchId: string) => void
+  onPostMatchReentry?: (matchId: string) => void
   unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
 }
 
@@ -65,8 +67,10 @@ export function TimelineEntry({
   date,
   hasEvolutions,
   isEditable = false,
+  isLatestMatch = false,
   onResultSubmit,
   onEvolutionStart,
+  onPostMatchReentry,
   unitXpEntries,
 }: TimelineEntryProps) {
   const resultConfig = result ? RESULT_CONFIG[result] : null
@@ -200,11 +204,38 @@ export function TimelineEntry({
               Modifier
             </button>
           )}
+          {isEditable && result !== null && isSelecting && (
+            <button
+              data-testid="cancel-modify"
+              onClick={() => {
+                setIsSelecting(false)
+                setSubmitError(null)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.75rem',
+                color: '#b82c2c',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              Annuler
+            </button>
+          )}
         </div>
       </div>
 
       {/* Result selection buttons */}
       {showSelectionButtons && (
+        <>
+        {hasEvolutions && isLatestMatch && isSelecting && (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0.25rem 0 0', fontStyle: 'italic' }}>
+            Changer le resultat ne modifie pas le rapport — pensez a le re-saisir si necessaire.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
           {(['victory', 'defeat', 'draw'] as const).map((key) => {
             const cfg = RESULT_CONFIG[key]
@@ -234,6 +265,7 @@ export function TimelineEntry({
             )
           })}
         </div>
+        </>
       )}
 
       {/* Inline error message */}
@@ -367,6 +399,35 @@ export function TimelineEntry({
           }}
         >
           Au rapport ! <span aria-hidden="true">›</span>
+        </button>
+      )}
+
+      {/* "Modifier le dernier rapport" — shown on latest match with completed post-match, only after clicking "Modifier" */}
+      {isEditable && result !== null && hasEvolutions && isLatestMatch && isSelecting && onPostMatchReentry && (
+        <button
+          type="button"
+          data-testid="post-match-reentry"
+          onClick={() => onPostMatchReentry(matchId)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.375rem',
+            alignSelf: 'center',
+            minHeight: '44px',
+            background: '#334155',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontWeight: 600,
+            fontSize: '0.8125rem',
+            padding: '0.5rem 1rem',
+            marginTop: '0.25rem',
+          }}
+        >
+          Modifier le dernier rapport
         </button>
       )}
     </div>

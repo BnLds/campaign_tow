@@ -158,10 +158,10 @@ describe('[AC3][AC4][AC7][AC8][P0] submitUnitXpFn — server function contract (
     expect(code).toMatch(/submitUnitXpFn[\s\S]{0,2000}getUnitById/)
   })
 
-  // 10.12 — calls incrementUnitXp (not updateUnitXp — increment not absolute SET)
-  it('[4.1-SFN-020] submitUnitXpFn calls incrementUnitXp (not updateUnitXp — must use increment, not absolute SET)', () => {
+  // 10.12 — calls upsertMatchXpEntryWithIncrement (atomic upsert + increment)
+  it('[4.1-SFN-020] submitUnitXpFn calls upsertMatchXpEntryWithIncrement (atomic upsert + increment)', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/submitUnitXpFn[\s\S]{0,2000}incrementUnitXp/)
+    expect(code).toMatch(/submitUnitXpFn[\s\S]{0,2000}upsertMatchXpEntryWithIncrement/)
   })
 
   // 10.12 — returns { success: true, data: { unitId, newXp } } on success
@@ -260,46 +260,39 @@ describe('[AC5][P0] Post-match route — already-completed state (Task 9.1)', ()
 // Story 4-1b — submitUnitXpFn: delta strategy (AC1, AC3, AC5)
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC3][AC5][P0] submitUnitXpFn — delta strategy (Story 4-1b)', () => {
-  // 4.1b-SFN-001 — submitUnitXpFn must upsert the match_xp_entries row BEFORE
-  // calling incrementUnitXp so the ledger is written first.
-  it('[4.1b-SFN-001] submitUnitXpFn calls upsertMatchXpEntry before incrementUnitXp', () => {
+describe('[AC1][AC3][AC5][P0] submitUnitXpFn — atomic upsert+increment (Story 4-1b → match-edit-restrictions)', () => {
+  // 4.1b-SFN-001 — submitUnitXpFn uses atomic upsertMatchXpEntryWithIncrement
+  it('[4.1b-SFN-001] submitUnitXpFn calls upsertMatchXpEntryWithIncrement (atomic)', () => {
     const code = getPostMatchRoute()
     expect(code).toMatch(
-      /submitUnitXpFn[\s\S]{0,3000}upsertMatchXpEntry[\s\S]{0,1500}incrementUnitXp/,
+      /submitUnitXpFn[\s\S]{0,3000}upsertMatchXpEntryWithIncrement/,
     )
   })
 
-  // 4.1b-SFN-002 — delta must be computed as xpGained - (previousXpGained ?? 0)
-  it('[4.1b-SFN-002] submitUnitXpFn calculates delta = xpGained - (previousXpGained ?? 0)', () => {
+  // 4.1b-SFN-002 — upsertMatchXpEntryWithIncrement returns newUnitXp used in response
+  it('[4.1b-SFN-002] submitUnitXpFn uses newUnitXp from atomic function', () => {
     const code = getPostMatchRoute()
-    // delta and previousXpGained must appear in proximity within submitUnitXpFn
     expect(code).toMatch(
-      /submitUnitXpFn[\s\S]{0,3000}delta[\s\S]{0,300}previousXpGained/,
+      /submitUnitXpFn[\s\S]{0,3000}newUnitXp/,
     )
   })
 
-  // 4.1b-SFN-003 — incrementUnitXp is only called when delta !== 0
-  it('[4.1b-SFN-003] submitUnitXpFn only calls incrementUnitXp when delta !== 0', () => {
-    const code = getPostMatchRoute()
-    expect(code).toMatch(
-      /submitUnitXpFn[\s\S]{0,3000}delta\s*!==\s*0[\s\S]{0,500}incrementUnitXp/,
-    )
+  // 4.1b-SFN-003 — atomic function is defined in evolutions.ts with transaction
+  it('[4.1b-SFN-003] upsertMatchXpEntryWithIncrement wraps in db.transaction', () => {
+    const code = readFileSync(resolve(root, 'src/db/queries/evolutions.ts'), 'utf-8')
+    expect(code).toMatch(/upsertMatchXpEntryWithIncrement[\s\S]{0,500}db\.transaction/)
   })
 
-  // 4.1b-SFN-004 — incrementUnitXp receives the delta value, NOT raw xpGained
-  it('[4.1b-SFN-004] submitUnitXpFn passes delta (not raw xpGained) to incrementUnitXp', () => {
-    const code = getPostMatchRoute()
-    // incrementUnitXp must be called with delta as argument
-    expect(code).toMatch(/incrementUnitXp\([^)]*delta/)
-    // Must NOT pass data.xpGained directly to incrementUnitXp
-    expect(code).not.toMatch(/incrementUnitXp\([^)]*data\.xpGained/)
+  // 4.1b-SFN-004 — atomic function computes delta internally
+  it('[4.1b-SFN-004] upsertMatchXpEntryWithIncrement computes delta internally', () => {
+    const code = readFileSync(resolve(root, 'src/db/queries/evolutions.ts'), 'utf-8')
+    expect(code).toMatch(/upsertMatchXpEntryWithIncrement[\s\S]{0,1500}xpGained\s*-\s*\(previousXpGained\s*\?\?\s*0\)/)
   })
 
-  // 4.1b-SFN-005 — when delta === 0, use getUnitById to read current XP for the response
-  it('[4.1b-SFN-005] submitUnitXpFn uses getUnitById for newXp when delta === 0', () => {
-    const code = getPostMatchRoute()
-    expect(code).toMatch(/delta\s*===\s*0[\s\S]{0,500}getUnitById/)
+  // 4.1b-SFN-005 — atomic function handles delta === 0 case
+  it('[4.1b-SFN-005] upsertMatchXpEntryWithIncrement handles delta === 0', () => {
+    const code = readFileSync(resolve(root, 'src/db/queries/evolutions.ts'), 'utf-8')
+    expect(code).toMatch(/upsertMatchXpEntryWithIncrement[\s\S]{0,2000}delta\s*!==\s*0/)
   })
 })
 
