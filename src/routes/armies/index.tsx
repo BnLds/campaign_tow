@@ -79,10 +79,10 @@ function ArmiesListView() {
       </h1>
 
       {!isGuest && !hasOwnArmy && (
-        <ArmyImportForm onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['session'] })
-          queryClient.invalidateQueries({ queryKey: ['army-info'] })
-          router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/armies/' })
+        <ArmyImportForm onSuccess={async () => {
+          await queryClient.invalidateQueries({ queryKey: ['session'] })
+          await queryClient.invalidateQueries({ queryKey: ['army-info'] })
+          await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/armies/' })
         }} />
       )}
 

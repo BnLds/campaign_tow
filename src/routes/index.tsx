@@ -92,6 +92,7 @@ function CampaignView() {
   const { session } = context
   const [modalOpen, setModalOpen] = useState(session?.hasSeenWelcome === false)
   const [resultPickerMatchId, setResultPickerMatchId] = useState<string | null>(null)
+  const [importSuccess, setImportSuccess] = useState<string | null>(null)
   const hydrated = useHydrated()
   const { isGuest, army, timeline, pendingMatches } = Route.useLoaderData()
 
@@ -173,6 +174,22 @@ function CampaignView() {
         </div>
       )}
       <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
+        {importSuccess && (
+          <p
+            style={{
+              marginBottom: '1rem',
+              padding: '0.625rem',
+              borderRadius: '0.375rem',
+              background: 'var(--color-bonus-bg)',
+              color: 'var(--color-bonus)',
+              border: '1px solid var(--color-bonus)',
+              fontSize: '0.875rem',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            {importSuccess}
+          </p>
+        )}
         {isGuest ? (
           /* Guest user: no personal timeline */
           <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -185,10 +202,11 @@ function CampaignView() {
           </div>
         ) : army === null ? (
           /* Logged in but no army assigned */
-          <ArmyImportForm onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['session'] })
-            queryClient.invalidateQueries({ queryKey: ['army-info'] })
-            router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+          <ArmyImportForm onSuccess={async (data) => {
+            setImportSuccess(`Armee importee : ${data.armyName} (${data.faction}) — ${data.unitCount} unite${data.unitCount > 1 ? 's' : ''}`)
+            await queryClient.invalidateQueries({ queryKey: ['session'] })
+            await queryClient.invalidateQueries({ queryKey: ['army-info'] })
+            await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
           }} />
         ) : (
           /* Logged in with an army */

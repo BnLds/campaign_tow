@@ -304,7 +304,7 @@ describe('[AC1][AC3][AC4][P0] Campaign view — ArmyImportForm integration', () 
 
   it('[PAI-102] ArmyImportForm onSuccess calls router.invalidate()', () => {
     const code = getCampaignRoute()
-    expect(code).toMatch(/ArmyImportForm[\s\S]{0,300}router\.invalidate/)
+    expect(code).toMatch(/ArmyImportForm[\s\S]{0,500}router\.invalidate/)
   })
 })
 
@@ -330,6 +330,6 @@ describe('[AC2][AC3][AC4][P0] Armies view — ArmyImportForm integration', () =>
 
   it('[PAI-113] ArmyImportForm onSuccess calls router.invalidate()', () => {
     const code = getArmiesRoute()
-    expect(code).toMatch(/ArmyImportForm[\s\S]{0,300}router\.invalidate/)
+    expect(code).toMatch(/ArmyImportForm[\s\S]{0,500}router\.invalidate/)
   })
 })
