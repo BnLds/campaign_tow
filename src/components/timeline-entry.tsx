@@ -90,7 +90,6 @@ export function TimelineEntry({
     try {
       await onResultSubmit(matchId, selectedResult)
       setIsSubmitting(false)
-      setIsSelecting(false)
     } catch (err) {
       setIsSubmitting(false)
       setSubmitError(err instanceof Error ? err.message : 'Erreur inconnue')
@@ -222,7 +221,7 @@ export function TimelineEntry({
                 padding: 0,
               }}
             >
-              Annuler
+              Fermer
             </button>
           )}
         </div>
