@@ -855,10 +855,10 @@ export function UnitEditPanel({
               display: 'block',
               width: '100%',
               padding: '0.5rem 1rem',
-              border: '1px solid #334155',
+              border: '1px solid #b45309',
               borderRadius: '6px',
               background: 'transparent',
-              color: '#334155',
+              color: '#b45309',
               fontFamily: 'var(--font-body)',
               fontWeight: 600,
               fontSize: '0.8125rem',
@@ -866,7 +866,7 @@ export function UnitEditPanel({
               marginBottom: '0.75rem',
             }}
           >
-            ⚠ Envoyer au cimetière
+            Envoyer au cimetière
           </button>
         ) : (
           <div
