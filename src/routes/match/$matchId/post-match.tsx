@@ -335,6 +335,7 @@ function PostMatchRoute() {
   }
 
   const handleComplete = async () => {
+    await router.invalidate({ filter: (d) => d.routeId === '/' })
     await router.navigate({ to: '/' })
   }
 
