@@ -7,6 +7,9 @@ import { relations, sql } from 'drizzle-orm'
 // Story 3.1 — Enum for match result (enforces valid values at DB level)
 export const matchResultEnum = pgEnum('match_result', ['victory', 'defeat', 'draw'])
 
+// Unit status — active (in play) or graveyard (destroyed, kept for reference)
+export const unitStatusEnum = pgEnum('unit_status', ['active', 'graveyard'])
+
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
@@ -52,6 +55,8 @@ export const units = pgTable('units', {
   modelCount: integer('model_count'),
   specialRules: text('special_rules'),
   options: text('options'),
+  status: unitStatusEnum('status').notNull().default('active'),
+  graveyardReason: text('graveyard_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

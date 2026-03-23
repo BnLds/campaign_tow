@@ -14,6 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog'
 import { getTierLabel, getTierColor } from '../lib/tier'
 import type { TierLevel } from '../lib/tier'
 
@@ -72,6 +83,14 @@ type ToggleMountFn = (args: {
   data: { armyId: string; subProfileId: string; isMount: boolean }
 }) => Promise<{ success: boolean; data?: null; error?: { code: string; message: string } }>
 
+type SendToGraveyardFn = (args: {
+  data: { armyId: string; unitId: string; reason: string }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
+
+type DeleteUnitFn = (args: {
+  data: { armyId: string; unitId: string }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
+
 interface SubProfileItem {
   id: string
   label: string
@@ -95,6 +114,8 @@ interface UnitEditPanelProps {
   updateXpFn: UpdateXpFn
   fetchUnitDeltasFn: FetchUnitDeltasFn
   toggleMountFn: ToggleMountFn
+  sendToGraveyardFn: SendToGraveyardFn
+  deleteUnitFn: DeleteUnitFn
 }
 
 // ---------------------------------------------------------------------------
@@ -157,6 +178,8 @@ export function UnitEditPanel({
   updateXpFn,
   fetchUnitDeltasFn,
   toggleMountFn,
+  sendToGraveyardFn,
+  deleteUnitFn,
 }: UnitEditPanelProps) {
   // Delta data state
   const [statModifiers, setStatModifiers] = useState<StatModifierRow[]>([])
@@ -190,6 +213,13 @@ export function UnitEditPanel({
   // Deleting state
   const [deletingModId, setDeletingModId] = useState<string | null>(null)
   const [deletingGainId, setDeletingGainId] = useState<string | null>(null)
+
+  // Graveyard state
+  const [showGraveyardInput, setShowGraveyardInput] = useState(false)
+  const [graveyardReason, setGraveyardReason] = useState('')
+  const [sendingToGraveyard, setSendingToGraveyard] = useState(false)
+  const [deletingUnit, setDeletingUnit] = useState(false)
+  const dangerFeedback = useFeedback()
 
   // Sync xpValue when currentXp prop changes (C3 — avoid stale XP after parent re-render)
   useEffect(() => {
@@ -791,6 +821,189 @@ export function UnitEditPanel({
           <FeedbackMsg message={xpFeedback.message} />
         </form>
       </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section 4 — Zone de danger */}
+      {/* ------------------------------------------------------------------ */}
+      <div
+        style={{
+          borderTop: '1px solid var(--color-border)',
+          marginTop: '1.5rem',
+          paddingTop: '1rem',
+        }}
+      >
+        <h4
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontWeight: 700,
+            fontSize: '0.8rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            color: 'var(--color-malus)',
+            marginBottom: '0.75rem',
+          }}
+        >
+          Zone de danger
+        </h4>
+
+        {/* Send to graveyard */}
+        {!showGraveyardInput ? (
+          <button
+            data-testid="graveyard-button"
+            onClick={() => setShowGraveyardInput(true)}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.5rem 1rem',
+              border: '1px solid #334155',
+              borderRadius: '6px',
+              background: 'transparent',
+              color: '#334155',
+              fontFamily: 'var(--font-body)',
+              fontWeight: 600,
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+              marginBottom: '0.75rem',
+            }}
+          >
+            ⚠ Envoyer au cimetière
+          </button>
+        ) : (
+          <div
+            data-testid="graveyard-form"
+            style={{
+              marginBottom: '0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+            }}
+          >
+            <Input
+              data-testid="graveyard-reason-input"
+              type="text"
+              placeholder="Raison (ex: tué par un dragon)"
+              value={graveyardReason}
+              onChange={(e) => setGraveyardReason(e.target.value)}
+              maxLength={200}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Button
+                data-testid="graveyard-confirm"
+                size="sm"
+                disabled={sendingToGraveyard || !graveyardReason.trim()}
+                onClick={async () => {
+                  if (!graveyardReason.trim()) {
+                    dangerFeedback.show('La raison ne peut pas être vide', true)
+                    return
+                  }
+                  setSendingToGraveyard(true)
+                  try {
+                    const result = await sendToGraveyardFn({
+                      data: { armyId, unitId, reason: graveyardReason.trim() },
+                    })
+                    if (result.success) {
+                      await onMutationSuccess()
+                    } else {
+                      dangerFeedback.show(result.error?.message ?? 'Erreur inconnue', true)
+                    }
+                  } catch {
+                    dangerFeedback.show("Erreur lors de l'envoi au cimetière", true)
+                  } finally {
+                    setSendingToGraveyard(false)
+                  }
+                }}
+                style={{ background: '#334155', color: '#fff' }}
+              >
+                {sendingToGraveyard ? 'Envoi...' : 'Confirmer'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowGraveyardInput(false)
+                  setGraveyardReason('')
+                }}
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Permanent deletion */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              data-testid="delete-unit-button"
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '0.5rem 1rem',
+                border: 'none',
+                borderRadius: '6px',
+                background: 'var(--color-malus)',
+                color: '#fff',
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+              }}
+            >
+              Supprimer définitivement
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Suppression définitive</AlertDialogTitle>
+              <AlertDialogDescription>
+                Attention : cette unité, ses sous-profils, ses modificateurs de stats, ses gains et
+                son historique XP par match seront définitivement supprimés. Si elle a été détruite
+                lors d'un affrontement, envoyez-la plutôt au cimetière pour garder une trace.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                style={{
+                  border: '1px solid #334155',
+                  color: '#334155',
+                }}
+              >
+                Annuler
+              </AlertDialogCancel>
+              <AlertDialogAction
+                data-testid="delete-unit-confirm"
+                disabled={deletingUnit}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  setDeletingUnit(true)
+                  try {
+                    const result = await deleteUnitFn({
+                      data: { armyId, unitId },
+                    })
+                    if (result.success) {
+                      await onMutationSuccess()
+                    } else {
+                      dangerFeedback.show(result.error?.message ?? 'Erreur inconnue', true)
+                    }
+                  } catch {
+                    dangerFeedback.show('Erreur lors de la suppression', true)
+                  } finally {
+                    setDeletingUnit(false)
+                  }
+                }}
+                style={{
+                  background: 'var(--color-malus)',
+                  color: '#fff',
+                }}
+              >
+                {deletingUnit ? 'Suppression...' : 'Détruire'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <FeedbackMsg message={dangerFeedback.message} />
+      </div>
     </div>
   )
 }

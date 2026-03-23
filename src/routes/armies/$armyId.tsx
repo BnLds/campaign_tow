@@ -10,6 +10,18 @@ import { authMiddleware, armyOwnerMiddleware } from '../../lib/middleware'
 import { UnitCard } from '../../components/unit-card'
 import { AddUnitsSheet } from '../../components/add-units-sheet'
 import { UnitEditPanel } from '../../components/unit-edit-panel'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../components/ui/alert-dialog'
+import { Button } from '../../components/ui/button'
 import { composeUnitView } from '../../lib/delta-composer'
 import { calculateTier } from '../../lib/tier'
 import type { TierLevel } from '../../lib/tier'
@@ -23,7 +35,7 @@ const loadArmyFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ armyId: z.string() }))
   .handler(async ({ data, context }) => {
-    const { getArmyWithUnits, getUnitDeltas } = await import('../../db/queries')
+    const { getArmyWithUnits, getUnitDeltas, getGraveyardUnits } = await import('../../db/queries')
 
     const army = await getArmyWithUnits(data.armyId)
     if (!army) {
@@ -31,7 +43,10 @@ const loadArmyFn = createServerFn({ method: 'GET' })
     }
 
     const unitIds = army.units.map((u) => u.id)
-    const { statModifiers: allMods, unitGains: allGains } = await getUnitDeltas(unitIds)
+    const [{ statModifiers: allMods, unitGains: allGains }, graveyardUnits] = await Promise.all([
+      getUnitDeltas(unitIds),
+      getGraveyardUnits(data.armyId),
+    ])
 
     // For each unit, group modifiers/gains and compose view
     const unitCards = army.units.map((unit) => {
@@ -66,6 +81,7 @@ const loadArmyFn = createServerFn({ method: 'GET' })
         player: army.player,
       },
       unitCards,
+      graveyardUnits,
       isOwner,
     }
   })
@@ -258,6 +274,116 @@ const updateXpFn = createServerFn({ method: 'POST' })
   })
 
 // ---------------------------------------------------------------------------
+// Server function — send unit to graveyard
+// ---------------------------------------------------------------------------
+
+const sendToGraveyardFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(
+    z.object({
+      armyId: z.string(),
+      unitId: z.string(),
+      reason: z.string().trim().min(1, { message: 'La raison ne peut pas être vide' }).max(200),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { getUnitById, sendUnitToGraveyard, hasInProgressPostMatch } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'FORBIDDEN', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    if (unit.status !== 'active') {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: "Cette unité n'est pas active" },
+      }
+    }
+    const inProgress = await hasInProgressPostMatch(data.unitId)
+    if (inProgress) {
+      return {
+        success: false as const,
+        error: { code: 'POST_MATCH_IN_PROGRESS', message: 'Cette unité est dans un flux post-match en cours.' },
+      }
+    }
+    const updated = await sendUnitToGraveyard(data.unitId, data.reason)
+    if (updated.length === 0) {
+      return {
+        success: false as const,
+        error: { code: 'NOT_FOUND', message: 'Unité introuvable ou déjà modifiée' },
+      }
+    }
+    return { success: true as const }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — permanently delete unit
+// ---------------------------------------------------------------------------
+
+const deleteUnitFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(z.object({ armyId: z.string(), unitId: z.string() }))
+  .handler(async ({ data }) => {
+    const { getUnitById, deleteUnitPermanently, hasInProgressPostMatch } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'FORBIDDEN', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    const inProgress = await hasInProgressPostMatch(data.unitId)
+    if (inProgress) {
+      return {
+        success: false as const,
+        error: { code: 'POST_MATCH_IN_PROGRESS', message: 'Cette unité est dans un flux post-match en cours.' },
+      }
+    }
+    const deleted = await deleteUnitPermanently(data.unitId)
+    if (deleted.length === 0) {
+      return {
+        success: false as const,
+        error: { code: 'NOT_FOUND', message: 'Unité introuvable ou déjà supprimée' },
+      }
+    }
+    return { success: true as const }
+  })
+
+// ---------------------------------------------------------------------------
+// Server function — restore unit from graveyard
+// ---------------------------------------------------------------------------
+
+const restoreUnitFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(z.object({ armyId: z.string(), unitId: z.string() }))
+  .handler(async ({ data }) => {
+    const { getUnitById, restoreUnitFromGraveyard } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'FORBIDDEN', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    if (unit.status !== 'graveyard') {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: "Cette unité n'est pas au cimetière" },
+      }
+    }
+    const updated = await restoreUnitFromGraveyard(data.unitId)
+    if (updated.length === 0) {
+      return {
+        success: false as const,
+        error: { code: 'NOT_FOUND', message: 'Unité introuvable ou déjà modifiée' },
+      }
+    }
+    return { success: true as const }
+  })
+
+// ---------------------------------------------------------------------------
 // Route definition
 // ---------------------------------------------------------------------------
 
@@ -323,12 +449,13 @@ function groupUnitsByType(
 
 
 function ArmyView() {
-  const { army, unitCards, isOwner } = Route.useLoaderData()
+  const { army, unitCards, graveyardUnits, isOwner } = Route.useLoaderData()
   const hydrated = useHydrated()
   const router = useRouter()
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null)
   const [addUnitsOpen, setAddUnitsOpen] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [restoringUnitId, setRestoringUnitId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!successMessage) return
@@ -529,6 +656,8 @@ function ArmyView() {
                   updateXpFn={updateXpFn}
                   fetchUnitDeltasFn={fetchUnitDeltasFn}
                   toggleMountFn={toggleMountFn}
+                  sendToGraveyardFn={sendToGraveyardFn}
+                  deleteUnitFn={deleteUnitFn}
                 />
               )}
             </div>
@@ -536,10 +665,157 @@ function ArmyView() {
         </section>
       ))}
 
-      {unitCards.length === 0 && (
+      {unitCards.length === 0 && graveyardUnits.length === 0 && (
         <p style={{ color: 'var(--color-text-secondary)' }}>
           Cette armée ne contient aucune unité.
         </p>
+      )}
+
+      {/* Graveyard section — owner only */}
+      {isOwner && graveyardUnits.length > 0 && (
+        <section data-testid="graveyard-section" style={{ marginTop: '2rem' }}>
+          <div
+            style={{
+              borderTop: '1px solid var(--color-border)',
+              paddingTop: '1rem',
+              marginBottom: '0.75rem',
+            }}
+          >
+            <h2
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              Cimetière
+            </h2>
+          </div>
+          {graveyardUnits.map((gu) => (
+            <div
+              key={gu.id}
+              data-testid={`graveyard-unit-${gu.id}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 0',
+                borderBottom: '1px solid var(--color-separator)',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  {gu.name}
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-secondary)',
+                    marginLeft: '0.5rem',
+                  }}
+                >
+                  {gu.type}
+                </span>
+                {gu.graveyardReason && (
+                  <p
+                    style={{
+                      fontSize: '0.75rem',
+                      fontStyle: 'italic',
+                      color: 'var(--color-text-secondary)',
+                      margin: '0.125rem 0 0',
+                    }}
+                  >
+                    {gu.graveyardReason}
+                  </p>
+                )}
+              </div>
+              <Button
+                data-testid={`restore-unit-${gu.id}`}
+                variant="outline"
+                size="sm"
+                disabled={restoringUnitId === gu.id}
+                onClick={async () => {
+                  setRestoringUnitId(gu.id)
+                  try {
+                    const result = await restoreUnitFn({
+                      data: { armyId: army.id, unitId: gu.id },
+                    })
+                    if (result.success) {
+                      await handleMutationSuccess()
+                    }
+                  } finally {
+                    setRestoringUnitId(null)
+                  }
+                }}
+                style={{
+                  borderColor: '#334155',
+                  color: '#334155',
+                  fontSize: '0.75rem',
+                  flexShrink: 0,
+                }}
+              >
+                {restoringUnitId === gu.id ? '...' : 'Restaurer'}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    data-testid={`delete-graveyard-unit-${gu.id}`}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--color-malus)',
+                      fontSize: '1rem',
+                      padding: '0.25rem',
+                      flexShrink: 0,
+                    }}
+                    aria-label="Supprimer définitivement"
+                  >
+                    🗑
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Suppression définitive</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Attention : cette unité, ses sous-profils, ses modificateurs de stats, ses gains et
+                      son historique XP par match seront définitivement supprimés. Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel style={{ borderColor: '#334155', color: '#334155' }}>
+                      Annuler
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async (e) => {
+                        e.preventDefault()
+                        const result = await deleteUnitFn({
+                          data: { armyId: army.id, unitId: gu.id },
+                        })
+                        if (result.success) {
+                          await handleMutationSuccess()
+                        }
+                      }}
+                      style={{ background: 'var(--color-malus)', color: '#fff' }}
+                    >
+                      Détruire
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          ))}
+        </section>
       )}
 
     </main>

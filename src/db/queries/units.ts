@@ -1,6 +1,6 @@
-import { eq, and, inArray, sql } from 'drizzle-orm'
+import { eq, and, inArray, sql, isNull } from 'drizzle-orm'
 import { db } from '../index'
-import { players, armies, units, subProfiles, statModifiers, unitGains } from '../schema'
+import { players, armies, units, subProfiles, statModifiers, unitGains, matchXpEntries, matchParticipants } from '../schema'
 
 export type StatFields = {
   m: string
@@ -80,7 +80,7 @@ export async function getUnitsForArmy(armyId: string) {
   const unitRows = await db
     .select()
     .from(units)
-    .where(eq(units.armyId, armyId))
+    .where(and(eq(units.armyId, armyId), eq(units.status, 'active')))
     .orderBy(
       sql`CASE ${units.type}
         WHEN 'Personnages' THEN 0
@@ -128,7 +128,7 @@ export async function getArmyWithUnits(armyId: string) {
   const unitRows = await db
     .select()
     .from(units)
-    .where(eq(units.armyId, armyId))
+    .where(and(eq(units.armyId, armyId), eq(units.status, 'active')))
     .orderBy(units.type, units.name)
 
   const unitIds = unitRows.map((u) => u.id)
@@ -279,9 +279,56 @@ export async function getUnitById(unitId: string) {
       name: units.name,
       type: units.type,
       xp: units.xp,
+      status: units.status,
     })
     .from(units)
     .where(eq(units.id, unitId))
     .limit(1)
   return rows.length > 0 ? rows[0] : null
+}
+
+export async function getGraveyardUnits(armyId: string) {
+  return db
+    .select({
+      id: units.id,
+      name: units.name,
+      type: units.type,
+      graveyardReason: units.graveyardReason,
+    })
+    .from(units)
+    .where(and(eq(units.armyId, armyId), eq(units.status, 'graveyard')))
+    .orderBy(units.name)
+}
+
+export async function sendUnitToGraveyard(unitId: string, reason: string) {
+  return db
+    .update(units)
+    .set({ status: 'graveyard', graveyardReason: reason })
+    .where(eq(units.id, unitId))
+    .returning()
+}
+
+export async function restoreUnitFromGraveyard(unitId: string) {
+  return db
+    .update(units)
+    .set({ status: 'active', graveyardReason: null })
+    .where(eq(units.id, unitId))
+    .returning()
+}
+
+export async function deleteUnitPermanently(unitId: string) {
+  return db
+    .delete(units)
+    .where(eq(units.id, unitId))
+    .returning()
+}
+
+export async function hasInProgressPostMatch(unitId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: matchXpEntries.id })
+    .from(matchXpEntries)
+    .innerJoin(matchParticipants, eq(matchXpEntries.matchParticipantId, matchParticipants.id))
+    .where(and(eq(matchXpEntries.unitId, unitId), isNull(matchParticipants.evolutionsEnteredAt)))
+    .limit(1)
+  return rows.length > 0
 }
