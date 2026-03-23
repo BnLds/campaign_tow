@@ -26,7 +26,7 @@ const PARTICIPANT_ID = 'participant-1'
 const sampleUnits = [
   { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 5 },
   { id: 'unit-2', name: 'Chevaliers', type: 'Cavalerie', xp: 10 },
-  { id: 'unit-3', name: 'Seigneur de Guerre', type: 'Personnage', xp: 20 },
+  { id: 'unit-3', name: 'Seigneur de Guerre', type: 'Personnages', xp: 20 },
 ]
 
 const singleUnit = [
@@ -55,8 +55,8 @@ describe('[AC6][P0] PostMatchWizard — renders first unit name and XP input (Ta
     expect(unitName.textContent).toContain('Hallebardiers')
   })
 
-  // 10.18 — renders XP input with data-testid="wizard-xp-input"
-  it('[4.1-WIZ-002] renders data-testid="wizard-xp-input" numeric input field', () => {
+  // 10.18 — renders XP checkboxes container
+  it('[4.1-WIZ-002] renders data-testid="wizard-xp-checkboxes" container', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -66,12 +66,12 @@ describe('[AC6][P0] PostMatchWizard — renders first unit name and XP input (Ta
         onCancel={vi.fn()}
       />
     )
-    const xpInput = screen.getByTestId('wizard-xp-input')
-    expect(xpInput).not.toBeNull()
+    const xpCheckboxes = screen.getByTestId('wizard-xp-checkboxes')
+    expect(xpCheckboxes).not.toBeNull()
   })
 
-  // 10.18 — XP input defaults to 0
-  it('[4.1-WIZ-003] wizard-xp-input defaults to 0', () => {
+  // 10.18 — XP total defaults to 0
+  it('[4.1-WIZ-003] wizard-xp-total defaults to 0', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -81,12 +81,12 @@ describe('[AC6][P0] PostMatchWizard — renders first unit name and XP input (Ta
         onCancel={vi.fn()}
       />
     )
-    const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    expect(xpInput.value).toBe('0')
+    const xpTotal = screen.getByTestId('wizard-xp-total')
+    expect(xpTotal.textContent).toContain('0')
   })
 
-  // 10.18 — XP input has min=0 and max=99
-  it('[4.1-WIZ-004] wizard-xp-input has min=0 and max=99 attributes', () => {
+  // 10.18 — XP checkboxes contain conditions for first unit (Infanterie = unit conditions)
+  it('[4.1-WIZ-004] wizard-xp-checkboxes shows unit conditions for Infanterie', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -96,12 +96,14 @@ describe('[AC6][P0] PostMatchWizard — renders first unit name and XP input (Ta
         onCancel={vi.fn()}
       />
     )
-    const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    expect(xpInput.min).toBe('0')
-    expect(xpInput.max).toBe('99')
+    // First unit is Infanterie — should show unit conditions
+    expect(screen.getByTestId('xp-condition-deployed')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-survived')).not.toBeNull()
+    // Should NOT show character-only conditions
+    expect(screen.queryByTestId('xp-condition-general_win')).toBeNull()
   })
 
-  // 10.18 — shows current XP of the unit
+  // 10.18 — shows current XP of the unit (XP avant cette partie)
   it('[4.1-WIZ-005] renders current XP value for the displayed unit', () => {
     render(
       <PostMatchWizard
@@ -112,8 +114,8 @@ describe('[AC6][P0] PostMatchWizard — renders first unit name and XP input (Ta
         onCancel={vi.fn()}
       />
     )
-    // Current XP of first unit is 5
-    expect(screen.getByText(/5/)).not.toBeNull()
+    // Current XP of first unit is 5 — shown in "XP avant cette partie : 5"
+    expect(screen.getByText(/XP avant cette partie\s*:\s*5/)).not.toBeNull()
   })
 })
 
@@ -162,41 +164,35 @@ describe('[AC3][AC4][P0] PostMatchWizard — Suivant button calls server functio
     expect(nextButton.textContent).toMatch(/Suivant/)
   })
 
-  // 10.20 — "Suivant" click calls submitUnitXpFn with unitId and xpGained
-  it('[4.1-WIZ-008] clicking Suivant calls submitUnitXpFn with correct unitId and xpGained', async () => {
-    // We test the structural requirement: the component must invoke submitUnitXpFn on click.
-    // Since the fn is co-located in the route (not importable here), we test behavior:
-    // enter XP 3, click Suivant, expect server call was attempted.
-    // This test verifies the component wires up correctly by checking it doesn't crash
-    // and handles the case where the server call fails (because no server available in test).
-
-    // We mock the module that contains submitUnitXpFn
-    // The component will import it dynamically — the test verifies call was attempted via error or state
-    const onComplete = vi.fn()
+  // 10.20 — "Suivant" click calls submitUnitXpFn with correct unitId and computed xpGained
+  it('[4.1-WIZ-008] clicking checkboxes + Suivant calls onSubmitUnitXp with computed XP total', async () => {
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 8 } })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
 
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
         matchParticipantId={PARTICIPANT_ID}
         units={sampleUnits}
-        onComplete={onComplete}
+        onComplete={vi.fn()}
         onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
       />
     )
 
-    const xpInput = screen.getByTestId('wizard-xp-input')
-    fireEvent.change(xpInput, { target: { value: '3' } })
+    // First unit is Infanterie — check deployed (+1), survived (+1), feat_destroy_unit (+1) = 3 XP
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('xp-condition-survived'))
+    fireEvent.click(screen.getByTestId('xp-condition-feat_destroy_unit'))
 
-    const nextButton = screen.getByTestId('wizard-next-button')
-    fireEvent.click(nextButton)
+    // Verify total display
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('3')
 
-    // After click, button should be disabled (submitting state) or an error should appear
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
     await waitFor(() => {
-      const btn = screen.getByTestId('wizard-next-button') as HTMLButtonElement
-      // Either disabled (loading) or error shown — either is valid for "server call attempted"
-      const errorEl = screen.queryByTestId('wizard-error')
-      const isDisabled = btn.disabled
-      expect(isDisabled || errorEl !== null).toBe(true)
+      expect(onSubmitUnitXp).toHaveBeenCalledWith('unit-1', 3, PARTICIPANT_ID)
     })
   })
 })
@@ -400,8 +396,8 @@ describe('[AC6][P0] PostMatchWizard — empty units state (Task 6.7)', () => {
     expect(screen.getByText(/Retour/i)).not.toBeNull()
   })
 
-  // 10.25 — empty units does NOT render the wizard progress or XP input
-  it('[4.1-WIZ-016] empty units state does not render wizard-progress or wizard-xp-input', () => {
+  // 10.25 — empty units does NOT render the wizard progress or XP checkboxes
+  it('[4.1-WIZ-016] empty units state does not render wizard-progress or wizard-xp-checkboxes', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -412,7 +408,7 @@ describe('[AC6][P0] PostMatchWizard — empty units state (Task 6.7)', () => {
       />
     )
     expect(screen.queryByTestId('wizard-progress')).toBeNull()
-    expect(screen.queryByTestId('wizard-xp-input')).toBeNull()
+    expect(screen.queryByTestId('wizard-xp-checkboxes')).toBeNull()
   })
 })
 
@@ -504,11 +500,11 @@ describe('[AC6][P0] PostMatchWizard — source file contract (data-testid attrib
     expect(code).toContain('data-testid="wizard-unit-name"')
   })
 
-  it('[4.1-WIZ-024] post-match-wizard.tsx contains data-testid="wizard-xp-input"', () => {
+  it('[4.1-WIZ-024] post-match-wizard.tsx contains data-testid="wizard-xp-checkboxes"', () => {
     const { readFileSync } = require('node:fs')
     const { resolve: resolvePath } = require('node:path')
     const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toContain('data-testid="wizard-xp-input"')
+    expect(code).toContain('data-testid="wizard-xp-checkboxes"')
   })
 
   it('[4.1-WIZ-025] post-match-wizard.tsx contains data-testid="wizard-next-button"', () => {
@@ -558,7 +554,7 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
     { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 5, previousXpGained: null },
   ]
 
-  it('[4.1b-WIZ-001] XP input pre-fills to previousXpGained value when not null', () => {
+  it('[4.1b-WIZ-001] shows "Précédemment" hint when previousXpGained is set', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -568,11 +564,11 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
         onCancel={vi.fn()}
       />
     )
-    const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    expect(xpInput.value).toBe('3')
+    const hint = screen.getByTestId('wizard-previous-xp')
+    expect(hint.textContent).toContain('3 XP')
   })
 
-  it('[4.1b-WIZ-002] XP input defaults to 0 when previousXpGained is null', () => {
+  it('[4.1b-WIZ-002] no hint when previousXpGained is null, total defaults to 0', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -582,11 +578,11 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
         onCancel={vi.fn()}
       />
     )
-    const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    expect(xpInput.value).toBe('0')
+    expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('0')
   })
 
-  it('[4.1b-WIZ-003] XP input pre-fills correctly on second step', async () => {
+  it('[4.1b-WIZ-003] shows "Précédemment" hint on second step', async () => {
     const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 11 } })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
 
@@ -606,15 +602,14 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
-      const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-      expect(xpInput.value).toBe('5')
+      const hint = screen.getByTestId('wizard-previous-xp')
+      expect(hint.textContent).toContain('5 XP')
     })
   })
 
-  it('[4.1b-WIZ-016] XP input updates when units prop changes (stale cache fix)', async () => {
+  it('[4.1b-WIZ-016] hint appears when units prop changes from null to non-null previousXpGained', async () => {
     // Regression test: when TanStack Router serves stale cached data first (previousXpGained=null),
-    // then updates with fresh loader data (previousXpGained=3), the XP input must react to the
-    // units prop change even though currentStep stays at 0.
+    // then updates with fresh loader data (previousXpGained=3), the hint must appear.
     const staleUnits = [
       { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: null },
     ]
@@ -632,11 +627,8 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
       />
     )
 
-    // With stale data, XP should be 0
-    const xpInput = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    await waitFor(() => {
-      expect(xpInput.value).toBe('0')
-    })
+    // With stale data, no hint
+    expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
 
     // Simulate loader completing with fresh data (units prop changes)
     rerender(
@@ -649,9 +641,9 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
       />
     )
 
-    // XP should now be pre-filled with the fresh previousXpGained value
+    // Hint should now appear
     await waitFor(() => {
-      expect((screen.getByTestId('wizard-xp-input') as HTMLInputElement).value).toBe('3')
+      expect(screen.getByTestId('wizard-previous-xp').textContent).toContain('3 XP')
     })
   })
 
@@ -793,7 +785,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
   const unitsWithPrevXp = [
     { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
     { id: 'unit-2', name: 'Chevaliers', type: 'Cavalerie', xp: 15, previousXpGained: 5 },
-    { id: 'unit-3', name: 'Seigneur de Guerre', type: 'Personnage', xp: 20, previousXpGained: 2 },
+    { id: 'unit-3', name: 'Seigneur de Guerre', type: 'Personnages', xp: 20, previousXpGained: 2 },
   ]
 
   it('[4.1b-WIZ-011] back button is NOT rendered on step 1', () => {
@@ -832,7 +824,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     })
   })
 
-  it('[4.1b-WIZ-013] clicking back button returns to previous unit with submitted XP value (default=previousXpGained)', async () => {
+  it('[4.1b-WIZ-013] clicking back button returns to previous unit with saved checkbox state', async () => {
     const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 11 } })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
 
@@ -848,7 +840,8 @@ describe('PostMatchWizard — back button (previous unit)', () => {
       />
     )
 
-    // Step 1: XP pre-filled to 3 (previousXpGained), advance without changing
+    // Step 1: check deployed checkbox then advance
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
@@ -858,15 +851,15 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     // Click back
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
-    // Should show step 1 again with the submitted value (3, same as previousXpGained)
+    // Should show step 1 with deployed checkbox still checked
     await waitFor(() => {
       expect(screen.getByTestId('wizard-progress').textContent).toMatch(/1\s*\/\s*3/)
       expect(screen.getByTestId('wizard-unit-name').textContent).toContain('Hallebardiers')
-      expect((screen.getByTestId('wizard-xp-input') as HTMLInputElement).value).toBe('3')
+      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
     })
   })
 
-  it('[4.1b-WIZ-013b] back button pre-fills with user-entered XP, not previousXpGained', async () => {
+  it('[4.1b-WIZ-013b] back button restores checked conditions, not previousXpGained hint', async () => {
     const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 12 } })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
 
@@ -882,23 +875,26 @@ describe('PostMatchWizard — back button (previous unit)', () => {
       />
     )
 
-    // Step 1: change XP from 3 (previousXpGained) to 7, then advance
-    fireEvent.change(screen.getByTestId('wizard-xp-input'), { target: { value: '7' } })
+    // Step 1: check deployed + survived, then advance
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('xp-condition-survived'))
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
       expect(screen.getByTestId('wizard-progress').textContent).toMatch(/2\s*\/\s*3/)
     })
 
-    // Click back — should show 7, not 3
+    // Click back — checkboxes should be restored, hint should NOT show
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
     await waitFor(() => {
-      expect((screen.getByTestId('wizard-xp-input') as HTMLInputElement).value).toBe('7')
+      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-survived') as HTMLInputElement).checked).toBe(true)
+      expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
     })
   })
 
-  it('[4.1b-WIZ-013c] back + change + advance re-submits to DB, and second back shows updated value', async () => {
+  it('[4.1b-WIZ-013c] back + change checkboxes + advance re-submits to DB, second back shows updated state', async () => {
     const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 7 } })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
 
@@ -914,8 +910,9 @@ describe('PostMatchWizard — back button (previous unit)', () => {
       />
     )
 
-    // Step 1: enter 2, advance
-    fireEvent.change(screen.getByTestId('wizard-xp-input'), { target: { value: '2' } })
+    // Step 1: check deployed + survived (2 XP), advance
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('xp-condition-survived'))
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
@@ -926,11 +923,12 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     // Back to step 1
     fireEvent.click(screen.getByTestId('wizard-back-button'))
     await waitFor(() => {
-      expect((screen.getByTestId('wizard-xp-input') as HTMLInputElement).value).toBe('2')
+      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
     })
 
-    // Change to 0, advance again
-    fireEvent.change(screen.getByTestId('wizard-xp-input'), { target: { value: '0' } })
+    // Uncheck both, advance again (0 XP)
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('xp-condition-survived'))
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
@@ -941,10 +939,10 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     expect(onSubmitUnitXp).toHaveBeenCalledTimes(2)
     expect(onSubmitUnitXp).toHaveBeenLastCalledWith('unit-1', 0, PARTICIPANT_ID)
 
-    // Back again — should show 0
+    // Back again — should show no checkboxes checked
     fireEvent.click(screen.getByTestId('wizard-back-button'))
     await waitFor(() => {
-      expect((screen.getByTestId('wizard-xp-input') as HTMLInputElement).value).toBe('0')
+      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(false)
     })
   })
 
@@ -1098,5 +1096,313 @@ describe('PostMatchWizard — cancel button (red ✕)', () => {
 
     // Still visible on step 2
     expect(screen.getByTestId('wizard-cancel-button')).not.toBeNull()
+  })
+})
+
+// ===========================================================================
+// XP Checkboxes — New tests for checkbox-based XP entry
+// ===========================================================================
+
+describe('PostMatchWizard — XP checkboxes behavior', () => {
+  const characterUnits = [
+    { id: 'char-1', name: 'Seigneur de Guerre', type: 'Personnages', xp: 20 },
+  ]
+  const infantryUnits = [
+    { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 5 },
+  ]
+
+  it('[XP-CB-001] character unit shows character-specific conditions (general_win, exploits)', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={characterUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('xp-condition-deployed')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-alive')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-general_win')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-general_draw')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-exploit_duel')).not.toBeNull()
+    // Should NOT show unit-specific conditions
+    expect(screen.queryByTestId('xp-condition-survived')).toBeNull()
+    expect(screen.queryByTestId('xp-condition-feat_destroy_unit')).toBeNull()
+  })
+
+  it('[XP-CB-002] non-character unit shows unit-specific conditions (survived, feats)', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={infantryUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('xp-condition-deployed')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-survived')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-feat_destroy_unit')).not.toBeNull()
+    // Should NOT show character-specific conditions
+    expect(screen.queryByTestId('xp-condition-general_win')).toBeNull()
+    expect(screen.queryByTestId('xp-condition-exploit_duel')).toBeNull()
+  })
+
+  it('[XP-CB-003] checking a condition updates the displayed total', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={infantryUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('0')
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('1')
+    fireEvent.click(screen.getByTestId('xp-condition-survived'))
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
+  })
+
+  it('[XP-CB-004] back button restores previously checked conditions + correct XP submitted', async () => {
+    const twoUnits = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 5 },
+      { id: 'unit-2', name: 'Chevaliers', type: 'Cavalerie', xp: 10 },
+    ]
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 7 } })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={twoUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('xp-condition-survived'))
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    // F8: assert submitted XP value is correct (deployed + survived = 2)
+    await waitFor(() => {
+      expect(onSubmitUnitXp).toHaveBeenCalledWith('unit-1', 2, PARTICIPANT_ID)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-progress').textContent).toMatch(/2\s*\/\s*2/)
+    })
+
+    fireEvent.click(screen.getByTestId('wizard-back-button'))
+
+    await waitFor(() => {
+      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-survived') as HTMLInputElement).checked).toBe(true)
+      expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
+    })
+  })
+
+  it('[XP-CB-005] re-entry shows "Précédemment" hint when previousXpGained is set', () => {
+    const unitsReEntry = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
+    ]
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={unitsReEntry}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('wizard-previous-xp').textContent).toContain('3 XP')
+  })
+
+  it('[XP-CB-006] re-entry warning appears when previousXpGained > 0 and total is 0', () => {
+    const unitsReEntry = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
+    ]
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={unitsReEntry}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const warning = screen.getByTestId('wizard-xp-warning')
+    expect(warning.textContent).toContain('3 XP')
+    expect(warning.textContent).toContain('0 XP')
+  })
+
+  it('[XP-CB-007] total XP is correctly summed — general_win gives +2', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={characterUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('xp-condition-general_win'))
+    // deployed(1) + general_win(2) = 3
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('3')
+  })
+
+  it('[XP-CB-008] general_win and general_draw are mutually exclusive (radio)', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={characterUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByTestId('xp-condition-general_win'))
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
+
+    fireEvent.click(screen.getByTestId('xp-condition-general_draw'))
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('1')
+    expect((screen.getByTestId('xp-condition-general_win') as HTMLInputElement).checked).toBe(false)
+    expect((screen.getByTestId('xp-condition-general_draw') as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('[XP-CB-009] re-entry + advance + back: hint disappears, checkboxes restored', async () => {
+    const units = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
+      { id: 'unit-2', name: 'Chevaliers', type: 'Cavalerie', xp: 15, previousXpGained: 5 },
+    ]
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 9 } })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={units}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />
+    )
+
+    // Hint should show on entry
+    expect(screen.getByTestId('wizard-previous-xp')).not.toBeNull()
+
+    // Check deployed then advance
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-progress').textContent).toMatch(/2\s*\/\s*2/)
+    })
+
+    // Go back — saved state takes priority, hint should NOT show
+    fireEvent.click(screen.getByTestId('wizard-back-button'))
+
+    await waitFor(() => {
+      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
+      expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
+    })
+  })
+
+  it('[XP-CB-010] accessibility: role="group" with aria-label is present', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={infantryUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const group = screen.getByRole('group', { name: /conditions d'xp/i })
+    expect(group).not.toBeNull()
+  })
+
+  it('[XP-CB-011] accessibility: role="radiogroup" wraps general conditions for characters', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={characterUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const radiogroup = screen.getByRole('radiogroup', { name: /général/i })
+    expect(radiogroup).not.toBeNull()
+  })
+
+  it('[XP-CB-012] re-entry warning disappears when a checkbox is checked', () => {
+    const unitsReEntry = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
+    ]
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={unitsReEntry}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    // Warning should be visible initially
+    expect(screen.getByTestId('wizard-xp-warning')).not.toBeNull()
+
+    // Check a condition — total > 0, warning should disappear
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    expect(screen.queryByTestId('wizard-xp-warning')).toBeNull()
+  })
+
+  it('[XP-CB-013] mixed army: character shows character conditions, then unit shows unit conditions', async () => {
+    const mixedUnits = [
+      { id: 'char-1', name: 'Seigneur de Guerre', type: 'Personnages', xp: 20 },
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 5 },
+    ]
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'char-1', newXp: 22 } })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={mixedUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />
+    )
+
+    // Step 1: character — should show character conditions
+    expect(screen.getByTestId('xp-condition-general_win')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-alive')).not.toBeNull()
+    expect(screen.queryByTestId('xp-condition-survived')).toBeNull()
+
+    // Advance to step 2
+    fireEvent.click(screen.getByTestId('xp-condition-deployed'))
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-unit-name').textContent).toContain('Hallebardiers')
+    })
+
+    // Step 2: unit — should show unit conditions, not character conditions
+    expect(screen.getByTestId('xp-condition-survived')).not.toBeNull()
+    expect(screen.getByTestId('xp-condition-feat_destroy_unit')).not.toBeNull()
+    expect(screen.queryByTestId('xp-condition-general_win')).toBeNull()
+    expect(screen.queryByTestId('xp-condition-alive')).toBeNull()
   })
 })

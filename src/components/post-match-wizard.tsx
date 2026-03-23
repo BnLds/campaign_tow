@@ -4,6 +4,7 @@
 // Story 4.3: 3-phase flow — XP+flags (Phase 1) → consequences (Phase 1.5) → tier-ups (Phase 2)
 
 import { useState, useRef, useEffect } from 'react'
+import { getXpConditionsForType, computeXpTotal } from '../lib/xp-conditions'
 import { TierUpStep } from './tier-up-step'
 import { InjuryBonusStep } from './injury-bonus-step'
 import { UnitDestructionStep } from './unit-destruction-step'
@@ -103,7 +104,8 @@ export function PostMatchWizard({
 
   // Phase 1 state
   const [currentStep, setCurrentStep] = useState(0)
-  const [xpGained, setXpGained] = useState(0)
+  const [checkedConditions, setCheckedConditions] = useState<Set<string>>(new Set())
+  const [showPreviousXpHint, setShowPreviousXpHint] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -145,19 +147,21 @@ export function PostMatchWizard({
     setIsChampionKilledChecked(championFlagsRef.current.get(unitId) ?? false)
   }, [currentStep, units])
 
-  // Pre-fill XP input from previousXpGained when step changes (AC2)
+  // Track checked condition IDs per step (for back-button pre-fill)
+  const submittedXpByStep = useRef<Map<number, Set<string>>>(new Map())
+
+  // Pre-fill XP checkboxes from saved state or show previous XP hint on re-entry
   useEffect(() => {
-    const submitted = submittedXpByStep.current.get(currentStep)
-    if (submitted !== undefined) {
-      setXpGained(submitted)
+    const saved = submittedXpByStep.current.get(currentStep)
+    if (saved !== undefined) {
+      setCheckedConditions(new Set(saved))
+      setShowPreviousXpHint(false)
     } else {
+      setCheckedConditions(new Set())
       const prevXp = (units[currentStep] as typeof units[0] | undefined)?.previousXpGained
-      setXpGained(prevXp ?? 0)
+      setShowPreviousXpHint(prevXp != null && prevXp > 0)
     }
   }, [currentStep, units])
-
-  // Track XP values entered by the player per step (for back-button pre-fill)
-  const submittedXpByStep = useRef<Map<number, number>>(new Map())
   // Fix 2 — synchronous guard against double-click race condition
   const submittingRef = useRef(false)
   // Fix 1 — track already-submitted units to prevent double XP on retry
@@ -205,6 +209,7 @@ export function PostMatchWizard({
   }
 
   const currentUnit = units[currentStep]
+  const xpGained = currentUnit ? computeXpTotal(checkedConditions, currentUnit.type) : 0
   const isLastXpStep = currentStep === units.length - 1
   const total = units.length
 
@@ -381,6 +386,8 @@ export function PostMatchWizard({
       }
 
       if (isLastXpStep) {
+        // Save last step's checked conditions (for back-nav from Phase 1.5)
+        submittedXpByStep.current.set(currentStep, new Set(checkedConditions))
         // All XP entered — compute flagged units for Phase 1.5
         const characters = units.filter((u) => u.type === 'Personnages' && consequenceFlagsRef.current.get(u.id))
         const unitsFlagged = units.filter((u) => u.type !== 'Personnages' && consequenceFlagsRef.current.get(u.id))
@@ -398,8 +405,8 @@ export function PostMatchWizard({
           await transitionToPhase2OrComplete()
         }
       } else {
-        // Record the submitted XP value for this step (for back-button pre-fill)
-        submittedXpByStep.current.set(currentStep, xpGained)
+        // Record the checked conditions for this step (for back-button pre-fill)
+        submittedXpByStep.current.set(currentStep, new Set(checkedConditions))
         // Advance to next unit — useEffect on [currentStep] handles xpGained pre-fill
         setCurrentStep((prev) => prev + 1)
         setIsSubmitting(false)
@@ -1083,45 +1090,222 @@ export function PostMatchWizard({
         </p>
       </div>
 
-      {/* XP input */}
+      {/* XP checkboxes */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <label
-          htmlFor="wizard-xp-input"
+        <p
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.875rem',
             color: 'var(--color-text-primary)',
+            margin: 0,
           }}
         >
           XP gagné lors de cette partie
-        </label>
-        <input
-          id="wizard-xp-input"
-          data-testid="wizard-xp-input"
-          type="number"
-          inputMode="numeric"
-          step="1"
-          pattern="[0-9]*"
-          min={0}
-          max={99}
-          value={xpGained}
-          onChange={(e) => {
-            // Fix 5 — clamp value to prevent NaN from non-numeric input
-            const val = Number(e.target.value)
-            setXpGained(isNaN(val) ? 0 : Math.max(0, Math.min(99, Math.floor(val))))
-          }}
+        </p>
+
+        {showPreviousXpHint && currentUnit.previousXpGained != null && (
+          <>
+            <p
+              data-testid="wizard-previous-xp"
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.8rem',
+                color: 'var(--color-info)',
+                margin: 0,
+              }}
+            >
+              Précédemment : {currentUnit.previousXpGained} XP
+            </p>
+            {currentUnit.previousXpGained > 0 && xpGained === 0 && (
+              <p
+                data-testid="wizard-xp-warning"
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.8rem',
+                  color: 'var(--color-malus)',
+                  margin: 0,
+                }}
+              >
+                Attention : vous aviez précédemment gagné {currentUnit.previousXpGained} XP. Soumettre 0 XP remplacera cette valeur.
+              </p>
+            )}
+          </>
+        )}
+
+        <div data-testid="wizard-xp-checkboxes" role="group" aria-label="Conditions d'XP">
+          {(() => {
+            const conditions = getXpConditionsForType(currentUnit.type)
+            const baseConditions = conditions.filter((c) => c.group === 'base')
+            const generalConditions = conditions.filter((c) => c.group === 'general')
+            const exploitOrFeatConditions = conditions.filter((c) => c.group === 'exploit' || c.group === 'feat')
+            const exploitFeatLabel = currentUnit.type === 'Personnages' ? 'Exploits' : 'Faits d\'armes'
+
+            const toggleCondition = (id: string) => {
+              setCheckedConditions((prev) => {
+                const next = new Set(prev)
+                next.has(id) ? next.delete(id) : next.add(id)
+                return next
+              })
+            }
+
+            const selectRadio = (id: string) => {
+              setCheckedConditions((prev) => {
+                const next = new Set(prev)
+                // Remove all general conditions first
+                for (const gc of generalConditions) next.delete(gc.id)
+                // Add selected one (if not "none")
+                if (id !== 'general_none') next.add(id)
+                return next
+              })
+            }
+
+            const isGeneralNoneSelected = !generalConditions.some((gc) => checkedConditions.has(gc.id))
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {baseConditions.map((c) => (
+                  <label
+                    key={c.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.85rem',
+                      color: 'var(--color-text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      data-testid={`xp-condition-${c.id}`}
+                      type="checkbox"
+                      checked={checkedConditions.has(c.id)}
+                      onChange={() => toggleCondition(c.id)}
+                      style={{ marginTop: '0.15rem' }}
+                    />
+                    <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                  </label>
+                ))}
+
+                {generalConditions.length > 0 && (
+                  <fieldset
+                    role="radiogroup"
+                    aria-label="Résultat en tant que général"
+                    style={{
+                      border: 'none',
+                      margin: 0,
+                      padding: '0.25rem 0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    {generalConditions.map((c) => (
+                      <label
+                        key={c.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: '0.85rem',
+                          color: 'var(--color-text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          data-testid={`xp-condition-${c.id}`}
+                          type="radio"
+                          name="general_result"
+                          checked={checkedConditions.has(c.id)}
+                          onChange={() => selectRadio(c.id)}
+                          style={{ marginTop: '0.15rem' }}
+                        />
+                        <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                      </label>
+                    ))}
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.5rem',
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.85rem',
+                        color: 'var(--color-text-secondary)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        data-testid="xp-condition-general_none"
+                        type="radio"
+                        name="general_result"
+                        checked={isGeneralNoneSelected}
+                        onChange={() => selectRadio('general_none')}
+                        style={{ marginTop: '0.15rem' }}
+                      />
+                      <span>Aucun (pas le général)</span>
+                    </label>
+                  </fieldset>
+                )}
+
+                {exploitOrFeatConditions.length > 0 && (
+                  <>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: 'var(--color-text-primary)',
+                        margin: '0.25rem 0 0 0',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                      }}
+                    >
+                      {exploitFeatLabel}
+                    </p>
+                    {exploitOrFeatConditions.map((c) => (
+                      <label
+                        key={c.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: '0.85rem',
+                          color: 'var(--color-text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          data-testid={`xp-condition-${c.id}`}
+                          type="checkbox"
+                          checked={checkedConditions.has(c.id)}
+                          onChange={() => toggleCondition(c.id)}
+                          style={{ marginTop: '0.15rem' }}
+                        />
+                        <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                      </label>
+                    ))}
+                  </>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+
+        <p
+          data-testid="wizard-xp-total"
+          aria-live="polite"
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: '1rem',
-            padding: '0.5rem 0.75rem',
-            border: '1px solid #e0d5c8',
-            borderRadius: '6px',
-            background: '#fffbf5',
+            fontWeight: 600,
             color: 'var(--color-text-primary)',
-            width: '100%',
-            boxSizing: 'border-box',
+            margin: '0.25rem 0 0 0',
           }}
-        />
+        >
+          Total : {xpGained} XP
+        </p>
       </div>
 
       {/* Consequence toggle — MHC for characters, Détruite for units (AC1, AC12) */}
