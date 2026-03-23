@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { useHydrated } from '../../lib/useHydrated'
 import { authMiddleware, armyOwnerMiddleware } from '../../lib/middleware'
 import { UnitCard } from '../../components/unit-card'
+import { AddUnitsSheet } from '../../components/add-units-sheet'
 import { UnitEditPanel } from '../../components/unit-edit-panel'
 import { composeUnitView } from '../../lib/delta-composer'
 import { calculateTier } from '../../lib/tier'
@@ -326,6 +327,14 @@ function ArmyView() {
   const hydrated = useHydrated()
   const router = useRouter()
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null)
+  const [addUnitsOpen, setAddUnitsOpen] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!successMessage) return
+    const timer = setTimeout(() => setSuccessMessage(null), 10_000)
+    return () => clearTimeout(timer)
+  }, [successMessage])
 
   useEffect(() => {
     if (hydrated) {
@@ -406,6 +415,59 @@ function ArmyView() {
           {army.player && ` — ${army.player.displayName}`}
         </p>
       </div>
+
+      {/* Success toast — auto-dismiss after 10s */}
+      {successMessage && (
+        <div
+          data-testid="add-units-success"
+          style={{
+            padding: '0.625rem 1rem',
+            borderRadius: '0.375rem',
+            background: 'var(--color-bonus-bg)',
+            color: 'var(--color-bonus)',
+            border: '1px solid var(--color-bonus)',
+            fontSize: '0.875rem',
+            fontFamily: 'var(--font-body)',
+            marginBottom: '1rem',
+          }}
+        >
+          {successMessage}
+        </div>
+      )}
+
+      {/* Add units button — owner only */}
+      {isOwner && (
+        <button
+          data-testid="add-units-button"
+          onClick={() => setAddUnitsOpen(true)}
+          style={{
+            background: '#334155',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '0.5rem 1rem',
+            fontFamily: 'var(--font-body)',
+            fontWeight: 600,
+            fontSize: '0.8125rem',
+            cursor: 'pointer',
+            width: '100%',
+            marginBottom: '1.5rem',
+          }}
+        >
+          Ajouter des unités
+        </button>
+      )}
+
+      <AddUnitsSheet
+        armyId={army.id}
+        open={addUnitsOpen}
+        onClose={() => setAddUnitsOpen(false)}
+        onSuccess={async (unitCount) => {
+          setSuccessMessage(`${unitCount} unité${unitCount > 1 ? 's' : ''} ajoutée${unitCount > 1 ? 's' : ''}`)
+          await handleMutationSuccess()
+          setAddUnitsOpen(false)
+        }}
+      />
 
       {/* Units grouped by type */}
       {groups.map(({ type, cards }) => (

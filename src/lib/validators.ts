@@ -147,6 +147,38 @@ export const completeEvolutionsWithGainsSchema = z.object({
 export type CompleteEvolutionsWithGainsInput = z.infer<typeof completeEvolutionsWithGainsSchema>
 export type ConsequenceEntry = NonNullable<CompleteEvolutionsWithGainsInput['consequences']>[number]
 
+// Incremental unit import — structured data schema
+// Source of truth for field shapes: ParsedUnit / ParsedSubProfile in owb-parser.ts
+const addUnitsSubProfileSchema = z.object({
+  label: z.string().max(100),
+  isMount: z.boolean(),
+  m: z.string().max(10).nullable(),
+  cc: z.string().max(10).nullable(),
+  ct: z.string().max(10).nullable(),
+  f: z.string().max(10).nullable(),
+  e: z.string().max(10).nullable(),
+  pv: z.string().max(10).nullable(),
+  i: z.string().max(10).nullable(),
+  a: z.string().max(10).nullable(),
+  cd: z.string().max(10).nullable(),
+})
+
+const addUnitsUnitSchema = z.object({
+  name: z.string().max(200),
+  type: z.string().max(100),
+  points: z.number().int().min(0).max(9999),
+  modelCount: z.number().int().min(1).max(999).nullable(),
+  specialRules: z.string().max(2000).nullable(),
+  options: z.string().max(2000).nullable(),
+  subProfiles: z.array(addUnitsSubProfileSchema).max(20),
+})
+
+export const addUnitsToArmySchema = z.object({
+  armyId: z.string().min(1),
+  units: z.array(addUnitsUnitSchema).min(1).max(100),
+})
+export type AddUnitsToArmyInput = z.infer<typeof addUnitsToArmySchema>
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),
