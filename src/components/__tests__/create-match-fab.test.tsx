@@ -148,7 +148,7 @@ describe('[AC2][P0] CreateMatchFab — opens dialog on click (Task 1.3, 8.2)', (
   it('[3.2-FAB-016] create-match-fab.tsx uses useState for dialog open/close state (Task 1.4)', () => {
     // AC: 2
     const code = getFab()
-    expect(code).toMatch(/useState[\s\S]{0,200}(open|dialog|isOpen)/)
+    expect(code).toMatch(/const \[open, setOpen\] = useState/)
   })
 
   it('[3.2-FAB-017] CreateMatchFab uses Shadcn Dialog component', () => {

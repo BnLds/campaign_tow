@@ -12,9 +12,9 @@ function getRootTsx() {
   return readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
 }
 
-describe('[AC1][AC8] Root — getPlayerArmyInfoFn server function', () => {
-  it('defines getPlayerArmyInfoFn as a createServerFn', () => {
-    const code = getRootTsx()
+describe('[AC1][AC8] Root — getPlayerArmyInfoFn server function (moved to session-queries.ts)', () => {
+  it('defines getPlayerArmyInfoFn as a createServerFn in session-queries.ts', () => {
+    const code = readFileSync(resolve(root, 'src/lib/session-queries.ts'), 'utf-8')
     expect(code).toMatch(/const getPlayerArmyInfoFn\s*=\s*createServerFn/)
   })
 })
@@ -25,10 +25,10 @@ describe('[AC1][AC8] Root — beforeLoad returns army and record', () => {
     expect(code).toMatch(/return\s*\{[^}]*session[^}]*army[^}]*record/)
   })
 
-  it('beforeLoad catches army loading errors gracefully', () => {
+  it('beforeLoad loads army info via ensureQueryData(armyInfoQueryOptions)', () => {
     const code = getRootTsx()
-    // The try/catch pattern wraps getPlayerArmyInfoFn — both must appear in beforeLoad
-    expect(code).toMatch(/try\s*\{[\s\S]*getPlayerArmyInfoFn[\s\S]*\}\s*catch/)
+    // Error handling is now delegated to TanStack Query (retry + error boundaries)
+    expect(code).toMatch(/ensureQueryData\(armyInfoQueryOptions\(/)
   })
 })
 
