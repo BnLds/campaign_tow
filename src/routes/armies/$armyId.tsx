@@ -334,6 +334,7 @@ function ArmyView() {
   }, [hydrated])
 
   const groups = groupUnitsByType(unitCards)
+  const totalXp = unitCards.reduce((sum, c) => sum + c.unit.xp, 0)
 
   const handleMutationSuccess = async () => {
     await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
@@ -372,10 +373,33 @@ function ArmyView() {
               fontSize: '1.5rem',
               color: 'var(--color-text-primary)',
               margin: 0,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             {army.name}
           </h1>
+          {unitCards.length > 0 && (
+            <span
+              data-testid="army-total-xp"
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                color: 'var(--color-gold)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-gold)',
+                borderRadius: 999,
+                padding: '0.125rem 0.5rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              {totalXp} XP
+            </span>
+          )}
         </div>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
           {army.faction}
