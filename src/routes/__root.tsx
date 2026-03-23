@@ -1,6 +1,5 @@
 import {
   HeadContent,
-  Link,
   Outlet,
   Scripts,
   createRootRouteWithContext,
@@ -11,7 +10,7 @@ import {
 } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import { TabBar } from '../components/tab-bar'
 import { CreateMatchFab } from '../components/create-match-fab'
@@ -19,6 +18,8 @@ import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 import type { SessionData } from '../lib/auth'
 import { sessionQueryOptions, armyInfoQueryOptions } from '../lib/session-queries'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
+import { Menu } from 'lucide-react'
 
 // Server function: clears session server-side (cookie + DB row).
 // Dynamic import pattern (import-protection) — do NOT throw redirect here;
@@ -129,6 +130,30 @@ function AppHeader({
   const router = useRouter()
   const queryClient = useQueryClient()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [optionsOpen, setOptionsOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [menuOpen])
+
+  const prevMenuOpen = useRef(false)
+  useEffect(() => {
+    if (menuOpen) {
+      const firstItem = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')
+      firstItem?.focus()
+    } else if (prevMenuOpen.current) {
+      hamburgerRef.current?.focus()
+    }
+    prevMenuOpen.current = menuOpen
+  }, [menuOpen])
 
   const handleLogout = async () => {
     if (loggingOut) return
@@ -165,6 +190,7 @@ function AppHeader({
   }
 
   return (
+    <>
     <header
       style={{
         display: 'flex',
@@ -206,45 +232,170 @@ function AppHeader({
               <span>{army.faction}</span>
               {record && formatRecord()}
             </div>
-            <Link
-              to="/armies/$armyId"
-              params={{ armyId: army.id }}
-              style={{ color: 'var(--color-brand)', fontSize: 11 }}
-            >
-              Voir le détail
-            </Link>
           </>
         ) : (
-          <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-            {session.isGuest ? 'Invité' : session.displayName}
+          <span style={{
+            fontFamily: session.isGuest ? 'var(--font-body)' : 'var(--font-display)',
+            fontSize: session.isGuest ? '0.875rem' : 16,
+            fontWeight: session.isGuest ? 400 : 700,
+            color: session.isGuest ? 'var(--color-text-secondary)' : 'var(--color-text-primary)',
+          }}>
+            {session.isGuest ? 'Invité' : 'Campaign TOW'}
           </span>
         )}
       </div>
 
       {/* Right block: account + actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', flexShrink: 0, marginLeft: 12 }}>
-        {army && (
-          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-            {session.displayName}
-          </span>
-        )}
-        {session.isGuest ? (
+      {session.isGuest ? (
+        <div style={{ flexShrink: 0, marginLeft: 12 }}>
           <button data-testid="login-button" onClick={handleLogout} disabled={loggingOut} style={btnStyle}>
             {loggingOut ? 'Connexion…' : 'Se connecter'}
           </button>
-        ) : (
-          <button data-testid="logout-button" onClick={handleLogout} disabled={loggingOut} style={btnStyle}>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 12, position: 'relative' }}>
+          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+            {session.displayName}
+          </span>
+          <button
+            ref={hamburgerRef}
+            data-testid="hamburger-button"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
+            aria-label="Menu"
+            onClick={() => setMenuOpen((prev) => !prev)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          >
+            <Menu size={20} color="var(--color-brand)" />
+          </button>
+          {menuOpen && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setMenuOpen(false)} />
+              <div
+                ref={menuRef}
+                role="menu"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '100%',
+                  zIndex: 10,
+                  marginTop: 4,
+                  minWidth: 180,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  overflow: 'hidden',
+                }}
+              >
+                <button
+                  role="menuitem"
+                  data-testid="my-army-link"
+                  disabled={!army}
+                  aria-disabled={!army}
+                  onClick={() => {
+                    if (!army) return
+                    setMenuOpen(false)
+                    router.navigate({ to: '/armies/$armyId', params: { armyId: army.id } })
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 14px',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: '1px solid var(--color-border)',
+                    cursor: army ? 'pointer' : 'default',
+                    fontSize: '0.875rem',
+                    color: army ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+                    fontFamily: 'var(--font-body)',
+                    opacity: army ? 1 : 0.5,
+                  }}
+                >
+                  Voir mon armee
+                </button>
+                {session.isAdmin && (
+                  <button
+                    role="menuitem"
+                    data-testid="admin-link"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      router.navigate({ to: '/admin' })
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 14px',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: '1px solid var(--color-border)',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      color: 'var(--color-text-primary)',
+                      fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    Administration
+                  </button>
+                )}
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setOptionsOpen(true)
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 14px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    color: 'var(--color-text-primary)',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  Options
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </header>
+    <Dialog open={optionsOpen} onOpenChange={(isOpen) => { if (!isOpen) setOptionsOpen(false) }}>
+      <DialogContent style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', maxWidth: 340 }}>
+        <DialogHeader>
+          <DialogTitle style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}>
+            Options
+          </DialogTitle>
+        </DialogHeader>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem' }}>
+          <button
+            data-testid="logout-button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            style={{
+              background: 'var(--color-malus)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              padding: '0.625rem 1rem',
+              fontSize: '0.875rem',
+              fontFamily: 'var(--font-body)',
+              fontWeight: 600,
+              cursor: loggingOut ? 'not-allowed' : 'pointer',
+              opacity: loggingOut ? 0.7 : 1,
+              width: '100%',
+            }}
+          >
             {loggingOut ? 'Déconnexion…' : 'Se déconnecter'}
           </button>
-        )}
-        {session.isAdmin && (
-          <a href="/admin" data-testid="admin-link"
-            onClick={(e) => { e.preventDefault(); router.navigate({ to: '/admin' }) }}
-            style={{ color: 'var(--color-brand)', fontSize: '0.875rem', textDecoration: 'none' }}
-          >Administration</a>
-        )}
-      </div>
-    </header>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 

@@ -54,15 +54,42 @@ describe('[AC1][AC7] AppHeader — faction + record subtitle', () => {
   })
 })
 
-describe('[AC1] AppHeader — "Voir le détail" link to army', () => {
-  it('AppHeader contains Link to /armies/$armyId', () => {
+describe('[AC-HM] AppHeader — hamburger menu', () => {
+  it('renders hamburger button with data-testid', () => {
     const code = getRootTsx()
-    expect(code).toMatch(/Link[\s\S]{0,200}\/armies\/\$armyId/)
+    expect(code).toContain('data-testid="hamburger-button"')
   })
 
-  it('AppHeader shows "Voir le détail" text', () => {
+  it('imports Menu icon from lucide-react', () => {
     const code = getRootTsx()
-    expect(code).toContain('Voir le détail')
+    expect(code).toMatch(/import\s*\{[^}]*Menu[^}]*\}\s*from\s*['"]lucide-react['"]/)
+  })
+
+  it('renders "Voir mon armee" as a menuitem with data-testid', () => {
+    const code = getRootTsx()
+    expect(code).toMatch(/role="menuitem"[\s\S]{0,80}data-testid="my-army-link"/)
+    expect(code).toContain('Voir mon armee')
+  })
+
+  it('hamburger button has aria-expanded and aria-haspopup', () => {
+    const code = getRootTsx()
+    expect(code).toMatch(/data-testid="hamburger-button"[\s\S]{0,100}aria-expanded/)
+    expect(code).toContain('aria-haspopup="true"')
+  })
+
+  it('imports Dialog from shadcn ui for Options modal', () => {
+    const code = getRootTsx()
+    expect(code).toMatch(/import\s*\{[^}]*Dialog[^}]*\}\s*from\s*['"]\.\.\/components\/ui\/dialog['"]/)
+  })
+
+  it('Options modal contains logout button with --color-malus', () => {
+    const code = getRootTsx()
+    expect(code).toMatch(/DialogTitle[\s\S]{0,300}Options[\s\S]{0,500}data-testid="logout-button"[\s\S]{0,300}color-malus/)
+  })
+
+  it('dropdown has role="menu"', () => {
+    const code = getRootTsx()
+    expect(code).toContain('role="menu"')
   })
 })
 
@@ -98,8 +125,4 @@ describe('[AC6] CampaignView — no duplicate army header in body', () => {
     expect(indexCode).not.toMatch(/army\.name[\s\S]{0,50}<\/h1>/)
   })
 
-  it('index.tsx does NOT contain "Voir le détail" link', () => {
-    const indexCode = readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
-    expect(indexCode).not.toContain('Voir le détail')
-  })
 })

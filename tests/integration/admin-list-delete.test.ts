@@ -27,8 +27,8 @@ const root = resolve(__dirname, '../..')
 describe('[AC1][P0] Admin link in AppHeader — src/routes/__root.tsx', () => {
   it('[1.6-INT-001] __root.tsx renders "Administration" link gated behind session.isAdmin (absent from DOM for non-admin)', () => {
     const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    // session.isAdmin condition and Administration text must be coupled — link absent from DOM for non-admin
-    expect(rootTsx).toMatch(/session\.isAdmin[\s\S]{0,300}Administration/)
+    // session.isAdmin condition and admin-link testid must be coupled — absent from DOM for non-admin
+    expect(rootTsx).toMatch(/session\.isAdmin[\s\S]{0,100}data-testid="admin-link"/)
   })
 
   it('[1.6-INT-002] Administration link has data-testid="admin-link" (E2E selector contract)', () => {

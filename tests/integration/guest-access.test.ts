@@ -149,10 +149,12 @@ describe('[AC6][P0] Session action button for guest — src/routes/__root.tsx', 
     expect(rootTsx).toMatch(/session\.isGuest[\s\S]{0,400}login-button/)
   })
 
-  it('[1.7-INT-016] AppHeader login-button and logout-button are mutually exclusive — both present in the same isGuest ternary', () => {
+  it('[1.7-INT-016] AppHeader login-button is in the isGuest branch, logout-button is in the Options modal', () => {
     const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    // Both buttons must exist in the same ternary block driven by isGuest — coupled assertion
-    expect(rootTsx).toMatch(/isGuest[\s\S]{0,400}login-button[\s\S]{0,400}logout-button/)
+    // login-button is rendered for guests via isGuest ternary
+    expect(rootTsx).toMatch(/session\.isGuest[\s\S]{0,300}login-button/)
+    // logout-button is in the Options Dialog modal (not in isGuest branch)
+    expect(rootTsx).toMatch(/DialogTitle[\s\S]{0,500}logout-button/)
   })
 })
 
