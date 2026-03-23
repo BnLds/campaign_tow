@@ -111,7 +111,8 @@ function LoginPage() {
     setErrorMessage(null)
     try {
       await guestLoginFn()
-      queryClient.invalidateQueries({ queryKey: ['session'] })
+      queryClient.clear()
+      await router.invalidate()
       await router.navigate({ to: '/' })
     } catch {
       setErrorMessage('Erreur lors de la connexion invité')
@@ -134,7 +135,8 @@ function LoginPage() {
         return
       }
 
-      queryClient.invalidateQueries({ queryKey: ['session'] })
+      queryClient.clear()
+      await router.invalidate()
       await router.navigate({ to: result.data.redirect as '/' })
     },
   })

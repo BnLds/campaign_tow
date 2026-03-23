@@ -1,5 +1,5 @@
 import { createFileRoute, useRouteContext, useRouter, Link } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { useState, useEffect } from 'react'
 import { useHydrated } from '../lib/useHydrated'
@@ -11,6 +11,7 @@ import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
 import type { TimelineEntryData, PendingMatchData } from '../db/queries'
 import { updateDisplayNameSchema, submitMatchResultSchema, toValidResult } from '../lib/validators'
+import { sessionQueryOptions } from '../lib/session-queries'
 
 const markWelcomeSeenFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -90,7 +91,11 @@ function CampaignView() {
   const router = useRouter()
   const context = useRouteContext({ from: '__root__' })
   const { session } = context
-  const [modalOpen, setModalOpen] = useState(session?.hasSeenWelcome === false)
+  // Reactive session: detects hasSeenWelcome changes from cache invalidation
+  const { data: sessionQuery } = useQuery(sessionQueryOptions())
+  const hasSeenWelcome = sessionQuery?.hasSeenWelcome ?? session?.hasSeenWelcome ?? true
+  const [modalDismissed, setModalDismissed] = useState(false)
+  const modalOpen = !hasSeenWelcome && !modalDismissed
   const [resultPickerMatchId, setResultPickerMatchId] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
   const hydrated = useHydrated()
@@ -106,9 +111,8 @@ function CampaignView() {
     try {
       await markWelcomeSeenFn()
     } finally {
-      setModalOpen(false)
-      queryClient.invalidateQueries({ queryKey: ['session'] })
-      await router.invalidate({ filter: (d) => d.routeId === '__root__' })
+      setModalDismissed(true)
+      await queryClient.invalidateQueries({ queryKey: ['session'] })
     }
   }
 

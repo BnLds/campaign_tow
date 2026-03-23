@@ -10,7 +10,7 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import { TabBar } from '../components/tab-bar'
@@ -71,9 +71,19 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootLayout() {
-  const { session, army, record } = useRouteContext({ from: '__root__' })
+  const { session } = useRouteContext({ from: '__root__' })
   const location = useLocation()
   const currentPath = location.pathname
+
+  // Reactive queries: subscribe to cache so header updates on invalidation
+  // (beforeLoad only runs on navigation, not on router.invalidate)
+  const playerId = session && !session.isGuest ? session.playerId : undefined
+  const { data: armyInfo } = useQuery({
+    ...armyInfoQueryOptions(playerId ?? ''),
+    enabled: !!playerId,
+  })
+  const army = armyInfo?.army ?? null
+  const record = armyInfo?.record ?? null
 
   return (
     <div
@@ -125,8 +135,8 @@ function AppHeader({
     setLoggingOut(true)
     try {
       await logoutFn()
-      queryClient.removeQueries({ queryKey: ['session'] })
-      queryClient.removeQueries({ queryKey: ['army-info'] })
+      queryClient.clear()
+      await router.invalidate()
       await router.navigate({ to: '/login' })
     } catch {
       setLoggingOut(false)

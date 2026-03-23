@@ -163,9 +163,9 @@ describe('[AC1][AC5][P0] WelcomeModal integration — src/routes/index.tsx', () 
     expect(indexRoute).toMatch(/import\s*\{[^}]*WelcomeModal[^}]*\}/)
   })
 
-  it('[1.3-INT-017] index.tsx initializes modalOpen with hasSeenWelcome === false (shows on first login only — AC1 and AC5)', () => {
+  it('[1.3-INT-017] index.tsx gates modalOpen on hasSeenWelcome (shows on first login only — AC1 and AC5)', () => {
     const indexRoute = readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
-    // useState must be initialised with the hasSeenWelcome === false expression — coupled in one statement
-    expect(indexRoute).toMatch(/useState\([^)]*hasSeenWelcome\s*===\s*false[^)]*\)/)
+    // modalOpen must depend on hasSeenWelcome — reactive via useQuery or useState
+    expect(indexRoute).toMatch(/!hasSeenWelcome\s*&&\s*!modalDismissed/)
   })
 })
