@@ -7,6 +7,7 @@ type ActionChipProps = {
   label: string
   href?: string
   onClick?: () => void
+  variant?: 'default' | 'danger'
 }
 
 const baseChipStyle: React.CSSProperties = {
@@ -31,15 +32,30 @@ const hoverChipStyle: React.CSSProperties = {
   background: '#ddeeff',
 }
 
+const dangerChipStyle: React.CSSProperties = {
+  ...baseChipStyle,
+  background: '#fdf0f0',
+  border: '1px solid #e8c4c4',
+  color: '#b82c2c',
+}
+
+const dangerHoverChipStyle: React.CSSProperties = {
+  ...dangerChipStyle,
+  background: '#fbe2e2',
+}
+
 const chevronStyle: React.CSSProperties = {
   marginLeft: 6,
   fontWeight: 900,
   opacity: 0.72,
 }
 
-export function ActionChip({ label, href, onClick }: ActionChipProps) {
+export function ActionChip({ label, href, onClick, variant = 'default' }: ActionChipProps) {
   const [hovered, setHovered] = useState(false)
-  const chipStyle = hovered ? hoverChipStyle : baseChipStyle
+  const chipStyle =
+    variant === 'danger'
+      ? hovered ? dangerHoverChipStyle : dangerChipStyle
+      : hovered ? hoverChipStyle : baseChipStyle
 
   if (href) {
     return (

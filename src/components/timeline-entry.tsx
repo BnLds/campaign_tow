@@ -21,6 +21,7 @@ export type TimelineEntryProps = {
   onResultSubmit?: (matchId: string, result: 'victory' | 'defeat' | 'draw') => Promise<void>
   onEvolutionStart?: (matchId: string) => void
   onPostMatchReentry?: (matchId: string) => void
+  onDelete?: (matchId: string) => void
   unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
 }
 
@@ -73,6 +74,7 @@ export function TimelineEntry({
   onResultSubmit,
   onEvolutionStart,
   onPostMatchReentry,
+  onDelete,
   unitXpEntries,
 }: TimelineEntryProps) {
   const isInitialSetup = matchType === 'initial_setup'
@@ -179,15 +181,17 @@ export function TimelineEntry({
 
         {/* Date + Modifier link */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          <span
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.8125rem',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            {formattedDate}
-          </span>
+          {!isInitialSetup && (
+            <span
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.8125rem',
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              {formattedDate}
+            </span>
+          )}
           {isEditable && !isInitialSetup && result !== null && !isSelecting && (
             <button
               data-testid="modify-result"
@@ -207,6 +211,31 @@ export function TimelineEntry({
               }}
             >
               Modifier
+            </button>
+          )}
+          {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
+            <button
+              type="button"
+              data-testid="delete-match"
+              onClick={() => onDelete(matchId)}
+              aria-label="Supprimer la partie"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-malus)',
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                padding: '0 2px',
+                lineHeight: 1,
+                minWidth: 28,
+                minHeight: 28,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ✕
             </button>
           )}
           {isEditable && !isInitialSetup && result !== null && isSelecting && (

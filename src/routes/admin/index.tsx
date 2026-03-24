@@ -221,6 +221,27 @@ const createMatchFn = createServerFn({ method: 'POST' })
     return { success: true, data: result }
   })
 
+// Delete pending match — admin (no participant check, same guard as player path)
+const deleteMatchAdminFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(z.object({ matchId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<ServerResult<null>> => {
+    const { deleteMatchWithXpRollback } = await import('../../db/queries')
+    const result = await deleteMatchWithXpRollback(data.matchId)
+    if (!result.deleted) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Post-match déjà complété' } }
+    }
+    return { success: true, data: null }
+  })
+
+// List all matches for admin — ordered by date desc
+const listMatchesFn = createServerFn({ method: 'GET' })
+  .middleware([adminMiddleware])
+  .handler(async () => {
+    const { getAllMatchesForAdmin } = await import('../../db/queries')
+    return getAllMatchesForAdmin()
+  })
+
 // Story 2.2 — getArmyUnitsFn: GET, returns units + sub_profiles for a given army
 const getArmyUnitsFn = createServerFn({ method: 'GET' })
   .middleware([adminMiddleware])
@@ -281,6 +302,7 @@ function AdminPage() {
   // Story 2.2 — Double-submit guards (sync refs prevent race conditions on fast double-clicks)
   const addUnitSubmitRef = useRef(false)
   const correctStatsSubmitRef = useRef(false)
+  const [deleteMatchError, setDeleteMatchError] = useState<string | null>(null)
   const hydrated = useHydrated()
 
   useEffect(() => {
@@ -298,6 +320,22 @@ function AdminPage() {
     queryKey: ['admin', 'armies'],
     queryFn: () => listArmiesFn(),
   })
+
+  const matchesQuery = useQuery({
+    queryKey: ['admin', 'matches'],
+    queryFn: () => listMatchesFn(),
+  })
+
+  const handleDeleteMatchAdmin = async (matchId: string, label: string) => {
+    if (!window.confirm(`Supprimer la partie ${label} ? Cette action est irréversible.`)) return
+    setDeleteMatchError(null)
+    const result = await deleteMatchAdminFn({ data: { matchId } })
+    if (result.success) {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    } else {
+      setDeleteMatchError(result.error.message)
+    }
+  }
 
   // Story 2.2 — fetch units for correction form when army is selected
   const armyUnitsQuery = useQuery({
@@ -845,6 +883,40 @@ function AdminPage() {
         onSubmit={handleCreateMatch}
         btnStyle={btnStyle}
       />}
+
+      {/* Liste des parties — suppression admin */}
+      {session?.isAdmin && (
+        <section style={{ marginBottom: '2rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+            Parties (suppression)
+          </h2>
+          {deleteMatchError && (
+            <p style={{ color: 'var(--color-malus)', fontFamily: 'var(--font-body)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+              {deleteMatchError}
+            </p>
+          )}
+          {matchesQuery.isLoading && <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Chargement…</p>}
+          {(matchesQuery.data ?? []).map((m) => {
+            const dateLabel = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(m.date))
+            const isPending = m.evolutions1EnteredAt === null && m.evolutions2EnteredAt === null
+            const label = `${m.player1Name} vs ${m.player2Name} — ${dateLabel}`
+            return (
+              <div key={m.matchId} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: '1px solid var(--color-separator)' }}>
+                <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: '0.875rem' }}>{label}</span>
+                {isPending && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteMatchAdmin(m.matchId, label)}
+                    style={{ padding: '0.25rem 0.625rem', borderRadius: 6, border: 'none', background: 'var(--color-malus)', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 600 }}
+                  >
+                    Supprimer
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </section>
+      )}
 
       {/* Story 2.2 — Add unit form (admin only) */}
       {session?.isAdmin && <AddUnitSection

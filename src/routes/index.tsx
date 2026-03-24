@@ -10,7 +10,7 @@ import { ArmyImportForm } from '../components/army-import-form'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
 import type { TimelineEntryData, PendingMatchData } from '../db/queries'
-import { updateDisplayNameSchema, submitMatchResultSchema, toValidResult } from '../lib/validators'
+import { updateDisplayNameSchema, submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
 import { sessionQueryOptions } from '../lib/session-queries'
 
 const markWelcomeSeenFn = createServerFn({ method: 'POST' })
@@ -58,6 +58,25 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Echec de la mise a jour du resultat' } }
     }
     return { success: true, data: { participantId: participant.id, result: data.result } }
+  })
+
+export const deleteMatchFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(deleteMatchSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<null>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getMatchParticipantByMatchAndPlayer, deleteMatchWithXpRollback } = await import('../db/queries')
+    const participant = await getMatchParticipantByMatchAndPlayer(data.matchId, context.session.playerId)
+    if (!participant) {
+      return { success: false, error: { code: 'FORBIDDEN', message: "Vous n'êtes pas participant de cette partie" } }
+    }
+    const result = await deleteMatchWithXpRollback(data.matchId)
+    if (!result.deleted) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Post-match déjà complété' } }
+    }
+    return { success: true, data: null }
   })
 
 const createInitialSetupMatchFn = createServerFn({ method: 'POST' })
@@ -156,9 +175,22 @@ function CampaignView() {
   const modalOpen = !hasSeenWelcome && !modalDismissed
   const [resultPickerMatchId, setResultPickerMatchId] = useState<string | null>(null)
   const [reentryConfirmMatchId, setReentryConfirmMatchId] = useState<string | null>(null)
+  const [deleteConfirmMatch, setDeleteConfirmMatch] = useState<{ matchId: string; opponentName: string; date: string } | null>(null)
+  const [toast, setToast] = useState<{ message: string } | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
   const hydrated = useHydrated()
   const { isGuest, army, timeline, pendingMatches, initialSetupMatch } = Route.useLoaderData()
+
+  // Ref to track toast timeout — clears previous timeout on each new toast, and on unmount
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+    }
+  }, [])
+
+  // Double-submit guard for delete mutation
+  const deleteMatchInProgressRef = useRef(false)
 
   // Auto-create initial setup match on mount if needed (useRef guard prevents double-run in React Strict Mode)
   const initialMatchCreatedRef = useRef(false)
@@ -205,6 +237,26 @@ function CampaignView() {
     await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
   }
 
+  const handleDeleteMatch = async () => {
+    if (!deleteConfirmMatch) return
+    if (deleteMatchInProgressRef.current) return
+    deleteMatchInProgressRef.current = true
+    const { matchId } = deleteConfirmMatch
+    setDeleteConfirmMatch(null)
+    try {
+      const result = await deleteMatchFn({ data: { matchId } })
+      const message = result.success
+        ? `${session?.displayName ?? 'Joueur'} a supprimé le match`
+        : (result.error.message ?? 'Erreur lors de la suppression')
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+      setToast({ message })
+      toastTimeoutRef.current = setTimeout(() => setToast(null), 5000)
+      await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+    } finally {
+      deleteMatchInProgressRef.current = false
+    }
+  }
+
   const handleEvolutionStart = (matchId: string) => {
     void router.navigate({ to: '/match/$matchId/post-match', params: { matchId } })
   }
@@ -230,6 +282,40 @@ function CampaignView() {
           onDismiss={handleDismiss}
           onUpdateDisplayName={handleUpdateDisplayName}
         />
+      )}
+      {/* Toast rouge — suppression de match */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-malus)', color: '#fff', padding: '0.625rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 600, zIndex: 50, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+          {toast.message}
+        </div>
+      )}
+      {/* Modal de confirmation — suppression de match */}
+      {deleteConfirmMatch && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, maxWidth: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--color-text-primary)' }}>
+              Supprimer la partie ?
+            </p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
+              {`Supprimer le match du ${deleteConfirmMatch.date} contre ${deleteConfirmMatch.opponentName} ?`}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeleteConfirmMatch(null)}
+                style={{ padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid var(--color-separator)', background: 'var(--color-background)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.875rem' }}
+              >
+                Annuler
+              </button>
+              <button
+                data-testid="confirm-delete-match"
+                onClick={() => void handleDeleteMatch()}
+                style={{ padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: 'var(--color-malus)', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.875rem' }}
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {reentryConfirmMatchId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -330,8 +416,9 @@ function CampaignView() {
             {army.needsInitialXp && initialSetupMatch && initialSetupMatch.evolutionsEnteredAt === null && (
               <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 8, alignItems: 'center', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                 <ActionChip
-                  label="XP initiale à remplir"
+                  label="Remplir l'XP de mon armée"
                   href={'/match/' + initialSetupMatch.matchId + '/post-match'}
+                  variant="danger"
                 />
                 <ActionChip
                   label="Passer l'XP initiale"
@@ -432,6 +519,18 @@ function CampaignView() {
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}
                       onPostMatchReentry={handlePostMatchReentry}
+                      onDelete={!entry.hasEvolutions ? (matchId) => {
+                        const opponent = entry.opponent
+                        const opponentName = opponent?.name ?? opponent?.playerName ?? 'Adversaire'
+                        let formattedDate: string
+                        try {
+                          const parsed = new Date(entry.date)
+                          formattedDate = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(parsed)
+                        } catch {
+                          formattedDate = entry.date
+                        }
+                        setDeleteConfirmMatch({ matchId, opponentName, date: formattedDate })
+                      } : undefined}
                       unitXpEntries={entry.unitXpEntries}
                     />
                   ))}

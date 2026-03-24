@@ -70,6 +70,12 @@ export const submitMatchResultSchema = z.object({
 })
 export type SubmitMatchResultInput = z.infer<typeof submitMatchResultSchema>
 
+// Delete pending match
+export const deleteMatchSchema = z.object({
+  matchId: z.string().min(1),
+})
+export type DeleteMatchInput = z.infer<typeof deleteMatchSchema>
+
 // Shared result validation helper
 const VALID_RESULTS = new Set(['victory', 'defeat', 'draw'] as const)
 export type ValidResult = 'victory' | 'defeat' | 'draw'
