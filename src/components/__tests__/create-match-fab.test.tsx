@@ -148,7 +148,7 @@ describe('[AC2][P0] CreateMatchFab — opens dialog on click (Task 1.3, 8.2)', (
   it('[3.2-FAB-016] create-match-fab.tsx uses useState for dialog open/close state (Task 1.4)', () => {
     // AC: 2
     const code = getFab()
-    expect(code).toMatch(/useState[\s\S]{0,200}(open|dialog|isOpen)/)
+    expect(code).toMatch(/const \[open, setOpen\] = useState/)
   })
 
   it('[3.2-FAB-017] CreateMatchFab uses Shadcn Dialog component', () => {
@@ -291,17 +291,17 @@ describe('[AC4][AC9][P0] CreateMatchFab — createMatchFn server function (Task 
     expect(code).toMatch(/createMatchFn[\s\S]{0,3000}(isNaN|Date invalide)/)
   })
 
-  it('[3.2-FAB-037] createMatchFn normalizes date to midnight UTC (T00:00:00Z) — Test 8.18', () => {
-    // AC: 3 — Test 8.18
+  it('[3.2-FAB-037] createMatchFn combines data.date and data.time into a UTC timestamp — Test 8.18', () => {
+    // AC: 3 — Test 8.18 (Paris wall-clock stored as UTC)
     const code = getFab()
-    expect(code).toMatch(/T00:00:00Z/)
+    expect(code).toMatch(/\$\{data\.date\}T\$\{data\.time\}:00Z/)
   })
 
-  it('[3.2-FAB-038] createMatchFn defaults date to today when not provided — Test 8.17', () => {
-    // AC: 3 — Test 8.17
+  it('[3.2-FAB-038] createMatchFn validates date and time with regex — Test 8.17', () => {
+    // AC: 3 — date and time are required with regex format validation
     const code = getFab()
-    // Must use new Date() or similar to get today's date when no date provided
-    expect(code).toMatch(/createMatchFn[\s\S]{0,3000}(new Date\(\)[\s\S]{0,200}toISOString|toISOString[\s\S]{0,200}T0)/)
+    expect(code).toMatch(/date:.*regex/)
+    expect(code).toMatch(/time:.*regex/)
   })
 
   it('[3.2-FAB-039] createMatchFn calls createMatchWithParticipants from db/queries — Test 8.16', () => {
@@ -329,10 +329,11 @@ describe('[AC4][AC9][P0] CreateMatchFab — createMatchFn server function (Task 
 // ---------------------------------------------------------------------------
 
 describe('[AC3][P0] CreateMatchFab — date input defaults to today (Task 3.5)', () => {
-  it('[3.2-FAB-042] Dialog contains a date input with label "Date de la partie"', () => {
+  it('[3.2-FAB-042] Dialog contains date and time inputs', () => {
     // AC: 3
     const code = getFab()
-    expect(code).toContain('Date de la partie')
+    expect(code).toContain('Date')
+    expect(code).toContain('Heure')
   })
 
   it('[3.2-FAB-043] Date input uses type="date"', () => {
@@ -456,9 +457,9 @@ describe('[AC2][AC8][P0] CreateMatchFab — opponent list in dialog (Task 3.4, 8
     expect(code).toMatch(/(playerDisplayName|armyName|faction)[\s\S]{0,300}(Cinzel|font-display)/)
   })
 
-  it('[3.2-FAB-058] Dialog uses router.invalidate() after successful match creation (Task 3.8)', () => {
+  it('[3.2-FAB-058] Dialog uses scoped router.invalidate() with filter after match creation (Task 3.8)', () => {
     // AC: 4
     const code = getFab()
-    expect(code).toMatch(/router\.invalidate\(\)/)
+    expect(code).toMatch(/router\.invalidate\(\s*\{\s*filter/)
   })
 })

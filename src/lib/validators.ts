@@ -58,7 +58,8 @@ export const createMatchSchema = z.object({
   result1: z.enum(['victory', 'defeat', 'draw']).nullable(),
   army2Id: z.string().min(1, "L'armée 2 est requise"),
   result2: z.enum(['victory', 'defeat', 'draw']).nullable(),
-  date: z.string().min(1, 'La date est requise'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
+  time: z.string().regex(/^\d{2}:\d{2}$/, "Format d'heure invalide (HH:MM)"),
   evolutionsEntered: z.boolean(),
 })
 export type CreateMatchInput = z.infer<typeof createMatchSchema>
@@ -69,6 +70,12 @@ export const submitMatchResultSchema = z.object({
   result: z.enum(['victory', 'defeat', 'draw']),
 })
 export type SubmitMatchResultInput = z.infer<typeof submitMatchResultSchema>
+
+// Delete pending match
+export const deleteMatchSchema = z.object({
+  matchId: z.string().min(1),
+})
+export type DeleteMatchInput = z.infer<typeof deleteMatchSchema>
 
 // Shared result validation helper
 const VALID_RESULTS = new Set(['victory', 'defeat', 'draw'] as const)
@@ -90,6 +97,15 @@ export const submitUnitXpSchema = z.object({
   xpGained: z.number().int().min(0).max(99),
 })
 export type SubmitUnitXpInput = z.infer<typeof submitUnitXpSchema>
+
+// Initial XP entry — same as submitUnitXpSchema but allows 0-999, plus optional derouteXpLost
+export const submitInitialXpSchema = z.object({
+  matchParticipantId: z.string().min(1),
+  unitId: z.string().min(1),
+  xpGained: z.number().int().min(0).max(999),
+  derouteXpLost: z.number().int().nonnegative().default(0),
+})
+export type SubmitInitialXpInput = z.infer<typeof submitInitialXpSchema>
 
 export const completeEvolutionsSchema = z.object({
   matchId: z.string().min(1),
@@ -127,6 +143,7 @@ export const completeEvolutionsWithGainsSchema = z.object({
   gains: z.array(z.object({
     unitId: z.string().min(1),
     descriptions: z.array(z.string().min(1)),
+    thresholdXp: z.number().int().nullable().optional(),
   })),
   // Story 4.3: optional consequences array (injuries + destruction results)
   // armyId is NOT in schema — derived server-side from authenticated player's army
@@ -146,6 +163,39 @@ export const completeEvolutionsWithGainsSchema = z.object({
 })
 export type CompleteEvolutionsWithGainsInput = z.infer<typeof completeEvolutionsWithGainsSchema>
 export type ConsequenceEntry = NonNullable<CompleteEvolutionsWithGainsInput['consequences']>[number]
+
+// Incremental unit import — structured data schema
+// Source of truth for field shapes: ParsedUnit / ParsedSubProfile in owb-parser.ts
+const addUnitsSubProfileSchema = z.object({
+  label: z.string().max(100),
+  isMount: z.boolean(),
+  m: z.string().max(10).nullable(),
+  cc: z.string().max(10).nullable(),
+  ct: z.string().max(10).nullable(),
+  f: z.string().max(10).nullable(),
+  e: z.string().max(10).nullable(),
+  pv: z.string().max(10).nullable(),
+  i: z.string().max(10).nullable(),
+  a: z.string().max(10).nullable(),
+  cd: z.string().max(10).nullable(),
+})
+
+const addUnitsUnitSchema = z.object({
+  name: z.string().max(200),
+  nickname: z.string().max(80).nullable().optional(),
+  type: z.string().max(100),
+  points: z.number().int().min(0).max(9999),
+  modelCount: z.number().int().min(1).max(999).nullable(),
+  specialRules: z.string().max(2000).nullable(),
+  options: z.string().max(2000).nullable(),
+  subProfiles: z.array(addUnitsSubProfileSchema).max(20),
+})
+
+export const addUnitsToArmySchema = z.object({
+  armyId: z.string().min(1),
+  units: z.array(addUnitsUnitSchema).min(1).max(100),
+})
+export type AddUnitsToArmyInput = z.infer<typeof addUnitsToArmySchema>
 
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),

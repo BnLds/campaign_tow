@@ -335,7 +335,7 @@ src/routes/
 │   ├── new.tsx            ← (future)
 │   └── $matchId/
 │       └── post-match.tsx ← (future)
-└── references.tsx         ← (future)
+└── territories.tsx         ← (future)
 ```
 
 ### Architecture Boundaries — Compliance Checklist

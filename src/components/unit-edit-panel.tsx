@@ -14,6 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog'
 import { getTierLabel, getTierColor } from '../lib/tier'
 import type { TierLevel } from '../lib/tier'
 
@@ -64,6 +75,14 @@ type UpdateXpFn = (args: {
   data: { armyId: string; unitId: string; xp: number }
 }) => Promise<{ success: boolean; data?: { xp: number; tier: TierLevel }; error?: { code: string; message: string } }>
 
+type UpdatePointsFn = (args: {
+  data: { armyId: string; unitId: string; points: number | null }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
+
+type UpdateNicknameFn = (args: {
+  data: { armyId: string; unitId: string; nickname: string | null }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
+
 type FetchUnitDeltasFn = (args: {
   data: { armyId: string; unitId: string }
 }) => Promise<{ statModifiers: StatModifierRow[]; unitGains: UnitGainRow[] }>
@@ -71,6 +90,14 @@ type FetchUnitDeltasFn = (args: {
 type ToggleMountFn = (args: {
   data: { armyId: string; subProfileId: string; isMount: boolean }
 }) => Promise<{ success: boolean; data?: null; error?: { code: string; message: string } }>
+
+type SendToGraveyardFn = (args: {
+  data: { armyId: string; unitId: string; reason: string }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
+
+type DeleteUnitFn = (args: {
+  data: { armyId: string; unitId: string }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
 
 interface SubProfileItem {
   id: string
@@ -83,9 +110,12 @@ interface UnitEditPanelProps {
   armyId: string
   unitId: string
   unitName: string
+  unitNickname: string | null
   unitType: string
   currentXp: number
+  currentPoints: number | null
   subProfiles: SubProfileItem[]
+  isAdmin: boolean
   onClose: () => void
   onMutationSuccess: () => Promise<void>
   addStatModifierFn: AddStatModifierFn
@@ -93,8 +123,12 @@ interface UnitEditPanelProps {
   addUnitGainFn: AddUnitGainFn
   removeUnitGainFn: RemoveUnitGainFn
   updateXpFn: UpdateXpFn
+  updatePointsFn: UpdatePointsFn
+  updateNicknameFn: UpdateNicknameFn
   fetchUnitDeltasFn: FetchUnitDeltasFn
   toggleMountFn: ToggleMountFn
+  sendToGraveyardFn: SendToGraveyardFn
+  deleteUnitFn: DeleteUnitFn
 }
 
 // ---------------------------------------------------------------------------
@@ -145,9 +179,12 @@ export function UnitEditPanel({
   armyId,
   unitId,
   unitName,
+  unitNickname,
   unitType,
   currentXp,
+  currentPoints,
   subProfiles,
+  isAdmin,
   onClose,
   onMutationSuccess,
   addStatModifierFn,
@@ -155,8 +192,12 @@ export function UnitEditPanel({
   addUnitGainFn,
   removeUnitGainFn,
   updateXpFn,
+  updatePointsFn,
+  updateNicknameFn,
   fetchUnitDeltasFn,
   toggleMountFn,
+  sendToGraveyardFn,
+  deleteUnitFn,
 }: UnitEditPanelProps) {
   // Delta data state
   const [statModifiers, setStatModifiers] = useState<StatModifierRow[]>([])
@@ -183,6 +224,21 @@ export function UnitEditPanel({
   const [confirmedXpUpdate, setConfirmedXpUpdate] = useState(false)
   const xpFeedback = useFeedback()
 
+  // Points form state
+  const [pointsValue, setPointsValue] = useState(currentPoints !== null ? String(currentPoints) : '')
+  const [updatingPoints, setUpdatingPoints] = useState(false)
+  const pointsFeedback = useFeedback()
+
+  // Sync pointsValue when currentPoints prop changes (avoid stale value after parent re-render)
+  useEffect(() => {
+    setPointsValue(currentPoints !== null ? String(currentPoints) : '')
+  }, [currentPoints])
+
+  // Sync nicknameInput when unitNickname prop changes
+  useEffect(() => {
+    setNicknameInput(unitNickname ?? '')
+  }, [unitNickname])
+
   // Mount toggle state
   const [togglingMountId, setTogglingMountId] = useState<string | null>(null)
   const mountFeedback = useFeedback()
@@ -191,13 +247,30 @@ export function UnitEditPanel({
   const [deletingModId, setDeletingModId] = useState<string | null>(null)
   const [deletingGainId, setDeletingGainId] = useState<string | null>(null)
 
+  // Graveyard state
+  const [showGraveyardInput, setShowGraveyardInput] = useState(false)
+  const [graveyardReason, setGraveyardReason] = useState('')
+  const [sendingToGraveyard, setSendingToGraveyard] = useState(false)
+  const [deletingUnit, setDeletingUnit] = useState(false)
+  const dangerFeedback = useFeedback()
+
+  // Nickname state
+  const [nicknameInput, setNicknameInput] = useState(unitNickname ?? '')
+  const [nicknameSaving, setNicknameSaving] = useState(false)
+  const nicknameFeedback = useFeedback()
+
   // Sync xpValue when currentXp prop changes (C3 — avoid stale XP after parent re-render)
   useEffect(() => {
     setXpValue(String(currentXp))
   }, [currentXp])
 
   // Fetch deltas on mount and after unitId changes (M2 — cancel on unmount)
+  // Skip fetch when not admin — deltas are only displayed in admin-only sections
   useEffect(() => {
+    if (!isAdmin) {
+      setLoadingDeltas(false)
+      return
+    }
     let mounted = true
     async function fetchDeltas() {
       setLoadingDeltas(true)
@@ -214,7 +287,7 @@ export function UnitEditPanel({
     }
     void fetchDeltas()
     return () => { mounted = false }
-  }, [unitId]) // armyId and fetchUnitDeltasFn are stable for the lifecycle of a given panel
+  }, [unitId, isAdmin]) // armyId and fetchUnitDeltasFn are stable for the lifecycle of a given panel
 
   // Refetch deltas after mutations (not tied to mount lifecycle)
   const refetchDeltas = async () => {
@@ -360,6 +433,56 @@ export function UnitEditPanel({
     }
   }
 
+  const handleUpdatePoints = async (e: React.FormEvent) => {
+    e.preventDefault()
+    let points: number | null
+    if (pointsValue.trim() === '') {
+      points = null
+    } else {
+      const parsed = parseInt(pointsValue, 10)
+      if (Number.isNaN(parsed) || parsed < 0) {
+        pointsFeedback.show('Veuillez entrer un nombre valide', true)
+        return
+      }
+      points = parsed
+    }
+    setUpdatingPoints(true)
+    try {
+      const result = await updatePointsFn({ data: { armyId, unitId, points } })
+      if (result.success) {
+        pointsFeedback.show(points !== null ? `Coût mis à jour (${points} pts)` : 'Coût effacé', false)
+        await onMutationSuccess()
+      } else {
+        pointsFeedback.show(result.error?.message ?? 'Erreur inconnue', true)
+      }
+    } catch {
+      pointsFeedback.show('Erreur lors de la mise à jour', true)
+    } finally {
+      setUpdatingPoints(false)
+    }
+  }
+
+  async function handleNicknameBlur() {
+    if (nicknameSaving) return
+    const trimmed = nicknameInput.trim()
+    const newVal = trimmed === '' ? null : trimmed
+    if (newVal === (unitNickname ?? null)) return
+    setNicknameSaving(true)
+    try {
+      const result = await updateNicknameFn({ data: { armyId, unitId, nickname: newVal } })
+      if (result.success) {
+        nicknameFeedback.show('Surnom enregistré', false)
+        await onMutationSuccess()
+      } else {
+        nicknameFeedback.show(result.error?.message ?? 'Erreur', true)
+      }
+    } catch {
+      nicknameFeedback.show('Erreur réseau', true)
+    } finally {
+      setNicknameSaving(false)
+    }
+  }
+
   // Feedback message helper
   const FeedbackMsg = ({ message }: { message: { text: string; isError: boolean } | null }) => {
     if (!message) return null
@@ -412,6 +535,24 @@ export function UnitEditPanel({
         <Button variant="ghost" size="sm" onClick={onClose}>
           ✕
         </Button>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section Surnom — blur-save nickname field */}
+      {/* ------------------------------------------------------------------ */}
+      <div style={{ marginBottom: '1rem' }}>
+        <Label htmlFor={`nickname-${unitId}`} style={{ fontSize: '0.8rem' }}>Surnom</Label>
+        <Input
+          id={`nickname-${unitId}`}
+          value={nicknameInput}
+          onChange={(e) => setNicknameInput(e.target.value)}
+          onBlur={handleNicknameBlur}
+          disabled={nicknameSaving}
+          maxLength={80}
+          placeholder="Aucun surnom"
+          style={{ marginTop: '0.25rem' }}
+        />
+        <FeedbackMsg message={nicknameFeedback.message} />
       </div>
 
       {/* ------------------------------------------------------------------ */}
@@ -484,9 +625,9 @@ export function UnitEditPanel({
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 1 — Modificateurs de stats */}
+      {/* Section 1 — Modificateurs de stats (admin only) */}
       {/* ------------------------------------------------------------------ */}
-      <section
+      {isAdmin && <section
         data-testid="section-stat-modifiers"
         style={{ marginBottom: '1.5rem' }}
       >
@@ -583,21 +724,71 @@ export function UnitEditPanel({
               </Select>
             </div>
 
-            {/* Delta input */}
+            {/* Delta input with +/- buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <Label htmlFor={`mod-delta-${unitId}`} style={{ fontSize: '0.75rem' }}>
                 Delta
               </Label>
-              <Input
-                id={`mod-delta-${unitId}`}
-                type="number"
-                step="1"
-                value={modDelta}
-                onChange={(e) => setModDelta(e.target.value)}
-                placeholder="+1 / -1"
-                style={{ width: '5rem' }}
-                required
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <button
+                  type="button"
+                  disabled={addingMod}
+                  onClick={() => setModDelta(String((parseInt(modDelta, 10) || 0) - 1))}
+                  className="delta-stepper"
+                  style={{
+                    width: '2rem',
+                    height: '2rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--color-separator)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-malus)',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    cursor: addingMod ? 'not-allowed' : 'pointer',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    opacity: addingMod ? 0.5 : 1,
+                  }}
+                  aria-label="Diminuer delta"
+                >
+                  −
+                </button>
+                <Input
+                  id={`mod-delta-${unitId}`}
+                  type="number"
+                  step="1"
+                  value={modDelta}
+                  onChange={(e) => setModDelta(e.target.value)}
+                  placeholder="+1 / -1"
+                  style={{ width: '4.5rem', textAlign: 'center' }}
+                  required
+                />
+                <button
+                  type="button"
+                  disabled={addingMod}
+                  onClick={() => setModDelta(String((parseInt(modDelta, 10) || 0) + 1))}
+                  className="delta-stepper"
+                  style={{
+                    width: '2rem',
+                    height: '2rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--color-separator)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-bonus)',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    cursor: addingMod ? 'not-allowed' : 'pointer',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    opacity: addingMod ? 0.5 : 1,
+                  }}
+                  aria-label="Augmenter delta"
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             {/* Source input */}
@@ -644,12 +835,12 @@ export function UnitEditPanel({
           </Button>
           <FeedbackMsg message={modFeedback.message} />
         </form>
-      </section>
+      </section>}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 2 — Capacités acquises */}
+      {/* Section 2 — Capacités acquises (admin only) */}
       {/* ------------------------------------------------------------------ */}
-      <section
+      {isAdmin && <section
         data-testid="section-unit-gains"
         style={{ marginBottom: '1.5rem' }}
       >
@@ -730,12 +921,12 @@ export function UnitEditPanel({
           </Button>
           <FeedbackMsg message={gainFeedback.message} />
         </form>
-      </section>
+      </section>}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 3 — Points d'expérience */}
+      {/* Section 3 — Coût en points */}
       {/* ------------------------------------------------------------------ */}
-      <section data-testid="section-xp">
+      <section data-testid="section-points">
         <h4
           style={{
             fontFamily: 'var(--font-body)',
@@ -747,50 +938,282 @@ export function UnitEditPanel({
             marginBottom: '0.75rem',
           }}
         >
-          Points d'expérience
+          Coût en points
         </h4>
 
-        <form onSubmit={handleUpdateXp} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <form onSubmit={handleUpdatePoints} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <Label htmlFor={`xp-input-${unitId}`} style={{ fontSize: '0.75rem' }}>
-                XP total
+              <Label htmlFor={`points-input-${unitId}`} style={{ fontSize: '0.75rem' }}>
+                Valeur
               </Label>
               <Input
-                id={`xp-input-${unitId}`}
+                id={`points-input-${unitId}`}
                 type="number"
                 min={0}
                 step={1}
-                value={xpValue}
-                onChange={(e) => setXpValue(e.target.value)}
+                value={pointsValue}
+                onChange={(e) => setPointsValue(e.target.value)}
                 style={{ width: '6rem' }}
-                required
+                disabled={updatingPoints}
               />
             </div>
             <Button
               type="submit"
-              disabled={updatingXp}
+              disabled={updatingPoints}
               size="sm"
             >
-              {updatingXp ? 'Mise à jour...' : 'Mettre à jour'}
+              {updatingPoints ? 'Mise à jour...' : 'Mettre à jour'}
             </Button>
           </div>
-
-          {/* Show recalculated tier after update — always visible once confirmed, not tied to feedback timer */}
-          {confirmedXpUpdate && currentTier !== null && currentTier > 0 && tierLabel && (
-            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: tierColor }}>
-              {tierLabel}
-            </p>
-          )}
-          {confirmedXpUpdate && currentTier === 0 && (
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-              Aucun palier atteint
-            </p>
-          )}
-
-          <FeedbackMsg message={xpFeedback.message} />
+          <FeedbackMsg message={pointsFeedback.message} />
         </form>
       </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section 4 — Points d'expérience (admin only) */}
+      {/* ------------------------------------------------------------------ */}
+      {isAdmin && (
+        <section data-testid="section-xp" style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem', paddingTop: '1rem' }}>
+          <h4
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'var(--color-section-label)',
+              marginBottom: '0.75rem',
+            }}
+          >
+            Points d'expérience
+          </h4>
+
+          <form onSubmit={handleUpdateXp} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <Label htmlFor={`xp-input-${unitId}`} style={{ fontSize: '0.75rem' }}>
+                  XP total
+                </Label>
+                <Input
+                  id={`xp-input-${unitId}`}
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={xpValue}
+                  onChange={(e) => setXpValue(e.target.value)}
+                  style={{ width: '6rem' }}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={updatingXp}
+                size="sm"
+              >
+                {updatingXp ? 'Mise à jour...' : 'Mettre à jour'}
+              </Button>
+            </div>
+
+            {/* Show recalculated tier after update — always visible once confirmed, not tied to feedback timer */}
+            {confirmedXpUpdate && currentTier !== null && currentTier > 0 && tierLabel && (
+              <p style={{ fontSize: '0.8rem', fontWeight: 600, color: tierColor }}>
+                {tierLabel}
+              </p>
+            )}
+            {confirmedXpUpdate && currentTier === 0 && (
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                Aucun palier atteint
+              </p>
+            )}
+
+            <FeedbackMsg message={xpFeedback.message} />
+          </form>
+        </section>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section 5 — Zone de danger */}
+      {/* ------------------------------------------------------------------ */}
+      <div
+        style={{
+          borderTop: '1px solid var(--color-border)',
+          marginTop: '1.5rem',
+          paddingTop: '1rem',
+        }}
+      >
+        <h4
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontWeight: 700,
+            fontSize: '0.8rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            color: 'var(--color-malus)',
+            marginBottom: '0.75rem',
+          }}
+        >
+          Zone de danger
+        </h4>
+
+        {/* Send to graveyard */}
+        {!showGraveyardInput ? (
+          <button
+            data-testid="graveyard-button"
+            onClick={() => setShowGraveyardInput(true)}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.5rem 1rem',
+              border: '1px solid #b45309',
+              borderRadius: '6px',
+              background: 'transparent',
+              color: '#b45309',
+              fontFamily: 'var(--font-body)',
+              fontWeight: 600,
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+              marginBottom: '0.75rem',
+            }}
+          >
+            Envoyer au cimetière
+          </button>
+        ) : (
+          <div
+            data-testid="graveyard-form"
+            style={{
+              marginBottom: '0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+            }}
+          >
+            <Input
+              data-testid="graveyard-reason-input"
+              type="text"
+              placeholder="Raison (ex: tué par un dragon)"
+              value={graveyardReason}
+              onChange={(e) => setGraveyardReason(e.target.value)}
+              maxLength={200}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Button
+                data-testid="graveyard-confirm"
+                size="sm"
+                disabled={sendingToGraveyard || !graveyardReason.trim()}
+                onClick={async () => {
+                  if (!graveyardReason.trim()) {
+                    dangerFeedback.show('La raison ne peut pas être vide', true)
+                    return
+                  }
+                  setSendingToGraveyard(true)
+                  try {
+                    const result = await sendToGraveyardFn({
+                      data: { armyId, unitId, reason: graveyardReason.trim() },
+                    })
+                    if (result.success) {
+                      await onMutationSuccess()
+                    } else {
+                      dangerFeedback.show(result.error?.message ?? 'Erreur inconnue', true)
+                    }
+                  } catch {
+                    dangerFeedback.show("Erreur lors de l'envoi au cimetière", true)
+                  } finally {
+                    setSendingToGraveyard(false)
+                  }
+                }}
+                style={{ background: '#334155', color: '#fff' }}
+              >
+                {sendingToGraveyard ? 'Envoi...' : 'Confirmer'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowGraveyardInput(false)
+                  setGraveyardReason('')
+                }}
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Permanent deletion */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              data-testid="delete-unit-button"
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '0.5rem 1rem',
+                border: 'none',
+                borderRadius: '6px',
+                background: 'var(--color-malus)',
+                color: '#fff',
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+              }}
+            >
+              Supprimer définitivement
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Suppression définitive</AlertDialogTitle>
+              <AlertDialogDescription>
+                Attention : cette unité, ses sous-profils, ses modificateurs de stats, ses gains et
+                son historique XP par match seront définitivement supprimés. Si elle a été détruite
+                lors d'un affrontement, envoyez-la plutôt au cimetière pour garder une trace.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                style={{
+                  border: '1px solid #334155',
+                  color: '#334155',
+                }}
+              >
+                Annuler
+              </AlertDialogCancel>
+              <AlertDialogAction
+                data-testid="delete-unit-confirm"
+                disabled={deletingUnit}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  setDeletingUnit(true)
+                  try {
+                    const result = await deleteUnitFn({
+                      data: { armyId, unitId },
+                    })
+                    if (result.success) {
+                      await onMutationSuccess()
+                    } else {
+                      dangerFeedback.show(result.error?.message ?? 'Erreur inconnue', true)
+                    }
+                  } catch {
+                    dangerFeedback.show('Erreur lors de la suppression', true)
+                  } finally {
+                    setDeletingUnit(false)
+                  }
+                }}
+                style={{
+                  background: 'var(--color-malus)',
+                  color: '#fff',
+                }}
+              >
+                {deletingUnit ? 'Suppression...' : 'Détruire'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <FeedbackMsg message={dangerFeedback.message} />
+      </div>
     </div>
   )
 }

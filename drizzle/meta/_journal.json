@@ -92,6 +92,20 @@
       "when": 1774081591141,
       "tag": "0012_late_nightshade",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1774274336410,
+      "tag": "0013_fat_zarda",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1774350057713,
+      "tag": "0014_public_tombstone",
+      "breakpoints": true
     }
   ]
 }

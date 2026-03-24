@@ -117,9 +117,9 @@ describe('[AC2][AC3][P0] Login route — src/routes/login.tsx', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC1][P0] Route protection — src/routes/__root.tsx', () => {
-  it('[1.2-INT-016] __root.tsx calls getSession for route protection', () => {
+  it('[1.2-INT-016] __root.tsx uses sessionQueryOptions for route protection (wraps getSessionFn)', () => {
     const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootTsx).toContain('getSession')
+    expect(rootTsx).toMatch(/ensureQueryData\(sessionQueryOptions\(\)\)/)
   })
 
   it('[1.2-INT-017] __root.tsx redirects unauthenticated users to /login', () => {

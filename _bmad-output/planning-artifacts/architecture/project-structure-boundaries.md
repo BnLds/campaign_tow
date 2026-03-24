@@ -75,7 +75,7 @@ campaign_tow/
         ├── __root.tsx             ← Root layout: QueryClientProvider, ErrorBoundary, TabBar, session check → redirect to login
         ├── index.tsx              ← Campaign view (home)
         ├── login.tsx              ← Login page (unauthenticated)
-        ├── references.tsx         ← Static reference tables — imports from lib/constants.ts
+        ├── territories.tsx        ← Territories page (placeholder — content in Epic 5)
         ├── armies/
         │   ├── index.tsx          ← Army list (all armies)
         │   └── $armyId.tsx        ← Army detail (timeline + unit cards)
@@ -105,7 +105,7 @@ campaign_tow/
 - `src/lib/xp-calculator.ts` and `src/lib/delta-composer.ts` are pure functions with zero side effects
 - They take data in, return computed results — no DB access, no session access
 - ALL XP/tier/delta logic lives here — components and routes MUST import, never re-implement
-- `src/routes/references.tsx` imports from `lib/constants.ts` — single source of truth for campaign rules
+- `src/routes/territories.tsx` imports from `lib/constants.ts` — single source of truth for campaign rules
 
 **OWB Parser Boundary:**
 - `src/lib/owb-parser.ts` is a standalone module with no imports from the rest of the app
@@ -136,7 +136,7 @@ campaign_tow/
 | Unit Cards (FR11–14) | `armies/$armyId.tsx` | `unit-card.tsx` | `delta-composer.ts`, `constants.ts` | `units`, `sub_profiles`, `stat_modifiers`, `unit_gains` |
 | Timeline & Matches (FR15–20) | `index.tsx`, `armies/$armyId.tsx`, `match/new.tsx` | `timeline-entry.tsx`, `action-chip.tsx`, `create-match-fab.tsx` | — | `matches`, `match_participants` |
 | Post-Match Flow (FR21–29) | `match/$matchId/post-match.tsx` | `post-match/*.tsx`, `tier-up-screen.tsx` | `xp-calculator.ts`, `delta-composer.ts`, `constants.ts` | `stat_modifiers`, `unit_gains` |
-| References (FR30–34) | `references.tsx` | `ref-table.tsx` | `constants.ts` | — (static) |
+| Territories (FR30–34) | `territories.tsx` | `ref-table.tsx` | `constants.ts` | — (static) |
 
 **Cross-Cutting Concerns → Files:**
 

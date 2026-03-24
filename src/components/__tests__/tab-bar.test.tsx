@@ -47,9 +47,9 @@ describe('[AC1][AC5][P0] TabBar — 3 fixed tabs with correct labels (Tasks 1.1,
     expect(code).toContain('Armees')
   })
 
-  it('[3.1b-TAB-005] tab-bar.tsx contains "References" tab label', () => {
+  it('[3.1b-TAB-005] tab-bar.tsx contains "Territoires" tab label', () => {
     const code = getTabBar()
-    expect(code).toContain('References')
+    expect(code).toContain('Territoires')
   })
 })
 
@@ -66,7 +66,7 @@ describe('[AC1][P0] TabBar — emoji icons present (Task 1.1)', () => {
     expect(code).toMatch(/🛡|shield|&#x1F6E1/)
   })
 
-  it('[3.1b-TAB-008] tab-bar.tsx contains a book emoji for References tab', () => {
+  it('[3.1b-TAB-008] tab-bar.tsx contains a book emoji for Territoires tab', () => {
     const code = getTabBar()
     // Open book emoji: 📖
     expect(code).toMatch(/📖|book|&#x1F4D6/)
@@ -90,9 +90,9 @@ describe('[AC2][P0] TabBar — each tab links to correct route (Task 1.5, 8.4)',
     expect(code).toMatch(/to=["']\/armies["']/)
   })
 
-  it('[3.1b-TAB-012] References tab links to "/references" route', () => {
+  it('[3.1b-TAB-012] Territoires tab links to "/territories" route', () => {
     const code = getTabBar()
-    expect(code).toMatch(/to=["']\/references["']/)
+    expect(code).toMatch(/to=["']\/territories["']/)
   })
 })
 
@@ -115,9 +115,9 @@ describe('[AC1][AC9][P0] TabBar — active state styling (Tasks 1.2, 1.3, 8.2, 8
     expect(code).toMatch(/(startsWith\(['"]\/armies|\barmees\b[\s\S]{0,300}startsWith)/i)
   })
 
-  it('[3.1b-TAB-016] TabBar computes isReferences active state from /references path', () => {
+  it('[3.1b-TAB-016] TabBar computes isTerritoires active state from /territories path', () => {
     const code = getTabBar()
-    expect(code).toMatch(/isReferences|referencesActive/)
+    expect(code).toMatch(/isTerritoires|territoiresActive/)
   })
 
   it('[3.1b-TAB-017] TabBar applies active background color #dfe8f4 to active tab', () => {
@@ -189,9 +189,9 @@ describe('[AC1][P0] TabBar — tab data-testid attributes present (Task 1.7)', (
     expect(code).toContain('data-testid="tab-armees"')
   })
 
-  it('[3.1b-TAB-029] References tab has data-testid="tab-references"', () => {
+  it('[3.1b-TAB-029] Territoires tab has data-testid="tab-territoires"', () => {
     const code = getTabBar()
-    expect(code).toContain('data-testid="tab-references"')
+    expect(code).toContain('data-testid="tab-territoires"')
   })
 })
 

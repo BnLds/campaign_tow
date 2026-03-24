@@ -4,9 +4,12 @@
 // Story 4.3: 3-phase flow — XP+flags (Phase 1) → consequences (Phase 1.5) → tier-ups (Phase 2)
 
 import { useState, useRef, useEffect } from 'react'
+import { getXpConditionsForType, computeXpTotal } from '../lib/xp-conditions'
 import { TierUpStep } from './tier-up-step'
 import { InjuryBonusStep } from './injury-bonus-step'
 import { UnitDestructionStep } from './unit-destruction-step'
+import { InitialConsequenceStep } from './initial-consequence-step'
+import type { InitialConsequenceItem } from './initial-consequence-step'
 import { detectTierCrossings } from '../lib/tier'
 import { parseGainStat, STAT_CAP, UNCAPPED_STATS, CD_STAT } from '../lib/delta-composer'
 import type { ThresholdEntry } from '../lib/constants'
@@ -27,7 +30,7 @@ type TierUpQueueEntry = ThresholdEntry & {
   commandement: number  // current CD value for constraint checks
 }
 
-type FlaggedUnit = { id: string; name: string; type: string }
+type FlaggedUnit = { id: string; name: string; type: string; existingGains: string[] }
 
 // ---------------------------------------------------------------------------
 // Helper — expand multi-selection entries into sequential single-pick steps
@@ -78,34 +81,47 @@ export type PostMatchWizardProps = {
   matchParticipantId: string
   /** Pseudo du joueur adverse — used for Haine/Rancune descriptions */
   opponentPlayerName?: string
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
+  /** 'post-match' (default): checkbox XP conditions. 'initial-xp': direct numeric input 0-999. */
+  mode?: 'post-match' | 'initial-xp'
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; previousDerouteXpLost?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
   onComplete: () => void
   onCancel: () => void
   /** Optional: inject custom submit function (for testing). Defaults to submitUnitXpFn. */
-  onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string) => Promise<ServerResult<{ unitId: string; newXp: number }>>
+  onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string, derouteXpLost?: number) => Promise<ServerResult<{ unitId: string; newXp: number }>>
   /** Batch commit: completes evolutions with all accumulated gains and consequences. Called once at the end.
    *  gains=[] and consequences=[] for the no-tierup, no-consequence path. */
   onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[], championKilledIds?: string[]) => Promise<ServerResult<{ matchId: string }>>
+  /** Campaign players (excluding current player) — for Haine/Rancune picker in initial-xp mode */
+  campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
 }
 
 export function PostMatchWizard({
   matchId,
   matchParticipantId,
   opponentPlayerName = 'Adversaire',
+  mode = 'post-match',
   units,
   onComplete,
   onCancel,
   onSubmitUnitXp,
   onCompleteEvolutions,
+  campaignPlayers,
 }: PostMatchWizardProps) {
   // Phase state: Phase 1 (xp) → Phase 1.5 (consequences) → Phase 2 (tierup)
   const [phase, setPhase] = useState<'xp' | 'consequences' | 'tierup'>('xp')
 
   // Phase 1 state
   const [currentStep, setCurrentStep] = useState(0)
-  const [xpGained, setXpGained] = useState(0)
+  const [checkedConditions, setCheckedConditions] = useState<Set<string>>(new Set())
+  const [showPreviousXpHint, setShowPreviousXpHint] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // initial-xp mode: numeric input per unit
+  const [numericXpValue, setNumericXpValue] = useState<number>(0)
+  // initial-xp mode: accumulated past consequences (multi-select, flat array with _localId for removal)
+  const [initialConsequences, setInitialConsequences] = useState<InitialConsequenceItem[]>([])
+  const initialConsequencesRef = useRef<InitialConsequenceItem[]>([])
+  const nextLocalIdRef = useRef(0)
 
   // Phase 1.5 (consequence) state
   const [consequenceIndex, setConsequenceIndex] = useState(0)
@@ -132,8 +148,8 @@ export function PostMatchWizard({
   const cumulativeHonourSelectionsRef = useRef<Map<string, Set<string>>>(new Map())
   // Cumulative map: unitId → all gain descriptions selected in this session (for constraint checks)
   const cumulativeGainsRef = useRef<Map<string, string[]>>(new Map())
-  // Pending gains to batch-commit at the end (unitId → descriptions[])
-  const pendingGainsRef = useRef<Map<string, string[]>>(new Map())
+  // Pending gains to batch-commit at the end (unitId → groups per threshold)
+  const pendingGainsRef = useRef<Map<string, Array<{ descriptions: string[]; thresholdXp: number | null }>>>(new Map())
 
   // XP results collected during Phase 1 (useRef to avoid re-renders on each submit)
   const xpResultsRef = useRef<Map<string, { oldXp: number; newXp: number }>>(new Map())
@@ -145,19 +161,29 @@ export function PostMatchWizard({
     setIsChampionKilledChecked(championFlagsRef.current.get(unitId) ?? false)
   }, [currentStep, units])
 
-  // Pre-fill XP input from previousXpGained when step changes (AC2)
-  useEffect(() => {
-    const submitted = submittedXpByStep.current.get(currentStep)
-    if (submitted !== undefined) {
-      setXpGained(submitted)
-    } else {
-      const prevXp = (units[currentStep] as typeof units[0] | undefined)?.previousXpGained
-      setXpGained(prevXp ?? 0)
-    }
-  }, [currentStep, units])
+  // Track checked condition IDs per step (for back-button pre-fill)
+  const submittedXpByStep = useRef<Map<number, Set<string>>>(new Map())
 
-  // Track XP values entered by the player per step (for back-button pre-fill)
-  const submittedXpByStep = useRef<Map<number, number>>(new Map())
+  // Pre-fill XP checkboxes (or numeric value) from saved state or show previous XP hint on re-entry
+  useEffect(() => {
+    const unit = units[currentStep] as typeof units[0] | undefined
+    if (mode === 'initial-xp') {
+      // Pre-fill numeric input with previousXpGained on re-entry
+      const prevXp = unit?.previousXpGained
+      setNumericXpValue(prevXp != null && prevXp > 0 ? prevXp : 0)
+      setShowPreviousXpHint(false)
+    } else {
+      const saved = submittedXpByStep.current.get(currentStep)
+      if (saved !== undefined) {
+        setCheckedConditions(new Set(saved))
+        setShowPreviousXpHint(false)
+      } else {
+        setCheckedConditions(new Set())
+        const prevXp = unit?.previousXpGained
+        setShowPreviousXpHint(prevXp != null && prevXp > 0)
+      }
+    }
+  }, [currentStep, units, mode])
   // Fix 2 — synchronous guard against double-click race condition
   const submittingRef = useRef(false)
   // Fix 1 — track already-submitted units to prevent double XP on retry
@@ -205,6 +231,7 @@ export function PostMatchWizard({
   }
 
   const currentUnit = units[currentStep]
+  const xpGained = currentUnit ? computeXpTotal(checkedConditions, currentUnit.type) : 0
   const isLastXpStep = currentStep === units.length - 1
   const total = units.length
 
@@ -237,7 +264,25 @@ export function PostMatchWizard({
         consequences.push(entry)
       }
     }
+    // Append initial-xp mode consequences (already ConsequenceEntry-shaped, no transformation needed)
+    // CRITICAL: do NOT pass these through the pendingConsequencesRef loop above — they carry their own
+    // per-consequence opponentPlayerName and must not be overwritten by the wizard-level prop.
+    for (const item of initialConsequencesRef.current) {
+      const { _localId: _id, ...entry } = item
+      consequences.push(entry)
+    }
     return consequences
+  }
+
+  const handleAddInitialConsequence = (entry: ConsequenceEntry) => {
+    const newItem = { ...entry, _localId: nextLocalIdRef.current++ }
+    initialConsequencesRef.current = [...initialConsequencesRef.current, newItem]
+    setInitialConsequences(initialConsequencesRef.current)
+  }
+
+  const handleRemoveInitialConsequence = (localId: number) => {
+    initialConsequencesRef.current = initialConsequencesRef.current.filter((c) => c._localId !== localId)
+    setInitialConsequences(initialConsequencesRef.current)
   }
 
   const buildChampionKilledIds = (): string[] => {
@@ -254,6 +299,16 @@ export function PostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const transitionToPhase2OrComplete = async () => {
+    // AC12 invariant: all units with deroute consequences must have their xpResultsRef updated
+    // before this function reads them. This catches ordering regressions if wizard flow is refactored.
+    for (const [unitId, consequence] of pendingConsequencesRef.current) {
+      if (consequence.type === 'deroute_sanglante') {
+        if (!xpResultsRef.current.has(unitId)) {
+          throw new Error(`[PostMatchWizard] AC12 invariant violated: unit ${unitId} has deroute consequence but xpResultsRef was not updated`)
+        }
+      }
+    }
+
     const queue: TierUpQueueEntry[] = []
     for (const unit of units) {
       const result = xpResultsRef.current.get(unit.id)
@@ -339,13 +394,15 @@ export function PostMatchWizard({
       let newXp: number | null = null
 
       if (!alreadySubmitted) {
+        // initial-xp mode: use direct numeric value; post-match mode: use checkbox total
+        const xpToSubmit = mode === 'initial-xp' ? Math.max(0, Math.floor(numericXpValue)) : Math.floor(xpGained)
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
-          submitResult = await onSubmitUnitXp(currentUnit.id, Math.floor(xpGained), matchParticipantId)
+          submitResult = await onSubmitUnitXp(currentUnit.id, xpToSubmit, matchParticipantId)
         } else {
           // Dynamic import to avoid bundling server fn into client
           const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
-          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentUnit.id, xpGained: Math.floor(xpGained) } })
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentUnit.id, xpGained: xpToSubmit } })
         }
 
         if (!submitResult.success) {
@@ -362,11 +419,12 @@ export function PostMatchWizard({
       }
 
       // Store XP result for tier crossing detection.
-      // oldXp = pre-match XP (before any XP from this match was applied).
-      // On first run: previousXpGained is null/0, so preMatchXp = currentUnit.xp.
-      // On resume: previousXpGained > 0, and currentUnit.xp already includes it,
-      // so preMatchXp = currentUnit.xp - previousXpGained = true pre-match XP.
-      const preMatchXp = currentUnit.xp - (currentUnit.previousXpGained ?? 0)
+      // initial-xp mode: oldXp is always 0 (entering XP from scratch since army creation).
+      // post-match mode: oldXp = pre-match XP (before any XP from this match was applied).
+      //   On first run: previousXpGained is null/0, so preMatchXp = currentUnit.xp.
+      //   On resume: preMatchXp = currentUnit.xp - previousXpGained + previousDerouteXpLost
+      //   (derouteXpLost restores the deducted amount so we get the true pre-match baseline)
+      const preMatchXp = mode === 'initial-xp' ? 0 : (currentUnit.xp - (currentUnit.previousXpGained ?? 0) + (currentUnit.previousDerouteXpLost ?? 0))
       if (newXp !== null) {
         xpResultsRef.current.set(currentUnit.id, {
           oldXp: preMatchXp,
@@ -381,10 +439,17 @@ export function PostMatchWizard({
       }
 
       if (isLastXpStep) {
+        // Save last step's checked conditions (for back-nav from Phase 1.5)
+        submittedXpByStep.current.set(currentStep, new Set(checkedConditions))
+        // initial-xp: skip Phase 1.5 unconditionally — consequences are collected inline during Phase 1
+        if (mode === 'initial-xp') {
+          await transitionToPhase2OrComplete()
+          return
+        }
         // All XP entered — compute flagged units for Phase 1.5
         const characters = units.filter((u) => u.type === 'Personnages' && consequenceFlagsRef.current.get(u.id))
         const unitsFlagged = units.filter((u) => u.type !== 'Personnages' && consequenceFlagsRef.current.get(u.id))
-        const flagged: FlaggedUnit[] = [...characters, ...unitsFlagged].map((u) => ({ id: u.id, name: u.name, type: u.type }))
+        const flagged: FlaggedUnit[] = [...characters, ...unitsFlagged].map((u) => ({ id: u.id, name: u.name, type: u.type, existingGains: u.existingGains ?? [] }))
         flaggedUnitsRef.current = flagged
 
         if (flagged.length > 0) {
@@ -398,8 +463,8 @@ export function PostMatchWizard({
           await transitionToPhase2OrComplete()
         }
       } else {
-        // Record the submitted XP value for this step (for back-button pre-fill)
-        submittedXpByStep.current.set(currentStep, xpGained)
+        // Record the checked conditions for this step (for back-button pre-fill)
+        submittedXpByStep.current.set(currentStep, new Set(checkedConditions))
         // Advance to next unit — useEffect on [currentStep] handles xpGained pre-fill
         setCurrentStep((prev) => prev + 1)
         setIsSubmitting(false)
@@ -443,25 +508,24 @@ export function PostMatchWizard({
     } else if (result.type === 'deroute_sanglante') {
       const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
       if (xpEntry) {
-        const currentXpGained = xpEntry.newXp - xpEntry.oldXp
         const { calculateTier } = await import('../lib/tier')
         const { DEROUTE_XP_LOSS } = await import('../lib/constants')
         const tier = calculateTier(xpEntry.newXp, currentFlaggedUnit.type)
         const tierLoss = DEROUTE_XP_LOSS[tier]
-        const actualLoss = Math.min(tierLoss, currentXpGained)
-        const newXpGained = Math.max(0, currentXpGained - tierLoss)
+        // Pass original xpGained (unchanged) + derouteXpLost separately
+        const originalXpGained = xpEntry.newXp - xpEntry.oldXp
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
-          submitResult = await onSubmitUnitXp(currentFlaggedUnit.id, newXpGained, matchParticipantId)
+          submitResult = await onSubmitUnitXp(currentFlaggedUnit.id, originalXpGained, matchParticipantId, tierLoss)
         } else {
           const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
-          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentFlaggedUnit.id, xpGained: newXpGained } })
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentFlaggedUnit.id, xpGained: originalXpGained, derouteXpLost: tierLoss } })
         }
         if (submitResult.success) {
           xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
         }
-        // Store consequence with xpLostAmount for timeline description
-        pendingConsequencesRef.current.set(currentFlaggedUnit.id, { ...result, xpLostAmount: actualLoss })
+        // Store consequence with full tierLoss as xpLostAmount (rules amount, not capped)
+        pendingConsequencesRef.current.set(currentFlaggedUnit.id, { ...result, xpLostAmount: tierLoss })
       } else {
         pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
       }
@@ -518,10 +582,16 @@ export function PostMatchWizard({
         (d) => d !== '2 améliorations mineures' && d !== 'Non applicable'
       )
 
-      // Accumulate gains in pendingGainsRef (NOT submitted to server yet)
+      // Accumulate gains in pendingGainsRef grouped by threshold (NOT submitted to server yet)
       if (descriptionsToSave.length > 0) {
-        const existing = pendingGainsRef.current.get(currentTierUp.unitId) ?? []
-        pendingGainsRef.current.set(currentTierUp.unitId, [...existing, ...descriptionsToSave])
+        const groups = pendingGainsRef.current.get(currentTierUp.unitId) ?? []
+        const existingGroup = groups.find((g) => g.thresholdXp === currentTierUp.xp)
+        if (existingGroup) {
+          existingGroup.descriptions.push(...descriptionsToSave)
+        } else {
+          groups.push({ descriptions: [...descriptionsToSave], thresholdXp: currentTierUp.xp })
+        }
+        pendingGainsRef.current.set(currentTierUp.unitId, groups)
       }
 
       // Store selections for back-button restore (ref-based to avoid re-renders)
@@ -568,9 +638,11 @@ export function PostMatchWizard({
 
       if (isLastTierUpStep) {
         // All tier-ups done — batch commit all gains + consequences + stamp evolutionsEnteredAt
-        const gains: Array<{ unitId: string; descriptions: string[] }> = []
-        for (const [unitId, descriptions] of pendingGainsRef.current) {
-          gains.push({ unitId, descriptions })
+        const gains: Array<{ unitId: string; descriptions: string[]; thresholdXp?: number | null }> = []
+        for (const [unitId, groups] of pendingGainsRef.current) {
+          for (const group of groups) {
+            gains.push({ unitId, descriptions: group.descriptions, thresholdXp: group.thresholdXp })
+          }
         }
         const consequences = buildConsequencesArray()
         const championKilledIds = buildChampionKilledIds()
@@ -709,17 +781,23 @@ export function PostMatchWizard({
                 const prevSelections = submittedTierUpsByStepRef.current.get(tierUpStep)
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (prevSelections && currentEntry) {
-                  // Remove from pendingGainsRef
-                  const pending = pendingGainsRef.current.get(currentEntry.unitId)
-                  if (pending) {
+                  // Remove from pendingGainsRef (grouped by threshold)
+                  const pendingGroups = pendingGainsRef.current.get(currentEntry.unitId)
+                  if (pendingGroups) {
                     const descriptionsToRemove = prevSelections.filter((d) => d !== '2 améliorations mineures')
-                    const updated = [...pending]
-                    for (const desc of descriptionsToRemove) {
-                      const idx = updated.indexOf(desc)
-                      if (idx !== -1) updated.splice(idx, 1)
-                    }
-                    if (updated.length > 0) {
-                      pendingGainsRef.current.set(currentEntry.unitId, updated)
+                    const updatedGroups = pendingGroups
+                      .map((group) => {
+                        if (group.thresholdXp !== currentEntry.xp) return group
+                        const updatedDescs = [...group.descriptions]
+                        for (const desc of descriptionsToRemove) {
+                          const idx = updatedDescs.indexOf(desc)
+                          if (idx !== -1) updatedDescs.splice(idx, 1)
+                        }
+                        return { ...group, descriptions: updatedDescs }
+                      })
+                      .filter((group) => group.descriptions.length > 0)
+                    if (updatedGroups.length > 0) {
+                      pendingGainsRef.current.set(currentEntry.unitId, updatedGroups)
                     } else {
                       pendingGainsRef.current.delete(currentEntry.unitId)
                     }
@@ -948,6 +1026,7 @@ export function PostMatchWizard({
           <UnitDestructionStep
             key={consequenceIndex}
             unitName={currentFlaggedUnit.name}
+            hasBannerGain={currentFlaggedUnit.existingGains.includes('Bannière gratuite')}
             onConfirm={(result) => void handleConsequenceConfirm(result)}
           />
         )}
@@ -1001,18 +1080,35 @@ export function PostMatchWizard({
             ‹
           </button>
         )}
-        <p
-          data-testid="wizard-progress"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
-            margin: 0,
-            textAlign: 'center',
-          }}
-        >
-          Unité {currentStep + 1} / {total}
-        </p>
+        <div style={{ textAlign: 'center' }}>
+          {mode === 'initial-xp' && (
+            <p
+              data-testid="wizard-mode-header"
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: 'var(--color-brand)',
+                margin: '0 0 2px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              XP initiale
+            </p>
+          )}
+          <p
+            data-testid="wizard-progress"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.875rem',
+              color: 'var(--color-text-secondary)',
+              margin: 0,
+            }}
+          >
+            Unité {currentStep + 1} / {total}
+          </p>
+        </div>
         <button
           type="button"
           data-testid="wizard-cancel-button"
@@ -1071,60 +1167,246 @@ export function PostMatchWizard({
         >
           {currentUnit.type}
         </p>
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
-            margin: 0,
-          }}
-        >
-          XP avant cette partie : {currentUnit.xp - (currentUnit.previousXpGained ?? 0)}
-        </p>
       </div>
 
-      {/* XP input */}
+      {/* XP section — numeric input (initial-xp mode) or checkboxes (post-match mode) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <label
-          htmlFor="wizard-xp-input"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-primary)',
-          }}
-        >
-          XP gagné lors de cette partie
-        </label>
-        <input
-          id="wizard-xp-input"
-          data-testid="wizard-xp-input"
-          type="number"
-          inputMode="numeric"
-          step="1"
-          pattern="[0-9]*"
-          min={0}
-          max={99}
-          value={xpGained}
-          onChange={(e) => {
-            // Fix 5 — clamp value to prevent NaN from non-numeric input
-            const val = Number(e.target.value)
-            setXpGained(isNaN(val) ? 0 : Math.max(0, Math.min(99, Math.floor(val))))
-          }}
+        {mode === 'initial-xp' ? (
+          <div data-testid="wizard-xp-numeric">
+            <label
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.875rem',
+                color: 'var(--color-text-secondary)',
+                marginBottom: '0.375rem',
+              }}
+            >
+              XP totale
+            </label>
+            <input
+              data-testid="wizard-xp-numeric-input"
+              type="number"
+              min={0}
+              max={999}
+              value={numericXpValue}
+              onChange={(e) => setNumericXpValue(Math.min(999, Math.max(0, parseInt(e.target.value, 10) || 0)))}
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '1rem',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid var(--color-separator)',
+                background: 'var(--color-background)',
+                color: 'var(--color-text-primary)',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        ) : (
+          <>
+        {showPreviousXpHint && currentUnit.previousXpGained != null && (
+          <>
+            <p
+              data-testid="wizard-previous-xp"
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.8rem',
+                color: 'var(--color-info)',
+                margin: 0,
+              }}
+            >
+              Précédemment : {currentUnit.previousXpGained} XP
+            </p>
+            {currentUnit.previousXpGained > 0 && xpGained === 0 && (
+              <p
+                data-testid="wizard-xp-warning"
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.8rem',
+                  color: 'var(--color-malus)',
+                  margin: 0,
+                }}
+              >
+                Attention : vous aviez précédemment gagné {currentUnit.previousXpGained} XP. Soumettre 0 XP remplacera cette valeur.
+              </p>
+            )}
+          </>
+        )}
+
+        <div data-testid="wizard-xp-checkboxes" role="group" aria-label="Conditions d'XP">
+          {(() => {
+            const conditions = getXpConditionsForType(currentUnit.type)
+            const baseConditions = conditions.filter((c) => c.group === 'base')
+            const generalConditions = conditions.filter((c) => c.group === 'general')
+            const exploitOrFeatConditions = conditions.filter((c) => c.group === 'exploit' || c.group === 'feat')
+            const exploitFeatLabel = currentUnit.type === 'Personnages' ? 'Exploits' : 'Faits d\'armes'
+
+            const toggleCondition = (id: string) => {
+              setCheckedConditions((prev) => {
+                const next = new Set(prev)
+                next.has(id) ? next.delete(id) : next.add(id)
+                return next
+              })
+            }
+
+            const toggleGeneralCondition = (id: string) => {
+              setCheckedConditions((prev) => {
+                const next = new Set(prev)
+                if (next.has(id)) {
+                  // Uncheck — just remove it
+                  next.delete(id)
+                } else {
+                  // Check — remove all other general conditions first (mutual exclusivity)
+                  for (const gc of generalConditions) next.delete(gc.id)
+                  next.add(id)
+                }
+                return next
+              })
+            }
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {baseConditions.map((c) => (
+                  <label
+                    key={c.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: '0.85rem',
+                      color: 'var(--color-text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      data-testid={`xp-condition-${c.id}`}
+                      type="checkbox"
+                      checked={checkedConditions.has(c.id)}
+                      onChange={() => toggleCondition(c.id)}
+                      style={{ marginTop: '0.15rem' }}
+                    />
+                    <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                  </label>
+                ))}
+
+                {generalConditions.length > 0 && (
+                  <fieldset
+                    role="group"
+                    aria-label="Général (un seul choix possible)"
+                    style={{
+                      border: 'none',
+                      margin: 0,
+                      padding: '0.25rem 0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    {generalConditions.map((c) => (
+                      <label
+                        key={c.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: '0.85rem',
+                          color: 'var(--color-text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          data-testid={`xp-condition-${c.id}`}
+                          type="checkbox"
+                          checked={checkedConditions.has(c.id)}
+                          onChange={() => toggleGeneralCondition(c.id)}
+                          style={{ marginTop: '0.15rem' }}
+                        />
+                        <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
+
+                {exploitOrFeatConditions.length > 0 && (
+                  <>
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        color: 'var(--color-text-primary)',
+                        margin: '0.25rem 0 0 0',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                      }}
+                    >
+                      {exploitFeatLabel}
+                    </p>
+                    {exploitOrFeatConditions.map((c) => (
+                      <label
+                        key={c.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: '0.85rem',
+                          color: 'var(--color-text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          data-testid={`xp-condition-${c.id}`}
+                          type="checkbox"
+                          checked={checkedConditions.has(c.id)}
+                          onChange={() => toggleCondition(c.id)}
+                          style={{ marginTop: '0.15rem' }}
+                        />
+                        <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                      </label>
+                    ))}
+                  </>
+                )}
+              </div>
+            )
+          })()}
+        </div>
+
+        <p
+          data-testid="wizard-xp-total"
+          aria-live="polite"
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: '1rem',
-            padding: '0.5rem 0.75rem',
-            border: '1px solid #e0d5c8',
-            borderRadius: '6px',
-            background: '#fffbf5',
+            fontWeight: 600,
             color: 'var(--color-text-primary)',
-            width: '100%',
-            boxSizing: 'border-box',
+            margin: '0.25rem 0 0 0',
           }}
-        />
+        >
+          Total : {xpGained} XP
+        </p>
+          </>
+        )}
       </div>
 
-      {/* Consequence toggle — MHC for characters, Détruite for units (AC1, AC12) */}
+      {/* Past consequences inline — initial-xp mode only */}
+      {mode === 'initial-xp' && campaignPlayers && (
+        <InitialConsequenceStep
+          unitId={currentUnit.id}
+          unitType={currentUnit.type}
+          campaignPlayers={campaignPlayers}
+          consequences={initialConsequences.filter((c) => c.unitId === currentUnit.id)}
+          onAdd={handleAddInitialConsequence}
+          onRemove={(localId) => handleRemoveInitialConsequence(localId)}
+        />
+      )}
+
+      {/* Consequence toggle — MHC for characters, Détruite for units (AC1, AC12) — post-match only */}
+      {mode !== 'initial-xp' && (
       <label
         style={{
           display: 'flex',
@@ -1133,7 +1415,8 @@ export function PostMatchWizard({
           cursor: 'pointer',
           fontFamily: 'var(--font-body)',
           fontSize: '0.875rem',
-          color: 'var(--color-text-secondary)',
+          fontWeight: 600,
+          color: 'var(--color-malus)',
         }}
       >
         <input
@@ -1147,9 +1430,10 @@ export function PostMatchWizard({
         />
         {currentUnit.type === 'Personnages' ? 'Mis Hors de Combat' : 'Détruite'}
       </label>
+      )}
 
-      {/* Champion killed in challenge — only for non-Personnages units that have a champion */}
-      {currentUnit.type !== 'Personnages' && (currentUnit.existingGains ?? []).some((g) => g === 'Champion gratuit') && (
+      {/* Champion killed in challenge — only for non-Personnages units that have a champion — post-match only */}
+      {mode !== 'initial-xp' && currentUnit.type !== 'Personnages' && (currentUnit.existingGains ?? []).some((g) => g === 'Champion gratuit') && (
         <label
           style={{
             display: 'flex',
@@ -1158,7 +1442,8 @@ export function PostMatchWizard({
             cursor: 'pointer',
             fontFamily: 'var(--font-body)',
             fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
+            fontWeight: 600,
+            color: 'var(--color-malus)',
           }}
         >
           <input
@@ -1181,7 +1466,7 @@ export function PostMatchWizard({
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.875rem',
-            color: '#b82c2c',
+            color: 'var(--color-malus)',
             margin: 0,
           }}
         >

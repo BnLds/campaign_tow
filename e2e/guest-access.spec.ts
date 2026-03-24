@@ -87,7 +87,7 @@ test.describe('[Story 1.7] Guest Access (Read-Only) — E2E (ATDD)', () => {
       // All three tabs must be visible in the tab bar for guests
       await expect(page.getByText(/campagne/i)).toBeVisible()
       await expect(page.getByText(/armées/i)).toBeVisible()
-      await expect(page.getByText(/références/i)).toBeVisible()
+      await expect(page.getByText(/territoires/i)).toBeVisible()
     })
   })
 

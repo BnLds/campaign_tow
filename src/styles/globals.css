@@ -97,6 +97,15 @@
   outline-offset: 2px;
 }
 
+/* Delta stepper buttons (+/−) — focus & hover */
+.delta-stepper:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 1px;
+}
+.delta-stepper:hover:not(:disabled) {
+  background: var(--color-separator);
+}
+
 html,
 body {
   margin: 0;
@@ -108,4 +117,9 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-body);
+}
+
+@keyframes addUnitsSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }

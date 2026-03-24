@@ -271,7 +271,7 @@ describe('[AC8][P0] PostMatchWizard — Phase 2 back from first step → last XP
 
     await waitFor(() => {
       // XP input should be visible again (Phase 1)
-      expect(screen.getByTestId('wizard-xp-input')).not.toBeNull()
+      expect(screen.getByTestId('wizard-xp-checkboxes')).not.toBeNull()
       // TierUpStep should be gone
       expect(screen.queryByTestId('tier-up-step')).toBeNull()
     })
@@ -384,9 +384,7 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
       />
     )
 
-    // Phase 1: submit some XP
-    const xpInput = screen.getByTestId('wizard-xp-input')
-    fireEvent.change(xpInput, { target: { value: '3' } })
+    // Phase 1: submit XP (checkboxes — 0 XP is fine, mock controls newXp for tier detection)
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     // Phase 2: select improvement and confirm
@@ -431,8 +429,7 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
       />
     )
 
-    const xpInput = screen.getByTestId('wizard-xp-input')
-    fireEvent.change(xpInput, { target: { value: '3' } })
+    // Phase 1: submit XP (checkboxes — 0 XP is fine, mock controls newXp)
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
@@ -521,9 +518,7 @@ describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
       />,
     )
 
-    // Set XP to 11 and submit
-    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '11' } })
+    // Submit XP (checkboxes — mock controls newXp for tier detection)
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     // Wait for Phase 2 — first crossing is Honneur de bataille (xp=3)
@@ -588,8 +583,7 @@ describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
       />,
     )
 
-    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '11' } })
+    // Submit XP (checkboxes — mock controls newXp for tier detection)
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     // Wait for Phase 2 — skip honour steps to get to Aguerri
@@ -657,9 +651,7 @@ describe('[CC-AC6] PostMatchWizard — "2 améliorations mineures" sub-flow', ()
       />,
     )
 
-    // Submit XP = 25
-    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '25' } })
+    // Submit XP (checkboxes — mock controls newXp for tier detection)
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     // Wait for Phase 2 — first crossing is Aguerri (minor)
@@ -740,8 +732,7 @@ describe('[CAP] PostMatchWizard — stat cap constraint', () => {
       />,
     )
 
-    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '11' } })
+    // Submit XP (checkboxes — mock controls newXp for tier detection)
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     // Skip honour steps to get to Aguerri
@@ -801,8 +792,7 @@ describe('[CAP] PostMatchWizard — stat cap constraint', () => {
       />,
     )
 
-    const input = screen.getByTestId('wizard-xp-input') as HTMLInputElement
-    fireEvent.change(input, { target: { value: '50' } })
+    // Submit XP (checkboxes — mock controls newXp for tier detection)
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     // Wait for Phase 2

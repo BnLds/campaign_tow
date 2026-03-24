@@ -195,17 +195,17 @@ const createMatchFn = createServerFn({ method: 'POST' })
       }
     }
     const { createMatchWithParticipants, getArmyById } = await import('../../db/queries')
-    const matchDate = new Date(data.date)
+    const matchDate = new Date(`${data.date}T${data.time}:00Z`)
     if (isNaN(matchDate.getTime())) {
       return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Date invalide' } }
     }
     const army1 = await getArmyById(data.army1Id)
     const army2 = await getArmyById(data.army2Id)
     if (!army1 || !army1.playerId) {
-      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 1 n'est assignee a aucun joueur" } }
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armée 1 n'est assignée à aucun joueur" } }
     }
     if (!army2 || !army2.playerId) {
-      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 2 n'est assignee a aucun joueur" } }
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armée 2 n'est assignée à aucun joueur" } }
     }
     const result = await createMatchWithParticipants({
       player1Id: army1.playerId,
@@ -219,6 +219,27 @@ const createMatchFn = createServerFn({ method: 'POST' })
       createdByPlayerId: context.session.playerId,
     })
     return { success: true, data: result }
+  })
+
+// Delete pending match — admin (no participant check, same guard as player path)
+const deleteMatchAdminFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(z.object({ matchId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<ServerResult<null>> => {
+    const { deleteMatchWithXpRollback } = await import('../../db/queries')
+    const result = await deleteMatchWithXpRollback(data.matchId)
+    if (!result.deleted) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Post-match déjà complété' } }
+    }
+    return { success: true, data: null }
+  })
+
+// List all matches for admin — ordered by date desc
+const listMatchesFn = createServerFn({ method: 'GET' })
+  .middleware([adminMiddleware])
+  .handler(async () => {
+    const { getAllMatchesForAdmin } = await import('../../db/queries')
+    return getAllMatchesForAdmin()
   })
 
 // Story 2.2 — getArmyUnitsFn: GET, returns units + sub_profiles for a given army
@@ -274,6 +295,10 @@ function AdminPage() {
   const [matchArmy2Id, setMatchArmy2Id] = useState('')
   const [matchResult2, setMatchResult2] = useState<'victory' | 'defeat' | 'draw' | ''>('')
   const [matchDate, setMatchDate] = useState(today)
+  const [matchTime, setMatchTime] = useState(() => {
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  })
   const [matchEvolutions, setMatchEvolutions] = useState(false)
   const [matchResult, setMatchResult] = useState<{ success: boolean; message: string } | null>(null)
   const [matchSubmitting, setMatchSubmitting] = useState(false)
@@ -281,6 +306,7 @@ function AdminPage() {
   // Story 2.2 — Double-submit guards (sync refs prevent race conditions on fast double-clicks)
   const addUnitSubmitRef = useRef(false)
   const correctStatsSubmitRef = useRef(false)
+  const [deleteMatchError, setDeleteMatchError] = useState<string | null>(null)
   const hydrated = useHydrated()
 
   useEffect(() => {
@@ -298,6 +324,22 @@ function AdminPage() {
     queryKey: ['admin', 'armies'],
     queryFn: () => listArmiesFn(),
   })
+
+  const matchesQuery = useQuery({
+    queryKey: ['admin', 'matches'],
+    queryFn: () => listMatchesFn(),
+  })
+
+  const handleDeleteMatchAdmin = async (matchId: string, label: string) => {
+    if (!window.confirm(`Supprimer la partie ${label} ? Cette action est irréversible.`)) return
+    setDeleteMatchError(null)
+    const result = await deleteMatchAdminFn({ data: { matchId } })
+    if (result.success) {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    } else {
+      setDeleteMatchError(result.error.message)
+    }
+  }
 
   // Story 2.2 — fetch units for correction form when army is selected
   const armyUnitsQuery = useQuery({
@@ -395,6 +437,7 @@ function AdminPage() {
           army2Id: matchArmy2Id,
           result2: matchResult2 === '' ? null : matchResult2,
           date: matchDate,
+          time: matchTime,
           evolutionsEntered: matchEvolutions,
         },
       })
@@ -405,6 +448,8 @@ function AdminPage() {
         setMatchArmy2Id('')
         setMatchResult2('')
         setMatchDate(today)
+        const now = new Date()
+        setMatchTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
         setMatchEvolutions(false)
       } else {
         setMatchResult({ success: false, message: result.error.message })
@@ -838,6 +883,8 @@ function AdminPage() {
         setResult2={setMatchResult2}
         date={matchDate}
         setDate={setMatchDate}
+        time={matchTime}
+        setTime={setMatchTime}
         evolutionsEntered={matchEvolutions}
         setEvolutionsEntered={setMatchEvolutions}
         result={matchResult}
@@ -845,6 +892,44 @@ function AdminPage() {
         onSubmit={handleCreateMatch}
         btnStyle={btnStyle}
       />}
+
+      {/* Liste des parties — suppression admin */}
+      {session?.isAdmin && (
+        <section style={{ marginBottom: '2rem' }}>
+          <h2 style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+            Parties (suppression)
+          </h2>
+          {deleteMatchError && (
+            <p style={{ color: 'var(--color-malus)', fontFamily: 'var(--font-body)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+              {deleteMatchError}
+            </p>
+          )}
+          {matchesQuery.isLoading && <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Chargement…</p>}
+          {(matchesQuery.data ?? []).map((m) => {
+            const mDate = new Date(m.date)
+            const datePart = new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(mDate)
+            const dateLabel = mDate.getUTCHours() === 0 && mDate.getUTCMinutes() === 0
+              ? datePart
+              : `${datePart}, ${new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' }).format(mDate)}`
+            const isPending = m.evolutions1EnteredAt === null && m.evolutions2EnteredAt === null
+            const label = `${m.player1Name} vs ${m.player2Name} — ${dateLabel}`
+            return (
+              <div key={m.matchId} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: '1px solid var(--color-separator)' }}>
+                <span style={{ flex: 1, fontFamily: 'var(--font-body)', fontSize: '0.875rem' }}>{label}</span>
+                {isPending && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteMatchAdmin(m.matchId, label)}
+                    style={{ padding: '0.25rem 0.625rem', borderRadius: 6, border: 'none', background: 'var(--color-malus)', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 600 }}
+                  >
+                    Supprimer
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </section>
+      )}
 
       {/* Story 2.2 — Add unit form (admin only) */}
       {session?.isAdmin && <AddUnitSection
@@ -941,7 +1026,7 @@ const RESULT_OPTIONS: { value: 'victory' | 'defeat' | 'draw' | ''; label: string
 function CreateMatchSection({
   armies, army1Id, setArmy1Id, result1, setResult1,
   army2Id, setArmy2Id, result2, setResult2,
-  date, setDate, evolutionsEntered, setEvolutionsEntered,
+  date, setDate, time, setTime, evolutionsEntered, setEvolutionsEntered,
   result, submitting, onSubmit, btnStyle,
 }: {
   armies: ArmyOption[]
@@ -950,13 +1035,14 @@ function CreateMatchSection({
   army2Id: string; setArmy2Id: (v: string) => void
   result2: 'victory' | 'defeat' | 'draw' | ''; setResult2: (v: 'victory' | 'defeat' | 'draw' | '') => void
   date: string; setDate: (v: string) => void
+  time: string; setTime: (v: string) => void
   evolutionsEntered: boolean; setEvolutionsEntered: (v: boolean) => void
   result: { success: boolean; message: string } | null
   submitting: boolean
   onSubmit: () => void
   btnStyle: React.CSSProperties
 }) {
-  const canSubmit = !!army1Id && !!army2Id && army1Id !== army2Id && !!date && !submitting
+  const canSubmit = !!army1Id && !!army2Id && army1Id !== army2Id && !!date && !!time && !submitting
 
   const selectStyle: React.CSSProperties = {
     width: '100%', padding: '0.375rem', borderRadius: '0.25rem',
@@ -1014,14 +1100,27 @@ function CreateMatchSection({
         </p>
       )}
 
-      <div style={{ marginBottom: '0.75rem' }}>
-        <label style={labelStyle}>Date de la partie</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          style={{ ...selectStyle, width: 'auto' }}
-        />
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
+        <div>
+          <label style={labelStyle}>Date de la partie</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={{ ...selectStyle, width: 'auto' }}
+          />
+        </div>
+        <div>
+          <label htmlFor="admin-match-time" style={labelStyle}>Heure</label>
+          <input
+            id="admin-match-time"
+            type="time"
+            required
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            style={{ ...selectStyle, width: 'auto' }}
+          />
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>

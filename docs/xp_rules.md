@@ -8,9 +8,9 @@
 | Le personnage est en vie et n'est pas en fuite à la fin de la bataille | 1 XP |
 | C'est le général et il remporte la bataille | 2 XP |
 | C'est le général et la partie est une égalité | 1 XP |
-| Le personnage réalise un exploit (1 seul par bataille) | 1 XP |
+| Le personnage réalise un exploit, possibilité d'en valider plusieurs différents| 1 XP |
 
-### Exploits (choisir 1 seul)
+### Exploits (possibilité d'en valider plusieurs différents)
 
 - Remporter un duel contre un autre personnage ou un champion qui a 2 PV ou plus
 - Détruire une unité à lui seul
@@ -25,9 +25,9 @@
 |---|---|
 | L'unité est déployée sur le champ de bataille | 1 XP |
 | L'unité survit à plus de 50 % et n'est pas en fuite à la fin de la bataille | 1 XP |
-| L'unité accomplit un fait d'armes (1 seul par bataille) | 2 XP |
+| L'unité accomplit un fait d'armes, possibilité d'en valider plusieurs différents | 1 XP |
 
-### Faits d'armes (choisir 1 seul)
+### Faits d'armes (cpossibilité d'en valider plusieurs différents)
 
 - Détruire une unité en combat (tir, corps à corps, poursuite)
 - Mettre hors combat un personnage ennemi

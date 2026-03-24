@@ -33,6 +33,10 @@ export type ThresholdEntry = {
 // Source: docs/xp_rules.md — "Destruction d'unité" section
 // ---------------------------------------------------------------------------
 
+// Honour thresholds — XP values excluded from deroute tier-down gain removal
+// Champion and banner gains at these thresholds are NEVER cleared by deroute
+export const HONOUR_THRESHOLDS = [3, 9] as const
+
 export const DEROUTE_XP_LOSS: Record<0 | 1 | 2 | 3 | 4, number> = {
   0: 10, // Bleusaille
   1: 10, // Aguerri

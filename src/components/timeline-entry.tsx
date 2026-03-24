@@ -7,17 +7,22 @@ import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceG
 
 export type TimelineEntryProps = {
   matchId: string
-  opponent: {
+  matchType?: 'standard' | 'initial_setup'
+  opponent?: {
     name: string
     faction: string
     playerName?: string
-  }
+  } | null
   result: 'victory' | 'defeat' | 'draw' | null
   date: string // ISO 8601
   hasEvolutions: boolean
   isEditable?: boolean
+  isLatestMatch?: boolean
   onResultSubmit?: (matchId: string, result: 'victory' | 'defeat' | 'draw') => Promise<void>
   onEvolutionStart?: (matchId: string) => void
+  onPostMatchReentry?: (matchId: string) => void
+  onDelete?: (matchId: string) => void
+  onSkipInitialXp?: () => void
   unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
 }
 
@@ -51,33 +56,50 @@ const RESULT_CONFIG = {
 function formatDate(isoDate: string): string {
   const d = new Date(isoDate)
   if (isNaN(d.getTime())) return isoDate // fallback: return raw string
-  return new Intl.DateTimeFormat('fr-FR', {
+  const tz = 'UTC' // Paris wall-clock stored as UTC — display as-is
+  const datePart = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: tz,
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   }).format(d)
+  // Don't show "00:00" for legacy matches stored at midnight
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return datePart
+  const timePart = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+  return `${datePart}, ${timePart}`
 }
 
 export function TimelineEntry({
   matchId,
+  matchType = 'standard',
   opponent,
   result,
   date,
   hasEvolutions,
   isEditable = false,
+  isLatestMatch = false,
   onResultSubmit,
   onEvolutionStart,
+  onPostMatchReentry,
+  onDelete,
+  onSkipInitialXp,
   unitXpEntries,
 }: TimelineEntryProps) {
-  const resultConfig = result ? RESULT_CONFIG[result] : null
+  const isInitialSetup = matchType === 'initial_setup'
+  const resultConfig = result && !isInitialSetup ? RESULT_CONFIG[result] : null
   const formattedDate = formatDate(date)
 
   const [isSelecting, setIsSelecting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // initial_setup matches have no result (no V/D/E) — don't show result selection
   const showSelectionButtons =
-    isEditable && (result === null || isSelecting)
+    !isInitialSetup && isEditable && (result === null || isSelecting)
 
   const handleResultClick = async (selectedResult: 'victory' | 'defeat' | 'draw') => {
     if (!onResultSubmit || isSubmitting) return
@@ -86,7 +108,6 @@ export function TimelineEntry({
     try {
       await onResultSubmit(matchId, selectedResult)
       setIsSubmitting(false)
-      setIsSelecting(false)
     } catch (err) {
       setIsSubmitting(false)
       setSubmitError(err instanceof Error ? err.message : 'Erreur inconnue')
@@ -140,7 +161,7 @@ export function TimelineEntry({
           </span>
         )}
 
-        {/* Opponent info */}
+        {/* Opponent info (or "XP Initiale" label for initial_setup matches) */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
@@ -154,32 +175,36 @@ export function TimelineEntry({
               whiteSpace: 'nowrap',
             }}
           >
-            {opponent.name}
+            {isInitialSetup ? 'XP Initiale' : (opponent?.name ?? 'Adversaire')}
           </p>
-          <p
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.8125rem',
-              color: 'var(--color-text-secondary)',
-              margin: 0,
-            }}
-          >
-            {opponent.playerName?.trim() ? `${opponent.faction} · ${opponent.playerName.trim()}` : opponent.faction}
-          </p>
+          {!isInitialSetup && opponent && (
+            <p
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.8125rem',
+                color: 'var(--color-text-secondary)',
+                margin: 0,
+              }}
+            >
+              {opponent.playerName?.trim() ? `${opponent.faction} · ${opponent.playerName.trim()}` : opponent.faction}
+            </p>
+          )}
         </div>
 
         {/* Date + Modifier link */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          <span
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.8125rem',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            {formattedDate}
-          </span>
-          {isEditable && result !== null && !isSelecting && (
+          {!isInitialSetup && (
+            <span
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.8125rem',
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              {formattedDate}
+            </span>
+          )}
+          {isEditable && !isInitialSetup && result !== null && !isSelecting && (
             <button
               data-testid="modify-result"
               onClick={() => {
@@ -200,11 +225,63 @@ export function TimelineEntry({
               Modifier
             </button>
           )}
+          {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
+            <button
+              type="button"
+              data-testid="delete-match"
+              onClick={() => onDelete(matchId)}
+              aria-label="Supprimer la partie"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-malus)',
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                padding: '0 2px',
+                lineHeight: 1,
+                minWidth: 28,
+                minHeight: 28,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
+          )}
+          {isEditable && !isInitialSetup && result !== null && isSelecting && (
+            <button
+              data-testid="cancel-modify"
+              onClick={() => {
+                setIsSelecting(false)
+                setSubmitError(null)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.75rem',
+                color: '#b82c2c',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              Fermer
+            </button>
+          )}
         </div>
       </div>
 
       {/* Result selection buttons */}
       {showSelectionButtons && (
+        <>
+        {hasEvolutions && isLatestMatch && isSelecting && (
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0.25rem 0 0', fontStyle: 'italic' }}>
+            Changer le résultat ne modifie pas le rapport — pensez à le re-saisir si nécessaire.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
           {(['victory', 'defeat', 'draw'] as const).map((key) => {
             const cfg = RESULT_CONFIG[key]
@@ -234,6 +311,7 @@ export function TimelineEntry({
             )
           })}
         </div>
+        </>
       )}
 
       {/* Inline error message */}
@@ -341,8 +419,8 @@ export function TimelineEntry({
         ) : null
       })()}
 
-      {/* "Au rapport !" button — shown when result is set, evolutions not yet entered, and editable */}
-      {isEditable && result !== null && !hasEvolutions && onEvolutionStart && (
+      {/* "Au rapport !" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
+      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && onEvolutionStart && (
         <button
           type="button"
           data-testid="evolution-start"
@@ -367,6 +445,58 @@ export function TimelineEntry({
           }}
         >
           Au rapport ! <span aria-hidden="true">›</span>
+        </button>
+      )}
+
+      {/* "Passer l'XP initiale" button — only for initial_setup, when editable and not yet filled */}
+      {isEditable && isInitialSetup && !hasEvolutions && onSkipInitialXp && (
+        <button
+          type="button"
+          data-testid="skip-initial-xp"
+          onClick={onSkipInitialXp}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.8125rem',
+            color: 'var(--color-text-secondary)',
+            textDecoration: 'underline',
+            alignSelf: 'center',
+            padding: '0.25rem 0',
+          }}
+        >
+          Passer l&apos;XP initiale
+        </button>
+      )}
+
+      {/* "Modifier le dernier rapport" — shown on latest match with completed post-match.
+           For standard matches: only after clicking "Modifier". For initial_setup: always visible. */}
+      {isEditable && (result !== null || isInitialSetup) && hasEvolutions && isLatestMatch && (isSelecting || isInitialSetup) && onPostMatchReentry && (
+        <button
+          type="button"
+          data-testid="post-match-reentry"
+          onClick={() => onPostMatchReentry(matchId)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.375rem',
+            alignSelf: 'center',
+            minHeight: '44px',
+            background: '#334155',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontWeight: 600,
+            fontSize: '0.8125rem',
+            padding: '0.5rem 1rem',
+            marginTop: '0.25rem',
+          }}
+        >
+          Modifier le dernier rapport
         </button>
       )}
     </div>

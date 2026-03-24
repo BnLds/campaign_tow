@@ -61,25 +61,20 @@ function makeDefaultProps(units = MIXED_ARMY) {
 }
 
 // Helper: submit XP for all units (advance through Phase 1)
-// Note: wizard uses data-testid="wizard-xp-input", "wizard-next-button", "wizard-cancel-button"
+// Note: wizard uses XP checkboxes — we just click next with 0 XP for these tests
 async function advanceThroughPhase1(
   user: ReturnType<typeof userEvent.setup>,
   unitCount: number,
   toggleIndices: number[] = [],
 ) {
   for (let i = 0; i < unitCount; i++) {
-    // Enter XP value
-    const xpInput = screen.getByTestId('wizard-xp-input')
-    await user.clear(xpInput)
-    await user.type(xpInput, '3')
-
     // Toggle consequence checkbox if this unit should be flagged
     if (toggleIndices.includes(i)) {
       const toggle = screen.getByTestId('consequence-toggle')
       await user.click(toggle)
     }
 
-    // Click next
+    // Click next (with 0 XP — sufficient for consequence flow tests)
     await user.click(screen.getByTestId('wizard-next-button'))
 
     // Wait for XP submit to resolve
@@ -433,9 +428,9 @@ describe('[AC9][P1] PostMatchWizard — Phase 1.5 back to Phase 1 (Task 11.14)',
     // Press back (at consequenceIndex 0)
     await user.click(screen.getByTestId('wizard-back-button'))
 
-    // Should return to Phase 1 (XP input for last unit)
+    // Should return to Phase 1 (XP checkboxes for last unit)
     await waitFor(() => {
-      expect(screen.getByTestId('wizard-xp-input')).toBeDefined()
+      expect(screen.getByTestId('wizard-xp-checkboxes')).toBeDefined()
     })
   })
 })

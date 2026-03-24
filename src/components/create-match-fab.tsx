@@ -5,9 +5,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from '@tanstack/react-router'
+import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { authMiddleware } from '../lib/middleware'
+import { STALE_TIME_SESSION } from '../lib/query-constants'
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+
+// ---------------------------------------------------------------------------
+// Query options: opponents list
+// ---------------------------------------------------------------------------
+
+const opponentsQueryOptions = () =>
+  queryOptions({
+    queryKey: ['opponents'],
+    queryFn: () => loadOpponentsFn(),
+    staleTime: STALE_TIME_SESSION,
+  })
 
 // ---------------------------------------------------------------------------
 // Server function: loadOpponentsFn — fetches opponent player list for match creation
@@ -47,7 +60,7 @@ export const loadOpponentsFn = createServerFn({ method: 'GET' })
 
 export const createMatchFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().optional() }))
+  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/) }))
   .handler(async ({ context, data }) => {
     const { session } = context
 
@@ -61,12 +74,12 @@ export const createMatchFn = createServerFn({ method: 'POST' })
     // AC10 — Reject players without army
     const playerArmy = await getPlayerArmy(session.playerId)
     if (!playerArmy) {
-      throw new Error('Vous devez avoir une armee pour creer une partie')
+      throw new Error('Vous devez avoir une armée pour créer une partie')
     }
 
     // AC8 — Reject self-match
     if (data.opponentPlayerId === session.playerId) {
-      throw new Error('Vous ne pouvez pas jouer contre vous-meme')
+      throw new Error('Vous ne pouvez pas jouer contre vous-même')
     }
 
     // Validate opponent player exists, lookup their army (may be null)
@@ -77,10 +90,8 @@ export const createMatchFn = createServerFn({ method: 'POST' })
     }
     const opponentArmy = await getPlayerArmy(data.opponentPlayerId)
 
-    // AC3 — Parse and validate date, normalize to midnight UTC
-    const matchDate = data.date
-      ? new Date(data.date + 'T00:00:00Z')
-      : new Date(new Date().toISOString().split('T')[0] + 'T00:00:00Z')
+    // AC3 — Parse and validate date + time (Paris wall-clock stored as UTC)
+    const matchDate = new Date(`${data.date}T${data.time}:00Z`)
 
     if (isNaN(matchDate.getTime())) {
       throw new Error('Date invalide')
@@ -125,42 +136,44 @@ type OpponentItem = {
 
 export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [noArmyMessage, setNoArmyMessage] = useState(false)
   const noArmyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Dialog state
-  const [opponents, setOpponents] = useState<OpponentItem[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [time, setTime] = useState(() => {
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // Fetch opponents when dialog opens; reset state when dialog closes
+  const {
+    data: opponents = [] as OpponentItem[],
+    isLoading,
+    error: loadError,
+    refetch: retryOpponents,
+  } = useQuery({
+    ...opponentsQueryOptions(),
+    enabled: open, // fetch uniquement quand le dialog est ouvert
+  })
+
+  // Reset dialog state when it opens/closes; no fetch needed (handled by useQuery)
   useEffect(() => {
     if (!open) {
       // H1 — reset isSubmitting when dialog is closed/reopened
       setIsSubmitting(false)
       return
     }
-    // M5 — reset date to today when dialog opens
+    // M5 — reset date to today and time to now when dialog opens
     setDate(new Date().toISOString().split('T')[0])
-    setIsLoading(true)
-    setLoadError(null)
+    const now = new Date()
+    setTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
     setSelectedOpponent(null)
     setSubmitError(null)
-
-    loadOpponentsFn()
-      .then((data) => {
-        setOpponents(data)
-        setIsLoading(false)
-      })
-      .catch(() => {
-        setLoadError('Impossible de charger la liste des adversaires.')
-        setIsLoading(false)
-      })
   }, [open])
 
   // M3 — cleanup no-army toast timeout on unmount
@@ -182,17 +195,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
   }
 
   const handleRetry = () => {
-    setIsLoading(true)
-    setLoadError(null)
-    loadOpponentsFn()
-      .then((data) => {
-        setOpponents(data)
-        setIsLoading(false)
-      })
-      .catch(() => {
-        setLoadError('Impossible de charger la liste des adversaires.')
-        setIsLoading(false)
-      })
+    retryOpponents()
   }
 
   const handleConfirm = async () => {
@@ -200,14 +203,17 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await createMatchFn({ data: { opponentPlayerId: selectedOpponent, date } })
+      await createMatchFn({ data: { opponentPlayerId: selectedOpponent, date, time } })
       setOpen(false)
       setSelectedOpponent(null)
       // H1 — reset isSubmitting on success path (finally will also run but setOpen triggers useEffect reset)
       setIsSubmitting(false)
-      router.invalidate()
+      queryClient.invalidateQueries({ queryKey: ['opponents'] })
+      queryClient.invalidateQueries({ queryKey: ['session'] })
+      queryClient.invalidateQueries({ queryKey: ['army-info'] })
+      router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la creation de la partie.')
+      setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la création de la partie.')
     } finally {
       // H1 — ensure isSubmitting is always reset (covers both success and error paths)
       setIsSubmitting(false)
@@ -233,14 +239,14 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
             textAlign: 'right',
           }}
         >
-          Vous devez avoir une armee pour creer une partie
+          Vous devez avoir une armée pour créer une partie
         </div>
       )}
 
       {/* FAB button */}
       <button
         data-testid="create-match-fab"
-        aria-label="Creer une partie"
+        aria-label="Créer une partie"
         onClick={handleFabClick}
         style={{
           position: 'absolute',
@@ -278,7 +284,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
               Nouvelle partie
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Choisir un adversaire et une date pour creer une nouvelle partie
+              Choisir un adversaire et une date pour créer une nouvelle partie
             </DialogDescription>
           </DialogHeader>
 
@@ -291,7 +297,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
             ) : loadError ? (
               <div>
                 <p style={{ color: 'var(--color-malus)', fontSize: 14, marginBottom: 8 }}>
-                  {loadError}
+                  Impossible de charger la liste des adversaires.
                 </p>
                 <button
                   onClick={handleRetry}
@@ -305,7 +311,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
                     fontSize: 13,
                   }}
                 >
-                  Reessayer
+                  Réessayer
                 </button>
               </div>
             ) : opponents.length === 0 ? (
@@ -334,7 +340,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
                     <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       {opponent.hasArmy
                         ? `${opponent.armyName} — ${opponent.faction}`
-                        : 'Armee non attribuee'}
+                        : 'Armée non attribuée'}
                     </div>
                   </button>
                 ))}
@@ -342,29 +348,55 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
             )}
           </div>
 
-          {/* Date input */}
-          <div>
-            <label
-              htmlFor="match-date"
-              style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
-            >
-              Date de la partie
-            </label>
-            <input
-              id="match-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              style={{
-                width: '100%',
-                border: '1px solid #e0d5c8',
-                borderRadius: 8,
-                padding: '8px 10px',
-                fontSize: 14,
-                color: 'var(--color-text-primary)',
-                background: '#fffbf5',
-              }}
-            />
+          {/* Date + time inputs */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="match-date"
+                style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
+              >
+                Date
+              </label>
+              <input
+                id="match-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  border: '1px solid #e0d5c8',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  fontSize: 14,
+                  color: 'var(--color-text-primary)',
+                  background: '#fffbf5',
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="match-time"
+                style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
+              >
+                Heure
+              </label>
+              <input
+                id="match-time"
+                type="time"
+                required
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                style={{
+                  width: '100%',
+                  border: '1px solid #e0d5c8',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  fontSize: 14,
+                  color: 'var(--color-text-primary)',
+                  background: '#fffbf5',
+                }}
+              />
+            </div>
           </div>
 
           {/* Submit error */}
@@ -390,7 +422,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
               width: '100%',
             }}
           >
-            {isSubmitting ? 'Creation en cours...' : 'Creer la partie'}
+            {isSubmitting ? 'Création en cours...' : 'Créer la partie'}
           </button>
         </DialogContent>
       </Dialog>

@@ -2,12 +2,14 @@
 // Lists all armies. Highlights own army with gold styling.
 // Accessible to all users including guests (read-only).
 
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { useHydrated } from '../../lib/useHydrated'
 import { authMiddleware } from '../../lib/middleware'
 import { ArmyListItem } from '../../components/army-list-item'
+import { ArmyImportForm } from '../../components/army-import-form'
 
 // ArmyListItem gold variant colors (passed via isOwn prop):
 // isOwn=true: border #ead69b, background gradient from #fff9ec to #fff6eb
@@ -42,6 +44,7 @@ const loadArmiesListFn = createServerFn({ method: 'GET' })
   })
 
 export const Route = createFileRoute('/armies/')({
+  staleTime: 60_000,
   loader: async () => {
     return loadArmiesListFn()
   },
@@ -50,7 +53,10 @@ export const Route = createFileRoute('/armies/')({
 
 function ArmiesListView() {
   const { armies, isGuest } = Route.useLoaderData()
+  const queryClient = useQueryClient()
+  const router = useRouter()
   const hydrated = useHydrated()
+  const hasOwnArmy = !isGuest && armies.some((a) => a.isOwn)
 
   useEffect(() => {
     if (hydrated) {
@@ -69,16 +75,24 @@ function ArmiesListView() {
           marginBottom: '1.5rem',
         }}
       >
-        Armees
+        Armées
       </h1>
+
+      {!isGuest && !hasOwnArmy && (
+        <ArmyImportForm onSuccess={async () => {
+          await queryClient.invalidateQueries({ queryKey: ['session'] })
+          await queryClient.invalidateQueries({ queryKey: ['army-info'] })
+          await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/armies/' })
+        }} />
+      )}
 
       {armies.length === 0 ? (
         <div>
           <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
-            Aucune armee dans la campagne
+            Aucune armée dans la campagne
           </p>
           <Link to="/" style={{ color: 'var(--color-brand)', fontSize: '0.875rem' }}>
-            Retour a la campagne
+            Retour à la campagne
           </Link>
         </div>
       ) : (

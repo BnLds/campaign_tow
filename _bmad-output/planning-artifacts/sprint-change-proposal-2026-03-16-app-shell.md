@@ -48,7 +48,7 @@ Key deliverables:
 - App shell layout in `__root.tsx`: AppHeader preserved at top (display name, logout button, admin link) + scrollable content area + TabBar fixed at bottom
 - ArmyListItem component with gold "current" variant and win/draw/loss record
 - Campaign view header enriched with win/draw/loss record
-- `/references` placeholder route
+- `/territories` placeholder route
 - FAB positioning compatibility (bottom: 62px above TabBar)
 
 ### Sprint Status Updated

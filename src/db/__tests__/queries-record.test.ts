@@ -158,9 +158,9 @@ describe('[AC3][AC10][P0] DB queries — getAllArmyRecords — src/db/queries.ts
 // ---------------------------------------------------------------------------
 
 describe('[AC4][P0] Root layout — getArmyRecord integration (Task 5.2 → moved to __root.tsx)', () => {
-  it('[3.1b-QRY-023] __root.tsx calls getArmyRecord in getPlayerArmyInfoFn', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toMatch(/getArmyRecord/)
+  it('[3.1b-QRY-023] session-queries.ts calls getArmyRecord in getPlayerArmyInfoFn', () => {
+    const sessionQueries = readFileSync(resolve(root, 'src/lib/session-queries.ts'), 'utf-8')
+    expect(sessionQueries).toMatch(/getArmyRecord/)
   })
 
   it('[3.1b-QRY-024] __root.tsx includes record in beforeLoad return value', () => {

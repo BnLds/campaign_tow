@@ -23,7 +23,7 @@ export type DestructionResult = {
 // Table data
 // ---------------------------------------------------------------------------
 
-const DESTRUCTION_OPTIONS = [
+export const DESTRUCTION_OPTIONS = [
   { type: 'deroute_sanglante', label: '2-3 — Déroute Sanglante', ruleText: "L'unité perd 10/10/15/20/30 XP selon son palier. La perte d'XP se fait après l'ajout des gains de la bataille." },
   { type: 'pertes_catastrophiques', label: '4-6 — Pertes Catastrophiques', ruleText: "L'unité est à moitié d'effectif (arrondi à l'inférieur) pour la bataille suivante." },
   { type: 'moral_brise', label: '7-8 — Moral Brisé', ruleText: "L'unité perd 2 points de Commandement pour la bataille suivante." },
@@ -38,6 +38,7 @@ const DESTRUCTION_OPTIONS = [
 
 export type UnitDestructionStepProps = {
   unitName: string
+  hasBannerGain: boolean
   onConfirm: (result: DestructionResult) => void
 }
 
@@ -45,9 +46,8 @@ export type UnitDestructionStepProps = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStepProps) {
+export function UnitDestructionStep({ unitName, hasBannerGain, onConfirm }: UnitDestructionStepProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null)
-  const [bannerLost, setBannerLost] = useState(false)
 
   const isConfirmEnabled = selectedType !== null
 
@@ -55,7 +55,7 @@ export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStep
     if (!selectedType) return
     onConfirm({
       type: selectedType as DestructionResult['type'],
-      bannerLost,
+      bannerLost: hasBannerGain,
     })
   }
 
@@ -136,37 +136,23 @@ export function UnitDestructionStep({ unitName, onConfirm }: UnitDestructionStep
         ))}
       </div>
 
-      {/* Banner checkbox — independent of main selection */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.375rem',
-          paddingTop: '0.25rem',
-          borderTop: '1px solid rgba(184,44,44,0.2)',
-        }}
-      >
-        <label
+      {/* Banner auto-loss — shown only if unit had "Bannière gratuite" gain */}
+      {hasBannerGain && (
+        <p
+          data-testid="banner-lost-message"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer',
             fontFamily: 'var(--font-body)',
+            fontWeight: 600,
             fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
+            color: 'var(--color-malus, #b82c2c)',
+            margin: 0,
+            paddingTop: '0.25rem',
+            borderTop: '1px solid rgba(184,44,44,0.2)',
           }}
         >
-          <input
-            data-testid="banner-lost-checkbox"
-            type="checkbox"
-            checked={bannerLost}
-            onChange={(e) => setBannerLost(e.target.checked)}
-            style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
-          />
-          L'unité possédait une bannière
-        </label>
-      </div>
+          L'unité perd sa bannière gratuite !
+        </p>
+      )}
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>

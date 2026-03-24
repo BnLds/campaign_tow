@@ -86,9 +86,9 @@ describe('[AC1][AC2][P0] Campaign view — header with army name and army detail
     expect(rootRoute).toMatch(/(font-display|fontFamily[\s\S]{0,100}display)/)
   })
 
-  it('[3.1-CMP-009] __root.tsx AppHeader has a Link to /armies/$armyId (army detail navigation — AC2)', () => {
+  it('[3.1-CMP-009] __root.tsx AppHeader navigates to /armies/$armyId via hamburger menu (army detail navigation — AC2)', () => {
     const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toMatch(/Link[\s\S]{0,200}(\/armies\/\$armyId|to=.*armies.*armyId)/)
+    expect(rootRoute).toMatch(/router\.navigate\(\{[\s\S]{0,80}\/armies\/\$armyId/)
   })
 })
 
