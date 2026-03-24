@@ -10,16 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TerritoriesRouteImport } from './routes/territories'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArmiesIndexRouteImport } from './routes/armies/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ArmiesArmyIdRouteImport } from './routes/armies/$armyId'
 import { Route as MatchMatchIdPostMatchRouteImport } from './routes/match/$matchId/post-match'
 
 const TerritoriesRoute = TerritoriesRouteImport.update({
   id: '/territories',
   path: '/territories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -42,6 +49,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArmiesArmyIdRoute = ArmiesArmyIdRouteImport.update({
   id: '/armies/$armyId',
   path: '/armies/$armyId',
@@ -56,8 +68,10 @@ const MatchMatchIdPostMatchRoute = MatchMatchIdPostMatchRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/territories': typeof TerritoriesRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/armies/': typeof ArmiesIndexRoute
   '/match/$matchId/post-match': typeof MatchMatchIdPostMatchRoute
@@ -65,8 +79,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/territories': typeof TerritoriesRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/admin': typeof AdminIndexRoute
   '/armies': typeof ArmiesIndexRoute
   '/match/$matchId/post-match': typeof MatchMatchIdPostMatchRoute
@@ -75,8 +91,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/territories': typeof TerritoriesRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/armies/': typeof ArmiesIndexRoute
   '/match/$matchId/post-match': typeof MatchMatchIdPostMatchRoute
@@ -86,8 +104,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/settings'
     | '/territories'
     | '/armies/$armyId'
+    | '/invite/$token'
     | '/admin/'
     | '/armies/'
     | '/match/$matchId/post-match'
@@ -95,8 +115,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/settings'
     | '/territories'
     | '/armies/$armyId'
+    | '/invite/$token'
     | '/admin'
     | '/armies'
     | '/match/$matchId/post-match'
@@ -104,8 +126,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/settings'
     | '/territories'
     | '/armies/$armyId'
+    | '/invite/$token'
     | '/admin/'
     | '/armies/'
     | '/match/$matchId/post-match'
@@ -114,8 +138,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  SettingsRoute: typeof SettingsRoute
   TerritoriesRoute: typeof TerritoriesRoute
   ArmiesArmyIdRoute: typeof ArmiesArmyIdRoute
+  InviteTokenRoute: typeof InviteTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   ArmiesIndexRoute: typeof ArmiesIndexRoute
   MatchMatchIdPostMatchRoute: typeof MatchMatchIdPostMatchRoute
@@ -128,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/territories'
       fullPath: '/territories'
       preLoaderRoute: typeof TerritoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -158,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/armies/$armyId': {
       id: '/armies/$armyId'
       path: '/armies/$armyId'
@@ -178,8 +218,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  SettingsRoute: SettingsRoute,
   TerritoriesRoute: TerritoriesRoute,
   ArmiesArmyIdRoute: ArmiesArmyIdRoute,
+  InviteTokenRoute: InviteTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   ArmiesIndexRoute: ArmiesIndexRoute,
   MatchMatchIdPostMatchRoute: MatchMatchIdPostMatchRoute,
