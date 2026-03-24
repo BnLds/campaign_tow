@@ -132,10 +132,11 @@ describe('[AC3][AC4][AC7][AC8][P0] submitUnitXpFn — server function contract (
     expect(code).toMatch(/submitUnitXpFn[\s\S]{0,400}authMiddleware/)
   })
 
-  // 10.10 — submitUnitXpFn uses inputValidator with submitUnitXpSchema
-  it('[4.1-SFN-016] submitUnitXpFn uses inputValidator(submitUnitXpSchema)', () => {
+  // 10.10 — submitUnitXpFn uses inputValidator with submitInitialXpSchema (broader, 0-999)
+  // The 0-99 cap for standard matches is enforced server-side in the handler via matchType lookup.
+  it('[4.1-SFN-016] submitUnitXpFn uses inputValidator(submitInitialXpSchema)', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/submitUnitXpFn[\s\S]{0,600}inputValidator[\s\S]{0,200}submitUnitXpSchema/)
+    expect(code).toMatch(/submitUnitXpFn[\s\S]{0,600}inputValidator[\s\S]{0,200}submitInitialXpSchema/)
   })
 
   // 10.10 — rejects guest users (returns UNAUTHORIZED)

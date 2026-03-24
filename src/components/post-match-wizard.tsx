@@ -79,6 +79,8 @@ export type PostMatchWizardProps = {
   matchParticipantId: string
   /** Pseudo du joueur adverse — used for Haine/Rancune descriptions */
   opponentPlayerName?: string
+  /** 'post-match' (default): checkbox XP conditions. 'initial-xp': direct numeric input 0-999. */
+  mode?: 'post-match' | 'initial-xp'
   units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
   onComplete: () => void
   onCancel: () => void
@@ -93,6 +95,7 @@ export function PostMatchWizard({
   matchId,
   matchParticipantId,
   opponentPlayerName = 'Adversaire',
+  mode = 'post-match',
   units,
   onComplete,
   onCancel,
@@ -108,6 +111,8 @@ export function PostMatchWizard({
   const [showPreviousXpHint, setShowPreviousXpHint] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // initial-xp mode: numeric input per unit
+  const [numericXpValue, setNumericXpValue] = useState<number>(0)
 
   // Phase 1.5 (consequence) state
   const [consequenceIndex, setConsequenceIndex] = useState(0)
@@ -150,18 +155,26 @@ export function PostMatchWizard({
   // Track checked condition IDs per step (for back-button pre-fill)
   const submittedXpByStep = useRef<Map<number, Set<string>>>(new Map())
 
-  // Pre-fill XP checkboxes from saved state or show previous XP hint on re-entry
+  // Pre-fill XP checkboxes (or numeric value) from saved state or show previous XP hint on re-entry
   useEffect(() => {
-    const saved = submittedXpByStep.current.get(currentStep)
-    if (saved !== undefined) {
-      setCheckedConditions(new Set(saved))
+    const unit = units[currentStep] as typeof units[0] | undefined
+    if (mode === 'initial-xp') {
+      // Pre-fill numeric input with previousXpGained on re-entry
+      const prevXp = unit?.previousXpGained
+      setNumericXpValue(prevXp != null && prevXp > 0 ? prevXp : 0)
       setShowPreviousXpHint(false)
     } else {
-      setCheckedConditions(new Set())
-      const prevXp = (units[currentStep] as typeof units[0] | undefined)?.previousXpGained
-      setShowPreviousXpHint(prevXp != null && prevXp > 0)
+      const saved = submittedXpByStep.current.get(currentStep)
+      if (saved !== undefined) {
+        setCheckedConditions(new Set(saved))
+        setShowPreviousXpHint(false)
+      } else {
+        setCheckedConditions(new Set())
+        const prevXp = unit?.previousXpGained
+        setShowPreviousXpHint(prevXp != null && prevXp > 0)
+      }
     }
-  }, [currentStep, units])
+  }, [currentStep, units, mode])
   // Fix 2 — synchronous guard against double-click race condition
   const submittingRef = useRef(false)
   // Fix 1 — track already-submitted units to prevent double XP on retry
@@ -344,13 +357,15 @@ export function PostMatchWizard({
       let newXp: number | null = null
 
       if (!alreadySubmitted) {
+        // initial-xp mode: use direct numeric value; post-match mode: use checkbox total
+        const xpToSubmit = mode === 'initial-xp' ? Math.max(0, Math.floor(numericXpValue)) : Math.floor(xpGained)
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
-          submitResult = await onSubmitUnitXp(currentUnit.id, Math.floor(xpGained), matchParticipantId)
+          submitResult = await onSubmitUnitXp(currentUnit.id, xpToSubmit, matchParticipantId)
         } else {
           // Dynamic import to avoid bundling server fn into client
           const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
-          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentUnit.id, xpGained: Math.floor(xpGained) } })
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentUnit.id, xpGained: xpToSubmit } })
         }
 
         if (!submitResult.success) {
@@ -367,11 +382,11 @@ export function PostMatchWizard({
       }
 
       // Store XP result for tier crossing detection.
-      // oldXp = pre-match XP (before any XP from this match was applied).
-      // On first run: previousXpGained is null/0, so preMatchXp = currentUnit.xp.
-      // On resume: previousXpGained > 0, and currentUnit.xp already includes it,
-      // so preMatchXp = currentUnit.xp - previousXpGained = true pre-match XP.
-      const preMatchXp = currentUnit.xp - (currentUnit.previousXpGained ?? 0)
+      // initial-xp mode: oldXp is always 0 (entering XP from scratch since army creation).
+      // post-match mode: oldXp = pre-match XP (before any XP from this match was applied).
+      //   On first run: previousXpGained is null/0, so preMatchXp = currentUnit.xp.
+      //   On resume: previousXpGained > 0, so preMatchXp = currentUnit.xp - previousXpGained.
+      const preMatchXp = mode === 'initial-xp' ? 0 : (currentUnit.xp - (currentUnit.previousXpGained ?? 0))
       if (newXp !== null) {
         xpResultsRef.current.set(currentUnit.id, {
           oldXp: preMatchXp,
@@ -1008,18 +1023,35 @@ export function PostMatchWizard({
             ‹
           </button>
         )}
-        <p
-          data-testid="wizard-progress"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
-            margin: 0,
-            textAlign: 'center',
-          }}
-        >
-          Unité {currentStep + 1} / {total}
-        </p>
+        <div style={{ textAlign: 'center' }}>
+          {mode === 'initial-xp' && (
+            <p
+              data-testid="wizard-mode-header"
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: 'var(--color-brand)',
+                margin: '0 0 2px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              XP initiale
+            </p>
+          )}
+          <p
+            data-testid="wizard-progress"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.875rem',
+              color: 'var(--color-text-secondary)',
+              margin: 0,
+            }}
+          >
+            Unité {currentStep + 1} / {total}
+          </p>
+        </div>
         <button
           type="button"
           data-testid="wizard-cancel-button"
@@ -1080,8 +1112,43 @@ export function PostMatchWizard({
         </p>
       </div>
 
-      {/* XP checkboxes */}
+      {/* XP section — numeric input (initial-xp mode) or checkboxes (post-match mode) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {mode === 'initial-xp' ? (
+          <div data-testid="wizard-xp-numeric">
+            <label
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.875rem',
+                color: 'var(--color-text-secondary)',
+                marginBottom: '0.375rem',
+              }}
+            >
+              XP totale
+            </label>
+            <input
+              data-testid="wizard-xp-numeric-input"
+              type="number"
+              min={0}
+              max={999}
+              value={numericXpValue}
+              onChange={(e) => setNumericXpValue(Math.min(999, Math.max(0, parseInt(e.target.value, 10) || 0)))}
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '1rem',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid var(--color-separator)',
+                background: 'var(--color-background)',
+                color: 'var(--color-text-primary)',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        ) : (
+          <>
         {showPreviousXpHint && currentUnit.previousXpGained != null && (
           <>
             <p
@@ -1265,6 +1332,8 @@ export function PostMatchWizard({
         >
           Total : {xpGained} XP
         </p>
+          </>
+        )}
       </div>
 
       {/* Consequence toggle — MHC for characters, Détruite for units (AC1, AC12) */}

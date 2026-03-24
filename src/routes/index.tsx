@@ -1,7 +1,7 @@
 import { createFileRoute, useRouteContext, useRouter, Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useHydrated } from '../lib/useHydrated'
 import { WelcomeModal } from '../components/welcome-modal'
 import { TimelineEntry } from '../components/timeline-entry'
@@ -60,6 +60,52 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     return { success: true, data: { participantId: participant.id, result: data.result } }
   })
 
+const createInitialSetupMatchFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<ServerResult<{ matchId: string }>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getPlayerArmy, createInitialSetupMatch } = await import('../db/queries')
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+    }
+    const matchId = await createInitialSetupMatch(context.session.playerId, army.id)
+    return { success: true, data: { matchId } }
+  })
+
+const skipInitialXpFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<ServerResult<void>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getPlayerArmy, getInitialSetupMatchForArmy } = await import('../db/queries')
+    const { db } = await import('../db/index')
+    const { armies: armiesTable, matches: matchesTable, matchParticipants: mpTable } = await import('../db/schema')
+    const { eq: dbEq, and: dbAnd } = await import('drizzle-orm')
+
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+    }
+
+    await db.transaction(async (tx) => {
+      // Clear needsInitialXp flag
+      await tx.update(armiesTable).set({ needsInitialXp: false }).where(dbEq(armiesTable.id, army.id))
+
+      // Delete incomplete initial_setup match if it exists
+      const existing = await getInitialSetupMatchForArmy(army.id)
+      if (existing && existing.evolutionsEnteredAt === null) {
+        await tx.delete(mpTable).where(dbEq(mpTable.matchId, existing.matchId))
+        await tx.delete(matchesTable).where(dbAnd(dbEq(matchesTable.id, existing.matchId), dbEq(matchesTable.matchType, 'initial_setup')))
+      }
+    })
+
+    return { success: true, data: undefined }
+  })
+
 const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -70,15 +116,24 @@ const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
         army: null,
         timeline: [] as TimelineEntryData[],
         pendingMatches: [] as PendingMatchData[],
+        initialSetupMatch: null as { matchId: string; matchParticipantId: string; evolutionsEnteredAt: string | null } | null,
       }
     }
-    const { getPlayerArmy, getTimelineForArmy, getPendingMatches } = await import('../db/queries')
+    const { getPlayerArmy, getTimelineForArmy, getPendingMatches, getInitialSetupMatchForArmy } = await import('../db/queries')
     const army = await getPlayerArmy(session.playerId)
-    const timeline: TimelineEntryData[] = army
-      ? await getTimelineForArmy(army.id)
-      : []
-    const pendingMatches: PendingMatchData[] = await getPendingMatches(session.playerId)
-    return { isGuest: false as const, army, timeline, pendingMatches }
+    const [timeline, pendingMatches, initialSetupMatchRaw] = await Promise.all([
+      army ? getTimelineForArmy(army.id) : Promise.resolve([] as TimelineEntryData[]),
+      getPendingMatches(session.playerId),
+      army?.needsInitialXp ? getInitialSetupMatchForArmy(army.id) : Promise.resolve(null),
+    ])
+    const initialSetupMatch = initialSetupMatchRaw
+      ? {
+          matchId: initialSetupMatchRaw.matchId,
+          matchParticipantId: initialSetupMatchRaw.matchParticipantId,
+          evolutionsEnteredAt: initialSetupMatchRaw.evolutionsEnteredAt?.toISOString() ?? null,
+        }
+      : null
+    return { isGuest: false as const, army, timeline, pendingMatches, initialSetupMatch }
   })
 
 export const Route = createFileRoute('/')({
@@ -103,7 +158,20 @@ function CampaignView() {
   const [reentryConfirmMatchId, setReentryConfirmMatchId] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
   const hydrated = useHydrated()
-  const { isGuest, army, timeline, pendingMatches } = Route.useLoaderData()
+  const { isGuest, army, timeline, pendingMatches, initialSetupMatch } = Route.useLoaderData()
+
+  // Auto-create initial setup match on mount if needed (useRef guard prevents double-run in React Strict Mode)
+  const initialMatchCreatedRef = useRef(false)
+  useEffect(() => {
+    if (initialMatchCreatedRef.current) return
+    if (!army?.needsInitialXp || initialSetupMatch) return
+    initialMatchCreatedRef.current = true
+    void createInitialSetupMatchFn().then(async (result) => {
+      if (result.success) {
+        await router.invalidate({ filter: (d) => d.routeId === '/' })
+      }
+    })
+  }, [army, initialSetupMatch, router])
 
   useEffect(() => {
     if (hydrated) {
@@ -258,7 +326,24 @@ function CampaignView() {
         ) : (
           /* Logged in with an army */
           <>
-            {/* Action strip — pending matches */}
+            {/* Action strip — initial XP chips (shown before regular pending matches) */}
+            {army.needsInitialXp && initialSetupMatch && initialSetupMatch.evolutionsEnteredAt === null && (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 8, alignItems: 'center', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+                <ActionChip
+                  label="XP initiale à remplir"
+                  href={'/match/' + initialSetupMatch.matchId + '/post-match'}
+                />
+                <ActionChip
+                  label="Passer l'XP initiale"
+                  onClick={async () => {
+                    await skipInitialXpFn()
+                    await router.invalidate({ filter: (d) => d.routeId === '/' })
+                  }}
+                />
+              </div>
+            )}
+
+          {/* Action strip — pending matches */}
             {pendingMatches.length > 0 && (
               <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 12, alignItems: 'center', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
               >
@@ -330,11 +415,15 @@ function CampaignView() {
                     <TimelineEntry
                       key={entry.matchId}
                       matchId={entry.matchId}
-                      opponent={{
-                        name: entry.opponent.name ?? entry.opponent.playerName,
-                        faction: entry.opponent.faction ?? '',
-                        playerName: entry.opponent.playerName ?? undefined,
-                      }}
+                      matchType={entry.matchType as 'standard' | 'initial_setup' | undefined}
+                      opponent={entry.opponent
+                        ? {
+                            name: entry.opponent.name ?? entry.opponent.playerName,
+                            faction: entry.opponent.faction ?? '',
+                            playerName: entry.opponent.playerName ?? undefined,
+                          }
+                        : null
+                      }
                       result={toValidResult(entry.result)}
                       date={entry.date}
                       hasEvolutions={entry.hasEvolutions}

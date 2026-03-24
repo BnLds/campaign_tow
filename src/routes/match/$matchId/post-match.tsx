@@ -7,7 +7,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
-import { submitUnitXpSchema, loadPostMatchDataSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
+import { submitInitialXpSchema, loadPostMatchDataSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
 import type { ConsequenceEntry } from '../../../lib/validators'
 import { PostMatchWizard } from '../../../components/post-match-wizard'
 import type { ServerResult } from '../../../lib/types'
@@ -22,6 +22,7 @@ type PostMatchLoaderData = {
   matchId: string
   matchParticipantId: string
   opponentPlayerName: string
+  mode: 'post-match' | 'initial-xp'
   units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
 }
 
@@ -38,10 +39,10 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     }
     const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
 
-    // Load drizzle deps before round 1 (needed for opponent query)
+    // Load drizzle deps before round 1 (needed for match type + opponent query)
     const [
       { db },
-      { matchParticipants: mpTable, players: playersTable },
+      { matchParticipants: mpTable, players: playersTable, matches: matchesTable },
       { and: dbAnd, eq: dbEq, ne: dbNe },
       { alias },
     ] = await Promise.all([
@@ -53,8 +54,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     const oppParticipant = alias(mpTable, 'opp_mp')
     const oppPlayerAlias = alias(playersTable, 'opp_player')
 
-    // Round 1 (parallel): army + participant + opponent name
-    const [army, participant, oppRows] = await Promise.all([
+    // Round 1 (parallel): army + participant + opponent name + matchType
+    const [army, participant, oppRows, matchRows] = await Promise.all([
       getPlayerArmy(context.session.playerId),
       getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId),
       db
@@ -62,6 +63,11 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
         .from(oppParticipant)
         .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
         .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
+        .limit(1),
+      db
+        .select({ matchType: matchesTable.matchType })
+        .from(matchesTable)
+        .where(dbEq(matchesTable.id, data.matchId))
         .limit(1),
     ])
 
@@ -72,7 +78,10 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       throw new Error('FORBIDDEN')
     }
 
-    const opponentPlayerName = oppRows[0]?.playerName ?? 'Adversaire'
+    const matchType = matchRows[0]?.matchType ?? 'standard'
+    const mode: 'post-match' | 'initial-xp' = matchType === 'initial_setup' ? 'initial-xp' : 'post-match'
+    // For initial_setup matches, there's no opponent
+    const opponentPlayerName = matchType === 'initial_setup' ? '' : (oppRows[0]?.playerName ?? 'Adversaire')
 
     // Check re-entry eligibility: only the army's latest match can be re-entered
     const isReentry = participant.evolutionsEnteredAt !== null
@@ -85,6 +94,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
           matchId: data.matchId,
           matchParticipantId: participant.id,
           opponentPlayerName,
+          mode,
           units: [],
         }
       }
@@ -184,6 +194,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       matchId: data.matchId,
       matchParticipantId: participant.id,
       opponentPlayerName,
+      mode,
       units,
     }
   })
@@ -194,12 +205,30 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
 
 export const submitUnitXpFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(submitUnitXpSchema)
+  .inputValidator(submitInitialXpSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ unitId: string; newXp: number }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
     const { getPlayerArmy, getUnitById, getMatchParticipantArmyId, upsertMatchXpEntryWithIncrement } = await import('../../../db/queries')
+
+    // Server-side gate: look up matchType to enforce max 99 XP for standard matches
+    const [{ db }, { matches: matchesTable, matchParticipants: mpTable }, { eq: dbEq }] = await Promise.all([
+      import('../../../db/index'),
+      import('../../../db/schema'),
+      import('drizzle-orm'),
+    ])
+    const matchRows = await db
+      .select({ matchType: matchesTable.matchType })
+      .from(mpTable)
+      .innerJoin(matchesTable, dbEq(mpTable.matchId, matchesTable.id))
+      .where(dbEq(mpTable.id, data.matchParticipantId))
+      .limit(1)
+    const matchType = matchRows[0]?.matchType ?? 'standard'
+    if (matchType === 'standard' && data.xpGained > 99) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: 'XP maximum 99 pour une partie standard' } }
+    }
+
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
@@ -270,9 +299,20 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
         return { success: false, error: { code: 'FORBIDDEN', message: "Une unité des conséquences n'appartient pas à votre armée" } }
       }
     }
+    // Load matchType server-side (do not trust client input) for initial_setup flag handling
+    const { db: dbInst } = await import('../../../db/index')
+    const { matches: matchesTable } = await import('../../../db/schema')
+    const { eq: dbEqFn } = await import('drizzle-orm')
+    const matchTypeRows = await dbInst
+      .select({ matchType: matchesTable.matchType })
+      .from(matchesTable)
+      .where(dbEqFn(matchesTable.id, data.matchId))
+      .limit(1)
+    const resolvedMatchType = matchTypeRows[0]?.matchType ?? 'standard'
+
     // Story 4.3: pass consequences, armyId, championKilledIds for full post-match processing
     try {
-      await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.matchId, data.gains, data.consequences ?? [], army.id, data.championKilledIds)
+      await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.matchId, data.gains, data.consequences ?? [], army.id, data.championKilledIds, resolvedMatchType)
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_LATEST_MATCH') {
         return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la derniere partie peut etre modifiee' } }
@@ -299,7 +339,7 @@ export const Route = createFileRoute('/match/$matchId/post-match')({
 
 function PostMatchRoute() {
   const loaderData = Route.useLoaderData()
-  const { alreadyCompleted, reentry: _reentry, matchId, matchParticipantId, opponentPlayerName, units } = loaderData as PostMatchLoaderData
+  const { alreadyCompleted, reentry: _reentry, matchId, matchParticipantId, opponentPlayerName, mode, units } = loaderData as PostMatchLoaderData
   const hydrated = useHydrated()
   const router = useRouter()
 
@@ -360,6 +400,7 @@ function PostMatchRoute() {
         matchId={matchId}
         matchParticipantId={matchParticipantId}
         opponentPlayerName={opponentPlayerName}
+        mode={mode}
         units={units}
         onComplete={handleComplete}
         onCancel={handleComplete}

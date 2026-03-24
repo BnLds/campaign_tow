@@ -3,6 +3,8 @@ import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../index'
 import { players, armies, units, matches, matchParticipants, matchXpEntries, statModifiers, unitGains } from '../schema'
 
+export type MatchType = 'standard' | 'initial_setup'
+
 export type TimelineStatChange = { stat: string; delta: number; temporary: boolean }
 
 export type TimelineEntryData = {
@@ -12,11 +14,12 @@ export type TimelineEntryData = {
   result: string | null
   hasEvolutions: boolean
   isLatestMatch: boolean
+  matchType: MatchType
   opponent: {
     name: string | null
     faction: string | null
     playerName: string
-  }
+  } | null
   unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>
 }
 
@@ -41,6 +44,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
       matchId: matches.id,
       matchParticipantId: matchParticipants.id,
       date: matches.date,
+      matchType: matches.matchType,
       result: matchParticipants.result,
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
       opponentName: oppArmy.name,
@@ -49,9 +53,9 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
-    .innerJoin(oppParticipant, and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.playerId, matchParticipants.playerId)))
+    .leftJoin(oppParticipant, and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.playerId, matchParticipants.playerId)))
     .leftJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
-    .innerJoin(oppPlayer, eq(oppParticipant.playerId, oppPlayer.id))
+    .leftJoin(oppPlayer, eq(oppParticipant.playerId, oppPlayer.id))
     .where(eq(matchParticipants.armyId, armyId))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
@@ -61,14 +65,17 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     matchId: row.matchId,
     matchParticipantId: row.matchParticipantId,
     date: row.date.toISOString(),
+    matchType: (row.matchType ?? 'standard') as MatchType,
     result: row.result,
     hasEvolutions: row.evolutionsEnteredAt !== null,
     isLatestMatch: row.matchId === latestMatchId,
-    opponent: {
-      name: row.opponentName ?? null,
-      faction: row.opponentFaction ?? null,
-      playerName: row.opponentPlayerName ?? 'Adversaire',
-    },
+    opponent: row.opponentPlayerName != null
+      ? {
+          name: row.opponentName ?? null,
+          faction: row.opponentFaction ?? null,
+          playerName: row.opponentPlayerName,
+        }
+      : null,
     unitXpEntries: [] as Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>,
   }))
 
@@ -256,6 +263,7 @@ export async function getPendingMatches(playerId: string): Promise<PendingMatchD
       and(
         eq(matchParticipants.playerId, playerId),
         or(isNull(matchParticipants.result), isNull(matchParticipants.evolutionsEnteredAt)),
+        ne(matches.matchType, 'initial_setup'),
       ),
     )
     .orderBy(desc(matches.date), desc(matches.createdAt))
@@ -323,6 +331,54 @@ export async function updateMatchResults(
 
     return opp.length === 1
   })
+}
+
+// Initial XP entry flow — create or return existing initial_setup match for an army
+export async function createInitialSetupMatch(playerId: string, armyId: string): Promise<string> {
+  return db.transaction(async (tx) => {
+    // Idempotency: return existing match if one already exists for this army
+    const existing = await tx
+      .select({ matchId: matchParticipants.matchId })
+      .from(matchParticipants)
+      .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+      .where(and(eq(matchParticipants.armyId, armyId), eq(matches.matchType, 'initial_setup')))
+      .limit(1)
+    if (existing.length > 0) return existing[0].matchId
+
+    const [inserted] = await tx
+      .insert(matches)
+      .values({ date: new Date(), matchType: 'initial_setup', createdByPlayerId: playerId })
+      .returning({ id: matches.id })
+
+    await tx.insert(matchParticipants).values({
+      matchId: inserted.id,
+      playerId,
+      armyId,
+      result: null,
+      evolutionsEnteredAt: null,
+    })
+
+    return inserted.id
+  })
+}
+
+// Initial XP entry flow — get existing initial_setup match for an army
+export async function getInitialSetupMatchForArmy(armyId: string): Promise<{
+  matchId: string
+  matchParticipantId: string
+  evolutionsEnteredAt: Date | null
+} | null> {
+  const rows = await db
+    .select({
+      matchId: matchParticipants.matchId,
+      matchParticipantId: matchParticipants.id,
+      evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
+    .where(and(eq(matchParticipants.armyId, armyId), eq(matches.matchType, 'initial_setup')))
+    .limit(1)
+  return rows.length > 0 ? rows[0] : null
 }
 
 export async function updateMatchResultOnLatest(

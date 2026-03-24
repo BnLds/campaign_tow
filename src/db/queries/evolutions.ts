@@ -1,6 +1,6 @@
 import { eq, and, inArray, or, sql, desc } from 'drizzle-orm'
 import { db } from '../index'
-import { units, statModifiers, unitGains, matchParticipants, matchXpEntries, matches } from '../schema'
+import { units, statModifiers, unitGains, matchParticipants, matchXpEntries, matches, armies } from '../schema'
 import type { ConsequenceEntry } from '../../lib/validators'
 
 export async function getMatchParticipantForEvolutionByPlayer(
@@ -177,6 +177,7 @@ export async function completeEvolutionsWithGainsTransaction(
   consequences: ConsequenceEntry[] = [],
   armyId?: string,
   championKilledIds?: string[],
+  matchType?: 'standard' | 'initial_setup',
 ): Promise<void> {
   await db.transaction(async (tx) => {
     // Lock participant row to serialize concurrent commits
@@ -351,5 +352,12 @@ export async function completeEvolutionsWithGainsTransaction(
     await tx.update(matchParticipants)
       .set({ evolutionsEnteredAt: new Date() })
       .where(eq(matchParticipants.id, matchParticipantId))
+
+    // Initial XP entry: clear needsInitialXp flag atomically with the commit
+    if (matchType === 'initial_setup' && armyId) {
+      await tx.update(armies)
+        .set({ needsInitialXp: false })
+        .where(eq(armies.id, armyId))
+    }
   })
 }

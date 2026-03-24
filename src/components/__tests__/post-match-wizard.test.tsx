@@ -1427,3 +1427,123 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     expect(screen.queryByTestId('xp-condition-alive')).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Task 13 — initial-xp mode tests
+// ---------------------------------------------------------------------------
+
+describe('[AC3,AC4] PostMatchWizard — initial-xp mode', () => {
+  it('[INIT-XP-001] renders numeric input instead of checkboxes when mode="initial-xp"', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={sampleUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('wizard-xp-numeric')).not.toBeNull()
+    expect(screen.getByTestId('wizard-xp-numeric-input')).not.toBeNull()
+    expect(screen.queryByTestId('wizard-xp-checkboxes')).toBeNull()
+  })
+
+  it('[INIT-XP-002] shows "XP initiale" mode header', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={sampleUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('wizard-mode-header').textContent).toContain('XP initiale')
+  })
+
+  it('[INIT-XP-003] numeric input defaults to 0 on first entry', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={sampleUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const input = screen.getByTestId('wizard-xp-numeric-input') as HTMLInputElement
+    expect(input.value).toBe('0')
+  })
+
+  it('[INIT-XP-004] pre-fills numeric input with previousXpGained on re-entry', () => {
+    const unitsWithPrevXp = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 15, previousXpGained: 15 },
+    ]
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={unitsWithPrevXp}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const input = screen.getByTestId('wizard-xp-numeric-input') as HTMLInputElement
+    expect(input.value).toBe('15')
+  })
+
+  it('[INIT-XP-005] submits entered numeric value via onSubmitUnitXp', async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 45 } })
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={singleUnit}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmit}
+        onCompleteEvolutions={vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })}
+      />
+    )
+    const input = screen.getByTestId('wizard-xp-numeric-input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '45' } })
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith('unit-1', 45, PARTICIPANT_ID)
+    })
+  })
+
+  it('[INIT-XP-006] does not show XP checkboxes in initial-xp mode', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={sampleUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('xp-condition-deployed')).toBeNull()
+    expect(screen.queryByTestId('xp-condition-survived')).toBeNull()
+  })
+
+  it('[INIT-XP-007] post-match mode (default) still shows checkboxes', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={sampleUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('wizard-xp-checkboxes')).not.toBeNull()
+    expect(screen.queryByTestId('wizard-xp-numeric')).toBeNull()
+  })
+})

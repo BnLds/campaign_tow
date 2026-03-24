@@ -7,11 +7,12 @@ import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceG
 
 export type TimelineEntryProps = {
   matchId: string
-  opponent: {
+  matchType?: 'standard' | 'initial_setup'
+  opponent?: {
     name: string
     faction: string
     playerName?: string
-  }
+  } | null
   result: 'victory' | 'defeat' | 'draw' | null
   date: string // ISO 8601
   hasEvolutions: boolean
@@ -62,6 +63,7 @@ function formatDate(isoDate: string): string {
 
 export function TimelineEntry({
   matchId,
+  matchType = 'standard',
   opponent,
   result,
   date,
@@ -73,15 +75,17 @@ export function TimelineEntry({
   onPostMatchReentry,
   unitXpEntries,
 }: TimelineEntryProps) {
-  const resultConfig = result ? RESULT_CONFIG[result] : null
+  const isInitialSetup = matchType === 'initial_setup'
+  const resultConfig = result && !isInitialSetup ? RESULT_CONFIG[result] : null
   const formattedDate = formatDate(date)
 
   const [isSelecting, setIsSelecting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // initial_setup matches have no result (no V/D/E) — don't show result selection
   const showSelectionButtons =
-    isEditable && (result === null || isSelecting)
+    !isInitialSetup && isEditable && (result === null || isSelecting)
 
   const handleResultClick = async (selectedResult: 'victory' | 'defeat' | 'draw') => {
     if (!onResultSubmit || isSubmitting) return
@@ -143,7 +147,7 @@ export function TimelineEntry({
           </span>
         )}
 
-        {/* Opponent info */}
+        {/* Opponent info (or "XP Initiale" label for initial_setup matches) */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
@@ -157,18 +161,20 @@ export function TimelineEntry({
               whiteSpace: 'nowrap',
             }}
           >
-            {opponent.name}
+            {isInitialSetup ? 'XP Initiale' : (opponent?.name ?? 'Adversaire')}
           </p>
-          <p
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.8125rem',
-              color: 'var(--color-text-secondary)',
-              margin: 0,
-            }}
-          >
-            {opponent.playerName?.trim() ? `${opponent.faction} · ${opponent.playerName.trim()}` : opponent.faction}
-          </p>
+          {!isInitialSetup && opponent && (
+            <p
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.8125rem',
+                color: 'var(--color-text-secondary)',
+                margin: 0,
+              }}
+            >
+              {opponent.playerName?.trim() ? `${opponent.faction} · ${opponent.playerName.trim()}` : opponent.faction}
+            </p>
+          )}
         </div>
 
         {/* Date + Modifier link */}
@@ -182,7 +188,7 @@ export function TimelineEntry({
           >
             {formattedDate}
           </span>
-          {isEditable && result !== null && !isSelecting && (
+          {isEditable && !isInitialSetup && result !== null && !isSelecting && (
             <button
               data-testid="modify-result"
               onClick={() => {
@@ -203,7 +209,7 @@ export function TimelineEntry({
               Modifier
             </button>
           )}
-          {isEditable && result !== null && isSelecting && (
+          {isEditable && !isInitialSetup && result !== null && isSelecting && (
             <button
               data-testid="cancel-modify"
               onClick={() => {
@@ -372,8 +378,8 @@ export function TimelineEntry({
         ) : null
       })()}
 
-      {/* "Au rapport !" button — shown when result is set, evolutions not yet entered, and editable */}
-      {isEditable && result !== null && !hasEvolutions && onEvolutionStart && (
+      {/* "Au rapport !" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
+      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && onEvolutionStart && (
         <button
           type="button"
           data-testid="evolution-start"
@@ -401,8 +407,9 @@ export function TimelineEntry({
         </button>
       )}
 
-      {/* "Modifier le dernier rapport" — shown on latest match with completed post-match, only after clicking "Modifier" */}
-      {isEditable && result !== null && hasEvolutions && isLatestMatch && isSelecting && onPostMatchReentry && (
+      {/* "Modifier le dernier rapport" — shown on latest match with completed post-match.
+           For standard matches: only after clicking "Modifier". For initial_setup: always visible. */}
+      {isEditable && (result !== null || isInitialSetup) && hasEvolutions && isLatestMatch && (isSelecting || isInitialSetup) && onPostMatchReentry && (
         <button
           type="button"
           data-testid="post-match-reentry"
