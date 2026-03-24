@@ -9,18 +9,50 @@ export const loginSchema = z.object({
 })
 export type LoginInput = z.infer<typeof loginSchema>
 
-// Display name update schema — for WelcomeModal and profile settings (story 1.3)
+// Display name update schema — for profile settings
 export const updateDisplayNameSchema = z.object({
   displayName: z.string().trim().min(1, 'Display name is required').max(100, 'Display name must be 100 characters or less'),
 })
 export type UpdateDisplayNameInput = z.infer<typeof updateDisplayNameSchema>
 
-// Admin — Create player account (story 1.4)
+// Admin — Create player account (invite link flow)
 export const createPlayerSchema = z.object({
   username: z.string().trim().min(2, 'Username must be at least 2 characters').max(50, 'Username must be 50 characters or less'),
-  tempPassword: z.string().min(6, 'Password must be at least 6 characters').max(100, 'Password must be 100 characters or less'),
+  displayName: z.string().trim().min(1).max(100).optional(),
 })
 export type CreatePlayerInput = z.infer<typeof createPlayerSchema>
+
+// Invite setup — first access via invite link (set display name + password)
+export const inviteSetupSchema = z.object({
+  displayName: z.string().trim().min(1, 'Le nom est requis').max(100),
+  password: z.string().min(6, 'Le mot de passe doit faire au moins 6 caractères').max(100),
+  confirmPassword: z.string().min(6).max(100),
+}).superRefine((d, ctx) => {
+  if (d.password !== d.confirmPassword) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Les mots de passe ne correspondent pas',
+      path: ['confirmPassword'],
+    })
+  }
+})
+export type InviteSetupInput = z.infer<typeof inviteSetupSchema>
+
+// Password change — settings page
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(100).optional(),
+  newPassword: z.string().min(6, 'Le mot de passe doit faire au moins 6 caractères').max(100),
+  confirmNewPassword: z.string().min(6).max(100),
+}).superRefine((d, ctx) => {
+  if (d.newPassword !== d.confirmNewPassword) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Les mots de passe ne correspondent pas',
+      path: ['confirmNewPassword'],
+    })
+  }
+})
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 
 // Story 2.1 — Army import & player assignment
 export const importArmySchema = z.object({

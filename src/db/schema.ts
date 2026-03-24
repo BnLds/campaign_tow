@@ -16,11 +16,11 @@ export const matchTypeEnum = pgEnum('match_type', ['standard', 'initial_setup'])
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  passwordHash: text('password_hash'),
   displayName: text('display_name').notNull(),
   isAdmin: boolean('is_admin').notNull().default(false),
   isGuest: boolean('is_guest').notNull().default(false),
-  hasSeenWelcome: boolean('has_seen_welcome').notNull().default(false),
+  inviteToken: text('invite_token').unique(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

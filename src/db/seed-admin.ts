@@ -28,7 +28,6 @@ async function seedAdmin() {
     passwordHash,
     displayName: ADMIN_USERNAME,
     isAdmin: true,
-    hasSeenWelcome: false,
   })
 
   console.log(`[seed-admin] Admin account "${ADMIN_USERNAME}" created successfully`)

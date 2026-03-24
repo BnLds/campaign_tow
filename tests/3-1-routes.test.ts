@@ -110,15 +110,6 @@ describe('[AC8][P0] Campaign view — guest user experience', () => {
     expect(route).toContain('Connectez-vous')
   })
 
-  it('[3.1-CMP-013] index.tsx preserves WelcomeModal import (no regression from story 1.3)', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/import[\s\S]{0,200}WelcomeModal/)
-  })
-
-  it('[3.1-CMP-014] index.tsx preserves markWelcomeSeenFn (no regression from story 1.3)', () => {
-    const route = getCampaignRoute()
-    expect(route).toContain('markWelcomeSeenFn')
-  })
 })
 
 describe('[AC1][P0] Campaign view — TimelineEntry component usage', () => {

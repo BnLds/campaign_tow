@@ -46,7 +46,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     // Always return { session } so TanStack Router updates context on every navigation.
     // Returning undefined for /login would leave stale session in context → AppHeader
     // would persist across login/logout transitions (bug: header visible on /login page).
-    if (location.pathname === '/login') {
+    if (location.pathname === '/login' || location.pathname.startsWith('/invite')) {
       return { session: null as SessionData | null, army: null, record: null }
     }
 
@@ -338,6 +338,28 @@ function AppHeader({
                     Administration
                   </button>
                 )}
+                <button
+                  role="menuitem"
+                  data-testid="settings-link"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    router.navigate({ to: '/settings' })
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 14px',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: '1px solid var(--color-border)',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    color: 'var(--color-text-primary)',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  Paramètres
+                </button>
                 <button
                   role="menuitem"
                   onClick={() => {

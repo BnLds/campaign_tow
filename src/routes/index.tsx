@@ -1,34 +1,14 @@
 import { createFileRoute, useRouteContext, useRouter, Link } from '@tanstack/react-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { useState, useEffect, useRef } from 'react'
 import { useHydrated } from '../lib/useHydrated'
-import { WelcomeModal } from '../components/welcome-modal'
 import { TimelineEntry } from '../components/timeline-entry'
 import { ArmyImportForm } from '../components/army-import-form'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
 import type { TimelineEntryData } from '../db/queries'
-import { updateDisplayNameSchema, submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
-import { sessionQueryOptions } from '../lib/session-queries'
-
-const markWelcomeSeenFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .handler(async ({ context }): Promise<void> => {
-    if (context.session.isGuest) throw new Error('UNAUTHORIZED')
-    const { markPlayerWelcomeSeen } = await import('../db/queries')
-    await markPlayerWelcomeSeen(context.session.playerId)
-  })
-
-const updateDisplayNameFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .inputValidator(updateDisplayNameSchema)
-  .handler(async ({ context, data }): Promise<ServerResult<{ displayName: string }>> => {
-    if (context.session.isGuest) throw new Error('UNAUTHORIZED')
-    const { updatePlayerDisplayName } = await import('../db/queries')
-    await updatePlayerDisplayName(context.session.playerId, data.displayName)
-    return { success: true, data: { displayName: data.displayName } }
-  })
+import { submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
 
 export const submitMatchResultFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -165,11 +145,6 @@ function CampaignView() {
   const router = useRouter()
   const context = useRouteContext({ from: '__root__' })
   const { session } = context
-  // Reactive session: detects hasSeenWelcome changes from cache invalidation
-  const { data: sessionQuery } = useQuery(sessionQueryOptions())
-  const hasSeenWelcome = sessionQuery?.hasSeenWelcome ?? session?.hasSeenWelcome ?? true
-  const [modalDismissed, setModalDismissed] = useState(false)
-  const modalOpen = !hasSeenWelcome && !modalDismissed
   const [reentryConfirmMatchId, setReentryConfirmMatchId] = useState<string | null>(null)
   const [deleteConfirmMatch, setDeleteConfirmMatch] = useState<{ matchId: string; opponentName: string; date: string } | null>(null)
   const [skipXpConfirmOpen, setSkipXpConfirmOpen] = useState(false)
@@ -218,22 +193,6 @@ function CampaignView() {
       document.documentElement.setAttribute('data-app-hydrated', 'true')
     }
   }, [hydrated])
-
-  const handleDismiss = async () => {
-    try {
-      await markWelcomeSeenFn()
-    } finally {
-      setModalDismissed(true)
-      await queryClient.invalidateQueries({ queryKey: ['session'] })
-    }
-  }
-
-  const handleUpdateDisplayName = async (name: string) => {
-    const result = await updateDisplayNameFn({ data: { displayName: name } })
-    if (!result.success) {
-      throw new Error(result.error.message)
-    }
-  }
 
   const handleResultSubmit = async (matchId: string, result: 'victory' | 'defeat' | 'draw') => {
     const response = await submitMatchResultFn({ data: { matchId, result } })
@@ -338,14 +297,6 @@ function CampaignView() {
 
   return (
     <>
-      {!session?.isGuest && (
-        <WelcomeModal
-          open={modalOpen}
-          displayName={session?.displayName ?? ''}
-          onDismiss={handleDismiss}
-          onUpdateDisplayName={handleUpdateDisplayName}
-        />
-      )}
       {/* Toast rouge — suppression de match */}
       {toast && (
         <div style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-malus)', color: '#fff', padding: '0.625rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 600, zIndex: 50, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>

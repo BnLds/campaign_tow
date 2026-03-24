@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '../index'
 import { players, armies } from '../schema'
 
@@ -9,10 +9,6 @@ export async function getPlayerById(playerId: string): Promise<{ id: string; dis
     .where(eq(players.id, playerId))
     .limit(1)
   return rows.length > 0 ? rows[0] : null
-}
-
-export async function markPlayerWelcomeSeen(playerId: string): Promise<void> {
-  await db.update(players).set({ hasSeenWelcome: true }).where(eq(players.id, playerId))
 }
 
 export async function updatePlayerDisplayName(playerId: string, displayName: string): Promise<void> {
@@ -30,19 +26,20 @@ export async function checkUsernameExists(username: string): Promise<boolean> {
 
 export async function createPlayer(
   username: string,
-  passwordHash: string,
-): Promise<{ id: string; username: string; displayName: string }> {
+  displayName?: string,
+): Promise<{ id: string; username: string; displayName: string; inviteToken: string }> {
+  const inviteToken = crypto.randomUUID()
   const [player] = await db
     .insert(players)
     .values({
       username,
-      passwordHash,
-      displayName: username,
+      passwordHash: null,
+      displayName: displayName ?? username,
       isAdmin: false,
-      hasSeenWelcome: false,
+      inviteToken,
     })
-    .returning({ id: players.id, username: players.username, displayName: players.displayName })
-  return player
+    .returning({ id: players.id, username: players.username, displayName: players.displayName, inviteToken: players.inviteToken })
+  return { ...player, inviteToken: player.inviteToken! }
 }
 
 export async function getAllPlayers() {
@@ -70,7 +67,6 @@ export async function ensureGhostPlayer(): Promise<string> {
     displayName: 'Invité',
     isGuest: true,
     isAdmin: false,
-    hasSeenWelcome: true,
   }).onConflictDoNothing({ target: players.username })
 
   const result = await db
@@ -104,4 +100,82 @@ export async function getGhostPlayerId(): Promise<string | null> {
     .where(eq(players.username, '__guest__'))
     .limit(1)
   return result.length > 0 ? result[0].id : null
+}
+
+export async function getPlayerByInviteToken(
+  token: string,
+): Promise<{ id: string; username: string; displayName: string; passwordHash: string | null; inviteToken: string } | null> {
+  const result = await db
+    .select({
+      id: players.id,
+      username: players.username,
+      displayName: players.displayName,
+      passwordHash: players.passwordHash,
+      inviteToken: players.inviteToken,
+    })
+    .from(players)
+    .where(eq(players.inviteToken, token))
+    .limit(1)
+  if (result.length === 0) return null
+  return { ...result[0], inviteToken: result[0].inviteToken! }
+}
+
+export async function activatePlayer(
+  playerId: string,
+  passwordHash: string,
+  displayName: string,
+): Promise<void> {
+  const result = await db
+    .update(players)
+    .set({ passwordHash, displayName })
+    .where(and(eq(players.id, playerId), isNull(players.passwordHash)))
+    .returning({ id: players.id })
+  if (result.length === 0) {
+    throw new Error('Player already activated')
+  }
+}
+
+export async function regenerateInviteToken(playerId: string): Promise<string | null> {
+  const newToken = crypto.randomUUID()
+  const result = await db
+    .update(players)
+    .set({ inviteToken: newToken })
+    .where(eq(players.id, playerId))
+    .returning({ inviteToken: players.inviteToken })
+  if (result.length === 0) return null
+  return result[0].inviteToken!
+}
+
+export async function updatePlayerPassword(playerId: string, passwordHash: string): Promise<void> {
+  await db.update(players).set({ passwordHash }).where(eq(players.id, playerId))
+}
+
+export async function getPlayerInviteToken(
+  playerId: string,
+): Promise<{ inviteToken: string | null } | null> {
+  const result = await db
+    .select({ inviteToken: players.inviteToken })
+    .from(players)
+    .where(eq(players.id, playerId))
+    .limit(1)
+  if (result.length === 0) return null
+  return { inviteToken: result[0].inviteToken ?? null }
+}
+
+export async function generateAllMissingInviteTokens(): Promise<number> {
+  const result = await db
+    .update(players)
+    .set({ inviteToken: sql`gen_random_uuid()` })
+    .where(sql`${players.inviteToken} IS NULL AND ${players.passwordHash} != '!no-login!'`)
+    .returning({ id: players.id })
+  return result.length
+}
+
+export async function hasMissingInviteTokens(): Promise<boolean> {
+  const result = await db
+    .select({ id: players.id })
+    .from(players)
+    .where(sql`${players.inviteToken} IS NULL AND ${players.passwordHash} != '!no-login!'`)
+    .limit(1)
+  return result.length > 0
 }

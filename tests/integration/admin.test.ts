@@ -54,12 +54,6 @@ describe('[AC2][AC5][P0] Validator — createPlayerSchema', () => {
     expect(validators).toContain('export type CreatePlayerInput')
   })
 
-  it('[1.4-INT-006] createPlayerSchema uses tempPassword field (not password — semantic clarity for admin flow)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
-    // tempPassword must appear inside createPlayerSchema definition (not just anywhere)
-    expect(validators).toMatch(/createPlayerSchema[\s\S]{0,300}tempPassword/)
-  })
-
   it('[1.4-INT-007] username in createPlayerSchema applies .trim() before .min(2) — whitespace handling coupled', () => {
     const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
     // .trim() must precede .min(2) in the chain — prevents single whitespace username
@@ -93,11 +87,6 @@ describe('[AC2][AC5][P0] DB queries — src/db/queries.ts', () => {
     expect(queries).toMatch(/createPlayer[\s\S]{0,600}isAdmin:\s*false/)
   })
 
-  it('[1.4-INT-012] createPlayer inserts hasSeenWelcome: false — new players get the welcome modal (AC3)', () => {
-    const queries = readAllQueries()
-    // hasSeenWelcome: false must be inside the createPlayer function body
-    expect(queries).toMatch(/createPlayer[\s\S]{0,600}hasSeenWelcome:\s*false/)
-  })
 })
 
 // ---------------------------------------------------------------------------
@@ -145,11 +134,6 @@ describe('[AC1][AC2][AC4][AC5][P0] Admin route — src/routes/admin/index.tsx', 
     expect(adminRoute).toMatch(/import\s*\{[^}]*adminMiddleware[^}]*\}\s*from\s*['"][^'"]*lib\/middleware['"]/)
   })
 
-  it('[1.4-INT-020] admin route handler uses bcryptjs for password hashing (not queries.ts — separation of concerns)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    // bcryptjs must be used in the admin route handler
-    expect(adminRoute).toContain('bcryptjs')
-  })
 })
 
 // ---------------------------------------------------------------------------

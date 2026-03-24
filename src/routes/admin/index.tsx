@@ -10,16 +10,15 @@ import { createPlayerSchema, importArmySchema, assignArmySchema, addUnitSchema, 
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog'
 import { useHydrated } from '../../lib/useHydrated'
 
 const createPlayerFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
   .inputValidator(createPlayerSchema)
-  .handler(async ({ data }): Promise<ServerResult<{ id: string; username: string; displayName: string }>> => {
-    const bcryptjs = await import('bcryptjs')
+  .handler(async ({ data }): Promise<ServerResult<{ id: string; username: string; displayName: string; inviteToken: string }>> => {
     const { checkUsernameExists, createPlayer } = await import('../../db/queries')
 
-    // AC5 — Duplicate username check
     const exists = await checkUsernameExists(data.username)
     if (exists) {
       return {
@@ -28,13 +27,10 @@ const createPlayerFn = createServerFn({ method: 'POST' })
       }
     }
 
-    // AC2 — Hash password and create player
-    const passwordHash = await bcryptjs.hash(data.tempPassword, 12)
     try {
-      const player = await createPlayer(data.username, passwordHash)
+      const player = await createPlayer(data.username, data.displayName)
       return { success: true, data: player }
     } catch {
-      // Unique constraint violation (race condition between check and insert)
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: "Ce nom d'utilisateur existe déjà" },
@@ -61,6 +57,43 @@ const deletePlayerFn = createServerFn({ method: 'POST' })
     const { deletePlayer } = await import('../../db/queries')
     await deletePlayer(data.playerId)
     return { success: true, data: null }
+  })
+
+// Invite link server functions — fetch, regenerate, bulk generate
+
+const getInviteLinkFn = createServerFn({ method: 'GET' })
+  .middleware([adminMiddleware])
+  .inputValidator(z.object({ playerId: z.string().uuid() }))
+  .handler(async ({ data }): Promise<ServerResult<{ inviteToken: string | null }>> => {
+    const { getPlayerInviteToken } = await import('../../db/queries')
+    const result = await getPlayerInviteToken(data.playerId)
+    if (!result) {
+      return { success: false, error: { code: 'PLAYER_NOT_FOUND', message: 'Joueur introuvable' } }
+    }
+    return { success: true, data: { inviteToken: result.inviteToken } }
+  })
+
+const regenerateInviteTokenFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .inputValidator(z.object({ playerId: z.string().uuid() }))
+  .handler(async ({ context, data }): Promise<ServerResult<{ inviteToken: string }>> => {
+    if (data.playerId === context.session.playerId) {
+      return { success: false, error: { code: 'CANNOT_REGENERATE_OWN', message: 'Impossible de regénérer votre propre lien' } }
+    }
+    const { regenerateInviteToken } = await import('../../db/queries')
+    const newToken = await regenerateInviteToken(data.playerId)
+    if (!newToken) {
+      return { success: false, error: { code: 'PLAYER_NOT_FOUND', message: 'Joueur introuvable' } }
+    }
+    return { success: true, data: { inviteToken: newToken } }
+  })
+
+const generateAllMissingTokensFn = createServerFn({ method: 'POST' })
+  .middleware([adminMiddleware])
+  .handler(async (): Promise<ServerResult<{ count: number }>> => {
+    const { generateAllMissingInviteTokens } = await import('../../db/queries')
+    const count = await generateAllMissingInviteTokens()
+    return { success: true, data: { count } }
   })
 
 // Story 2.1 — importArmyFn: POST, parses OWB text and inserts army + units + sub_profiles
@@ -265,7 +298,7 @@ function AdminPage() {
   const context = useRouteContext({ from: '__root__' })
   const { session } = context
   const queryClient = useQueryClient()
-  const [createdPlayer, setCreatedPlayer] = useState<{ username: string } | null>(null)
+  const [createdPlayer, setCreatedPlayer] = useState<{ username: string; inviteToken: string } | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -307,6 +340,11 @@ function AdminPage() {
   const addUnitSubmitRef = useRef(false)
   const correctStatsSubmitRef = useRef(false)
   const [deleteMatchError, setDeleteMatchError] = useState<string | null>(null)
+  // Invite link state — per-player token cache (fetched on-demand)
+  const [playerTokens, setPlayerTokens] = useState<Record<string, string | null>>({})
+  const [copyFeedback, setCopyFeedback] = useState<Record<string, boolean>>({})
+  const [regenDialogPlayerId, setRegenDialogPlayerId] = useState<string | null>(null)
+  const [bulkGenerateResult, setBulkGenerateResult] = useState<string | null>(null)
   const hydrated = useHydrated()
 
   useEffect(() => {
@@ -349,14 +387,14 @@ function AdminPage() {
   })
 
   const form = useForm({
-    defaultValues: { username: '', tempPassword: '' },
+    defaultValues: { username: '', displayName: '' },
     validators: { onSubmit: createPlayerSchema },
     onSubmit: async ({ value }) => {
       setServerError(null)
       setCreatedPlayer(null)
       const result = await createPlayerFn({ data: value })
       if (result.success) {
-        setCreatedPlayer({ username: result.data.username })
+        setCreatedPlayer({ username: result.data.username, inviteToken: result.data.inviteToken })
         form.reset()
         await queryClient.invalidateQueries({ queryKey: ['admin', 'players'] })
       } else {
@@ -374,6 +412,44 @@ function AdminPage() {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'players'] })
     } else {
       setDeleteError(result.error.message)
+    }
+  }
+
+  const handleCopyInviteLink = async (playerId: string) => {
+    let token = playerTokens[playerId] ?? null
+    if (token === undefined || token === null) {
+      const result = await getInviteLinkFn({ data: { playerId } })
+      if (!result.success) return
+      token = result.data.inviteToken
+      if (!token) {
+        // No token yet — regenerate one first
+        const regenResult = await regenerateInviteTokenFn({ data: { playerId } })
+        if (!regenResult.success) return
+        token = regenResult.data.inviteToken
+      }
+      setPlayerTokens((prev) => ({ ...prev, [playerId]: token }))
+    }
+    if (!token) return
+    const url = `${window.location.origin}/invite/${token}`
+    await navigator.clipboard.writeText(url)
+    setCopyFeedback((prev) => ({ ...prev, [playerId]: true }))
+    setTimeout(() => setCopyFeedback((prev) => ({ ...prev, [playerId]: false })), 2000)
+  }
+
+  const handleRegenConfirm = async () => {
+    if (!regenDialogPlayerId) return
+    const result = await regenerateInviteTokenFn({ data: { playerId: regenDialogPlayerId } })
+    if (result.success) {
+      setPlayerTokens((prev) => ({ ...prev, [regenDialogPlayerId]: result.data.inviteToken }))
+    }
+    setRegenDialogPlayerId(null)
+  }
+
+  const handleBulkGenerate = async () => {
+    const result = await generateAllMissingTokensFn()
+    if (result.success) {
+      setBulkGenerateResult(`${result.data.count} lien(s) généré(s)`)
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'players'] })
     }
   }
 
@@ -553,7 +629,7 @@ function AdminPage() {
             marginBottom: '1rem',
           }}
         >
-          Compte créé pour <strong>{createdPlayer.username}</strong>. Le joueur peut maintenant se connecter.
+          Compte créé pour <strong>{createdPlayer.username}</strong>. Utilisez le bouton "Copier le lien" dans la liste pour envoyer le lien d'invitation.
         </div>
       )}
 
@@ -598,18 +674,17 @@ function AdminPage() {
           )}
         </form.Field>
 
-        <form.Field name="tempPassword">
+        <form.Field name="displayName">
           {(field) => (
             <div style={{ marginBottom: '1.5rem' }}>
-              <Label htmlFor="tempPassword">Mot de passe temporaire</Label>
+              <Label htmlFor="displayName">Nom d'affichage (optionnel)</Label>
               <Input
-                id="tempPassword"
-                type="password"
-                data-testid="admin-password-input"
+                id="displayName"
+                data-testid="admin-display-name-input"
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
-                placeholder="Minimum 6 caractères"
+                placeholder="Laisser vide pour utiliser le nom d'utilisateur"
                 style={{ marginTop: '0.25rem' }}
               />
               {field.state.meta.errors.length > 0 && (
@@ -689,26 +764,96 @@ function AdminPage() {
                 {new Date(player.createdAt).toLocaleDateString('fr-FR')}
               </span>
               {player.id !== session?.playerId && (
-                <button
-                  data-testid={`delete-player-${player.id}`}
-                  onClick={() => handleDelete(player.id, player.username)}
-                  style={{
-                    background: 'none',
-                    border: '1px solid var(--color-malus)',
-                    color: 'var(--color-malus)',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '0.25rem',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  Supprimer
-                </button>
+                <>
+                  <button
+                    data-testid={`copy-invite-${player.id}`}
+                    onClick={() => handleCopyInviteLink(player.id)}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--color-brand)',
+                      color: 'var(--color-brand)',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {copyFeedback[player.id] ? 'Copié !' : 'Copier le lien'}
+                  </button>
+                  <button
+                    data-testid={`regen-invite-${player.id}`}
+                    onClick={() => setRegenDialogPlayerId(player.id)}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--color-text-secondary)',
+                      color: 'var(--color-text-secondary)',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    Regénérer
+                  </button>
+                  <button
+                    data-testid={`delete-player-${player.id}`}
+                    onClick={() => handleDelete(player.id, player.username)}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--color-malus)',
+                      color: 'var(--color-malus)',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    Supprimer
+                  </button>
+                </>
               )}
             </div>
           ))}
         </div>}
+
+        {bulkGenerateResult && (
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-bonus)', marginTop: '0.5rem' }}>
+            {bulkGenerateResult}
+          </p>
+        )}
+        <button
+          data-testid="bulk-generate-tokens"
+          onClick={handleBulkGenerate}
+          style={{
+            marginTop: '0.75rem',
+            background: 'none',
+            border: '1px solid var(--color-brand)',
+            color: 'var(--color-brand)',
+            padding: '0.375rem 0.75rem',
+            borderRadius: '0.375rem',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+          }}
+        >
+          Générer tous les liens manquants
+        </button>
       </section>
+
+      <AlertDialog open={!!regenDialogPlayerId} onOpenChange={(open) => { if (!open) setRegenDialogPlayerId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regénérer le lien d'invitation ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'ancien lien sera définitivement invalidé. Le joueur devra utiliser le nouveau lien pour se connecter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRegenConfirm}>Regénérer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Story 2.1 — Import OWB army */}
       <section style={{ marginTop: '2rem' }}>

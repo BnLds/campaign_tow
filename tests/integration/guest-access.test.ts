@@ -159,13 +159,3 @@ describe('[AC6][P0] Session action button for guest — src/routes/__root.tsx', 
 })
 
 // ---------------------------------------------------------------------------
-// CampaignView — WelcomeModal guard for guests
-// ---------------------------------------------------------------------------
-
-describe('[AC4][P1] WelcomeModal guarded for guests — src/routes/index.tsx', () => {
-  it('[1.7-INT-017] CampaignView guards WelcomeModal with !session?.isGuest (modal must never open for guests)', () => {
-    const indexRoute = readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
-    // isGuest guard must be coupled with WelcomeModal — same conditional block
-    expect(indexRoute).toMatch(/isGuest[\s\S]{0,300}WelcomeModal/)
-  })
-})

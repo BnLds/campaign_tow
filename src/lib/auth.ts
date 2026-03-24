@@ -15,7 +15,6 @@ export type SessionData = {
   playerId: string
   isAdmin: boolean
   displayName: string
-  hasSeenWelcome: boolean
   isGuest: boolean
 }
 
@@ -32,7 +31,6 @@ export async function getSession(): Promise<SessionData | null> {
       isAdmin: players.isAdmin,
       isGuest: players.isGuest,
       displayName: players.displayName,
-      hasSeenWelcome: players.hasSeenWelcome,
     })
     .from(sessions)
     .innerJoin(players, eq(sessions.playerId, players.id))
@@ -47,7 +45,6 @@ export async function getSession(): Promise<SessionData | null> {
     isAdmin: row.isAdmin,
     isGuest: row.isGuest,
     displayName: row.displayName,
-    hasSeenWelcome: row.hasSeenWelcome,
   }
 }
 
@@ -86,11 +83,19 @@ export async function loginPlayer(username: string, password: string): Promise<b
 
   if (!player) return false
 
+  // Null passwordHash means account not yet activated — must use invite link first
+  if (!player.passwordHash) return false
+
   const valid = await compare(password, player.passwordHash)
   if (!valid) return false
 
   await createSession(player.id)
   return true
+}
+
+// deletePlayerSessions: invalidates all sessions for a player (used on auto-login via invite)
+export async function deletePlayerSessions(playerId: string): Promise<void> {
+  await db.delete(sessions).where(eq(sessions.playerId, playerId))
 }
 
 
