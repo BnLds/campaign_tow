@@ -98,11 +98,12 @@ export const submitUnitXpSchema = z.object({
 })
 export type SubmitUnitXpInput = z.infer<typeof submitUnitXpSchema>
 
-// Initial XP entry — same as submitUnitXpSchema but allows 0-999
+// Initial XP entry — same as submitUnitXpSchema but allows 0-999, plus optional derouteXpLost
 export const submitInitialXpSchema = z.object({
   matchParticipantId: z.string().min(1),
   unitId: z.string().min(1),
   xpGained: z.number().int().min(0).max(999),
+  derouteXpLost: z.number().int().nonnegative().default(0),
 })
 export type SubmitInitialXpInput = z.infer<typeof submitInitialXpSchema>
 
@@ -142,6 +143,7 @@ export const completeEvolutionsWithGainsSchema = z.object({
   gains: z.array(z.object({
     unitId: z.string().min(1),
     descriptions: z.array(z.string().min(1)),
+    thresholdXp: z.number().int().nullable().optional(),
   })),
   // Story 4.3: optional consequences array (injuries + destruction results)
   // armyId is NOT in schema — derived server-side from authenticated player's army

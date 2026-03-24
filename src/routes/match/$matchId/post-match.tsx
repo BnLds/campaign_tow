@@ -23,7 +23,7 @@ type PostMatchLoaderData = {
   matchParticipantId: string
   opponentPlayerName: string
   mode: 'post-match' | 'initial-xp'
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       getUnitsForArmy(army.id),
       getMatchXpEntries(participant.id),
     ])
-    const entryMap = new Map(existingEntries.map((e) => [e.unitId, e.xpGained]))
+    const entryMap = new Map(existingEntries.map((e) => [e.unitId, { xpGained: e.xpGained, derouteXpLost: e.derouteXpLost }]))
     // Load existing unit_gains — filter out gains from the current participant
     // (defense in depth: with batch commit there should be no partial gains,
     // but this protects against legacy orphaned gains from older code).
@@ -139,7 +139,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       if (!riderProfile) {
         return {
           id: u.id, name: u.name, type: u.type, xp: u.xp,
-          previousXpGained: entryMap.get(u.id) ?? null,
+          previousXpGained: entryMap.get(u.id)?.xpGained ?? null,
+          previousDerouteXpLost: entryMap.get(u.id)?.derouteXpLost ?? 0,
           hasMount: false, existingGains: unitGains, commandement: 0,
           effectiveStats: { m: null, cc: null, ct: null, f: null, e: null, pv: null, i: null, a: null, cd: null },
         }
@@ -181,7 +182,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
         name: u.name,
         type: u.type,
         xp: u.xp,
-        previousXpGained: entryMap.get(u.id) ?? null,
+        previousXpGained: entryMap.get(u.id)?.xpGained ?? null,
+        previousDerouteXpLost: entryMap.get(u.id)?.derouteXpLost ?? 0,
         hasMount: u.subProfiles.some((sp) => sp.isMount),
         existingGains: unitGains,
         commandement: (isNaN(baseCd) ? 0 : baseCd) + cdGains,
@@ -241,7 +243,7 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
     if (!unit || unit.armyId !== army.id) {
       return { success: false, error: { code: 'FORBIDDEN', message: "Cette unité n'appartient pas à votre armée" } }
     }
-    const { newUnitXp } = await upsertMatchXpEntryWithIncrement(data.matchParticipantId, data.unitId, data.xpGained)
+    const { newUnitXp } = await upsertMatchXpEntryWithIncrement(data.matchParticipantId, data.unitId, data.xpGained, data.derouteXpLost)
     return { success: true, data: { unitId: data.unitId, newXp: newUnitXp } }
   })
 
@@ -380,8 +382,8 @@ function PostMatchRoute() {
     await router.navigate({ to: '/' })
   }
 
-  const handleSubmitUnitXp = async (unitId: string, xpGained: number, mParticipantId: string) => {
-    return submitUnitXpFn({ data: { matchParticipantId: mParticipantId, unitId, xpGained } })
+  const handleSubmitUnitXp = async (unitId: string, xpGained: number, mParticipantId: string, derouteXpLost?: number) => {
+    return submitUnitXpFn({ data: { matchParticipantId: mParticipantId, unitId, xpGained, derouteXpLost: derouteXpLost ?? 0 } })
   }
 
   const handleCompleteEvolutions = async (

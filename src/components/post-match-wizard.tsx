@@ -81,11 +81,11 @@ export type PostMatchWizardProps = {
   opponentPlayerName?: string
   /** 'post-match' (default): checkbox XP conditions. 'initial-xp': direct numeric input 0-999. */
   mode?: 'post-match' | 'initial-xp'
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; previousDerouteXpLost?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
   onComplete: () => void
   onCancel: () => void
   /** Optional: inject custom submit function (for testing). Defaults to submitUnitXpFn. */
-  onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string) => Promise<ServerResult<{ unitId: string; newXp: number }>>
+  onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string, derouteXpLost?: number) => Promise<ServerResult<{ unitId: string; newXp: number }>>
   /** Batch commit: completes evolutions with all accumulated gains and consequences. Called once at the end.
    *  gains=[] and consequences=[] for the no-tierup, no-consequence path. */
   onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[], championKilledIds?: string[]) => Promise<ServerResult<{ matchId: string }>>
@@ -139,8 +139,8 @@ export function PostMatchWizard({
   const cumulativeHonourSelectionsRef = useRef<Map<string, Set<string>>>(new Map())
   // Cumulative map: unitId → all gain descriptions selected in this session (for constraint checks)
   const cumulativeGainsRef = useRef<Map<string, string[]>>(new Map())
-  // Pending gains to batch-commit at the end (unitId → descriptions[])
-  const pendingGainsRef = useRef<Map<string, string[]>>(new Map())
+  // Pending gains to batch-commit at the end (unitId → groups per threshold)
+  const pendingGainsRef = useRef<Map<string, Array<{ descriptions: string[]; thresholdXp: number | null }>>>(new Map())
 
   // XP results collected during Phase 1 (useRef to avoid re-renders on each submit)
   const xpResultsRef = useRef<Map<string, { oldXp: number; newXp: number }>>(new Map())
@@ -272,6 +272,16 @@ export function PostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const transitionToPhase2OrComplete = async () => {
+    // AC12 invariant: all units with deroute consequences must have their xpResultsRef updated
+    // before this function reads them. This catches ordering regressions if wizard flow is refactored.
+    for (const [unitId, consequence] of pendingConsequencesRef.current) {
+      if (consequence.type === 'deroute_sanglante') {
+        if (!xpResultsRef.current.has(unitId)) {
+          throw new Error(`[PostMatchWizard] AC12 invariant violated: unit ${unitId} has deroute consequence but xpResultsRef was not updated`)
+        }
+      }
+    }
+
     const queue: TierUpQueueEntry[] = []
     for (const unit of units) {
       const result = xpResultsRef.current.get(unit.id)
@@ -385,8 +395,9 @@ export function PostMatchWizard({
       // initial-xp mode: oldXp is always 0 (entering XP from scratch since army creation).
       // post-match mode: oldXp = pre-match XP (before any XP from this match was applied).
       //   On first run: previousXpGained is null/0, so preMatchXp = currentUnit.xp.
-      //   On resume: previousXpGained > 0, so preMatchXp = currentUnit.xp - previousXpGained.
-      const preMatchXp = mode === 'initial-xp' ? 0 : (currentUnit.xp - (currentUnit.previousXpGained ?? 0))
+      //   On resume: preMatchXp = currentUnit.xp - previousXpGained + previousDerouteXpLost
+      //   (derouteXpLost restores the deducted amount so we get the true pre-match baseline)
+      const preMatchXp = mode === 'initial-xp' ? 0 : (currentUnit.xp - (currentUnit.previousXpGained ?? 0) + (currentUnit.previousDerouteXpLost ?? 0))
       if (newXp !== null) {
         xpResultsRef.current.set(currentUnit.id, {
           oldXp: preMatchXp,
@@ -465,25 +476,24 @@ export function PostMatchWizard({
     } else if (result.type === 'deroute_sanglante') {
       const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
       if (xpEntry) {
-        const currentXpGained = xpEntry.newXp - xpEntry.oldXp
         const { calculateTier } = await import('../lib/tier')
         const { DEROUTE_XP_LOSS } = await import('../lib/constants')
         const tier = calculateTier(xpEntry.newXp, currentFlaggedUnit.type)
         const tierLoss = DEROUTE_XP_LOSS[tier]
-        const actualLoss = Math.min(tierLoss, currentXpGained)
-        const newXpGained = Math.max(0, currentXpGained - tierLoss)
+        // Pass original xpGained (unchanged) + derouteXpLost separately
+        const originalXpGained = xpEntry.newXp - xpEntry.oldXp
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
-          submitResult = await onSubmitUnitXp(currentFlaggedUnit.id, newXpGained, matchParticipantId)
+          submitResult = await onSubmitUnitXp(currentFlaggedUnit.id, originalXpGained, matchParticipantId, tierLoss)
         } else {
           const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
-          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentFlaggedUnit.id, xpGained: newXpGained } })
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentFlaggedUnit.id, xpGained: originalXpGained, derouteXpLost: tierLoss } })
         }
         if (submitResult.success) {
           xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
         }
-        // Store consequence with xpLostAmount for timeline description
-        pendingConsequencesRef.current.set(currentFlaggedUnit.id, { ...result, xpLostAmount: actualLoss })
+        // Store consequence with full tierLoss as xpLostAmount (rules amount, not capped)
+        pendingConsequencesRef.current.set(currentFlaggedUnit.id, { ...result, xpLostAmount: tierLoss })
       } else {
         pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
       }
@@ -540,10 +550,16 @@ export function PostMatchWizard({
         (d) => d !== '2 améliorations mineures' && d !== 'Non applicable'
       )
 
-      // Accumulate gains in pendingGainsRef (NOT submitted to server yet)
+      // Accumulate gains in pendingGainsRef grouped by threshold (NOT submitted to server yet)
       if (descriptionsToSave.length > 0) {
-        const existing = pendingGainsRef.current.get(currentTierUp.unitId) ?? []
-        pendingGainsRef.current.set(currentTierUp.unitId, [...existing, ...descriptionsToSave])
+        const groups = pendingGainsRef.current.get(currentTierUp.unitId) ?? []
+        const existingGroup = groups.find((g) => g.thresholdXp === currentTierUp.xp)
+        if (existingGroup) {
+          existingGroup.descriptions.push(...descriptionsToSave)
+        } else {
+          groups.push({ descriptions: [...descriptionsToSave], thresholdXp: currentTierUp.xp })
+        }
+        pendingGainsRef.current.set(currentTierUp.unitId, groups)
       }
 
       // Store selections for back-button restore (ref-based to avoid re-renders)
@@ -590,9 +606,11 @@ export function PostMatchWizard({
 
       if (isLastTierUpStep) {
         // All tier-ups done — batch commit all gains + consequences + stamp evolutionsEnteredAt
-        const gains: Array<{ unitId: string; descriptions: string[] }> = []
-        for (const [unitId, descriptions] of pendingGainsRef.current) {
-          gains.push({ unitId, descriptions })
+        const gains: Array<{ unitId: string; descriptions: string[]; thresholdXp?: number | null }> = []
+        for (const [unitId, groups] of pendingGainsRef.current) {
+          for (const group of groups) {
+            gains.push({ unitId, descriptions: group.descriptions, thresholdXp: group.thresholdXp })
+          }
         }
         const consequences = buildConsequencesArray()
         const championKilledIds = buildChampionKilledIds()
@@ -731,17 +749,23 @@ export function PostMatchWizard({
                 const prevSelections = submittedTierUpsByStepRef.current.get(tierUpStep)
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (prevSelections && currentEntry) {
-                  // Remove from pendingGainsRef
-                  const pending = pendingGainsRef.current.get(currentEntry.unitId)
-                  if (pending) {
+                  // Remove from pendingGainsRef (grouped by threshold)
+                  const pendingGroups = pendingGainsRef.current.get(currentEntry.unitId)
+                  if (pendingGroups) {
                     const descriptionsToRemove = prevSelections.filter((d) => d !== '2 améliorations mineures')
-                    const updated = [...pending]
-                    for (const desc of descriptionsToRemove) {
-                      const idx = updated.indexOf(desc)
-                      if (idx !== -1) updated.splice(idx, 1)
-                    }
-                    if (updated.length > 0) {
-                      pendingGainsRef.current.set(currentEntry.unitId, updated)
+                    const updatedGroups = pendingGroups
+                      .map((group) => {
+                        if (group.thresholdXp !== currentEntry.xp) return group
+                        const updatedDescs = [...group.descriptions]
+                        for (const desc of descriptionsToRemove) {
+                          const idx = updatedDescs.indexOf(desc)
+                          if (idx !== -1) updatedDescs.splice(idx, 1)
+                        }
+                        return { ...group, descriptions: updatedDescs }
+                      })
+                      .filter((group) => group.descriptions.length > 0)
+                    if (updatedGroups.length > 0) {
+                      pendingGainsRef.current.set(currentEntry.unitId, updatedGroups)
                     } else {
                       pendingGainsRef.current.delete(currentEntry.unitId)
                     }

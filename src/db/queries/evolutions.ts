@@ -2,6 +2,7 @@ import { eq, and, inArray, or, sql, desc } from 'drizzle-orm'
 import { db } from '../index'
 import { units, statModifiers, unitGains, matchParticipants, matchXpEntries, matches, armies } from '../schema'
 import type { ConsequenceEntry } from '../../lib/validators'
+import { detectLostThresholds } from '../../lib/tier'
 
 export async function getMatchParticipantForEvolutionByPlayer(
   matchId: string,
@@ -117,10 +118,11 @@ export async function upsertMatchXpEntryWithIncrement(
   matchParticipantId: string,
   unitId: string,
   xpGained: number,
-): Promise<{ previousXpGained: number | null; newUnitXp: number }> {
+  derouteXpLost: number = 0,
+): Promise<{ previousXpGained: number | null; previousDerouteXpLost: number; newUnitXp: number }> {
   return db.transaction(async (tx) => {
     // Upsert match XP entry
-    const existing = await tx.select({ xpGained: matchXpEntries.xpGained })
+    const existing = await tx.select({ xpGained: matchXpEntries.xpGained, derouteXpLost: matchXpEntries.derouteXpLost })
       .from(matchXpEntries)
       .where(
         and(
@@ -131,22 +133,23 @@ export async function upsertMatchXpEntryWithIncrement(
       .limit(1)
 
     const previousXpGained = existing.length > 0 ? existing[0].xpGained : null
+    const previousDerouteXpLost = existing.length > 0 ? existing[0].derouteXpLost : 0
 
     await tx.insert(matchXpEntries)
-      .values({ matchParticipantId, unitId, xpGained })
+      .values({ matchParticipantId, unitId, xpGained, derouteXpLost })
       .onConflictDoUpdate({
         target: [matchXpEntries.matchParticipantId, matchXpEntries.unitId],
-        set: { xpGained },
+        set: { xpGained, derouteXpLost },
       })
 
-    // Increment unit XP atomically
-    const delta = xpGained - (previousXpGained ?? 0)
+    // Compute delta: (newXpGained - prevXpGained) - (newDerouteXpLost - prevDerouteXpLost)
+    const delta = (xpGained - (previousXpGained ?? 0)) - (derouteXpLost - previousDerouteXpLost)
     if (delta !== 0) {
       const [updated] = await tx.update(units)
-        .set({ xp: sql`${units.xp} + ${delta}` })
+        .set({ xp: sql`GREATEST(0, ${units.xp} + ${delta})` })
         .where(eq(units.id, unitId))
         .returning({ xp: units.xp })
-      return { previousXpGained, newUnitXp: updated.xp }
+      return { previousXpGained, previousDerouteXpLost, newUnitXp: updated.xp }
     }
 
     // delta === 0: read current XP
@@ -154,17 +157,18 @@ export async function upsertMatchXpEntryWithIncrement(
       .from(units)
       .where(eq(units.id, unitId))
       .limit(1)
-    return { previousXpGained, newUnitXp: current.xp }
+    return { previousXpGained, previousDerouteXpLost, newUnitXp: current.xp }
   })
 }
 
 export async function getMatchXpEntries(
   matchParticipantId: string,
-): Promise<Array<{ unitId: string; xpGained: number }>> {
+): Promise<Array<{ unitId: string; xpGained: number; derouteXpLost: number }>> {
   return db
     .select({
       unitId: matchXpEntries.unitId,
       xpGained: matchXpEntries.xpGained,
+      derouteXpLost: matchXpEntries.derouteXpLost,
     })
     .from(matchXpEntries)
     .where(eq(matchXpEntries.matchParticipantId, matchParticipantId))
@@ -173,7 +177,7 @@ export async function getMatchXpEntries(
 export async function completeEvolutionsWithGainsTransaction(
   matchParticipantId: string,
   matchId: string,
-  gains: Array<{ unitId: string; descriptions: string[] }>,
+  gains: Array<{ unitId: string; descriptions: string[]; thresholdXp?: number | null }>,
   consequences: ConsequenceEntry[] = [],
   armyId?: string,
   championKilledIds?: string[],
@@ -202,6 +206,10 @@ export async function completeEvolutionsWithGainsTransaction(
           throw new Error('NOT_LATEST_MATCH')
         }
       }
+      // Un-clear gains that were cleared by this matchParticipantId (deroute reversal on re-entry)
+      await tx.update(unitGains)
+        .set({ cleared: false, clearedByMatchParticipantId: null })
+        .where(eq(unitGains.clearedByMatchParticipantId, matchParticipantId))
       // Delete old gains and stat modifiers for this participant
       await tx.delete(unitGains)
         .where(eq(unitGains.matchParticipantId, matchParticipantId))
@@ -236,13 +244,14 @@ export async function completeEvolutionsWithGainsTransaction(
       }
     }
 
-    // Insert tier-up gains
-    for (const { unitId, descriptions } of gains) {
+    // Insert tier-up gains (with thresholdXp for deroute tier-down tracking)
+    for (const { unitId, descriptions, thresholdXp } of gains) {
       for (const description of descriptions) {
         await tx.insert(unitGains).values({
           unitId,
           description,
           matchParticipantId,
+          thresholdXp: thresholdXp ?? null,
         })
       }
     }
@@ -318,7 +327,7 @@ export async function completeEvolutionsWithGainsTransaction(
           })
           break
         }
-        case 'deroute_sanglante':
+        case 'deroute_sanglante': {
           if (consequence.xpLostAmount != null && consequence.xpLostAmount > 0) {
             await tx.insert(unitGains).values({
               unitId: consequence.unitId,
@@ -326,7 +335,45 @@ export async function completeEvolutionsWithGainsTransaction(
               matchParticipantId,
             })
           }
+          // Tier-down gain removal: soft-delete unitGains for lost thresholds
+          // Read unit XP with FOR UPDATE lock to prevent concurrent modification
+          const [unitRow] = await tx
+            .select({ xp: units.xp, type: units.type })
+            .from(units)
+            .where(eq(units.id, consequence.unitId))
+            .for('update')
+          if (unitRow && unitRow.type !== 'Personnages') {
+            // Read matchXpEntries to compute preMatchXp
+            const [xpEntry] = await tx
+              .select({ xpGained: matchXpEntries.xpGained, derouteXpLost: matchXpEntries.derouteXpLost })
+              .from(matchXpEntries)
+              .where(
+                and(
+                  eq(matchXpEntries.matchParticipantId, matchParticipantId),
+                  eq(matchXpEntries.unitId, consequence.unitId),
+                ),
+              )
+              .for('update')
+              .limit(1)
+            if (xpEntry) {
+              const postDerouteXp = unitRow.xp
+              const preMatchXp = Math.max(0, postDerouteXp - xpEntry.xpGained + xpEntry.derouteXpLost)
+              const lostThresholds = detectLostThresholds(preMatchXp, postDerouteXp, unitRow.type)
+              if (lostThresholds.length > 0) {
+                await tx.update(unitGains)
+                  .set({ cleared: true, clearedByMatchParticipantId: matchParticipantId })
+                  .where(
+                    and(
+                      eq(unitGains.unitId, consequence.unitId),
+                      eq(unitGains.cleared, false),
+                      inArray(unitGains.thresholdXp, lostThresholds),
+                    ),
+                  )
+              }
+            }
+          }
           break
+        }
       }
 
       // AC21: banner loss (independent of main consequence type)

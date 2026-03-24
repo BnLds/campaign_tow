@@ -1,8 +1,11 @@
 // Campaign TOW — XP Tier utility
 // Pure function: no DB imports, no side effects.
 
-import { UNIT_THRESHOLDS, CHARACTER_THRESHOLDS } from './constants'
+import { UNIT_THRESHOLDS, CHARACTER_THRESHOLDS, HONOUR_THRESHOLDS } from './constants'
 import type { ThresholdEntry } from './constants'
+
+// Module-level set for O(1) honour threshold lookup (avoid per-call allocation)
+const HONOUR_SET = new Set<number>(HONOUR_THRESHOLDS)
 
 // TierLevel type alias — exported for use in all call sites
 export type TierLevel = 0 | 1 | 2 | 3 | 4
@@ -72,4 +75,25 @@ export function detectTierCrossings(
   return thresholds
     .filter((t) => t.xp > oldXp && t.xp <= newXp)
     .sort((a, b) => a.xp - b.xp)
+}
+
+// ---------------------------------------------------------------------------
+// detectLostThresholds — returns unit tier threshold XP values lost between preXp and postXp
+// Used by completeEvolutionsWithGainsTransaction for deroute tier-down gain removal.
+// Excludes HONOUR_THRESHOLDS (3, 9) — champion/banner gains are never cleared.
+// Only applies to units (non-Personnages). Returns empty array if postXp >= preXp.
+// ---------------------------------------------------------------------------
+
+export function detectLostThresholds(
+  preXp: number,
+  postXp: number,
+  unitType: string,
+): number[] {
+  if (postXp >= preXp) return []
+  // Deroute sanglante only applies to units (not characters)
+  if (unitType === 'Personnages') return []
+
+  return UNIT_THRESHOLDS
+    .filter((t) => preXp >= t.xp && t.xp > postXp && !HONOUR_SET.has(t.xp))
+    .map((t) => t.xp)
 }

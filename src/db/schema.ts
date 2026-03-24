@@ -106,6 +106,8 @@ export const unitGains = pgTable('unit_gains', {
   description: text('description').notNull(),
   cleared: boolean('cleared').notNull().default(false),
   matchParticipantId: text('match_participant_id').references(() => matchParticipants.id, { onDelete: 'set null' }),
+  thresholdXp: integer('threshold_xp'),
+  clearedByMatchParticipantId: text('cleared_by_match_participant_id').references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
 
 // Story 3.1 — Campaign timeline: matches and participants
@@ -148,9 +150,11 @@ export const matchXpEntries = pgTable('match_xp_entries', {
     .notNull()
     .references(() => units.id, { onDelete: 'cascade' }),
   xpGained: integer('xp_gained').notNull(),
+  derouteXpLost: integer('deroute_xp_lost').notNull().default(0),
 }, (table) => [
   uniqueIndex('mxe_participant_unit_unique').on(table.matchParticipantId, table.unitId),
   check('mxe_xp_gained_non_negative', sql`${table.xpGained} >= 0`),
+  check('mxe_deroute_xp_lost_non_negative', sql`${table.derouteXpLost} >= 0`),
 ])
 
 // Drizzle relations — matches and matchParticipants

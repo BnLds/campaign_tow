@@ -15,7 +15,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { completeEvolutionsWithGainsSchema } from '../src/lib/validators'
-import { DEROUTE_XP_LOSS } from '../src/lib/constants'
+import { DEROUTE_XP_LOSS, HONOUR_THRESHOLDS } from '../src/lib/constants'
 
 // ---------------------------------------------------------------------------
 // Task 12.1 — Schema accepts consequences array (AC: 4)
@@ -356,5 +356,218 @@ describe('[AC25][P0] Stat floor — delta-composer clamping (Task 12.13)', () =>
 
     const mStat = result.subProfiles[0].stats.m
     expect(mStat.value).toBe('4')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deroute Sanglante — Schema extensions (AC1, AC3, AC8, AC9)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][AC8][P0] Schema — gains thresholdXp field', () => {
+  it('[DS-SCH-001] schema accepts gains with thresholdXp', () => {
+    const input = {
+      matchId: 'match-1',
+      matchParticipantId: 'mp-1',
+      gains: [{ unitId: 'unit-1', descriptions: ['+1 CC'], thresholdXp: 25 }],
+    }
+    const result = completeEvolutionsWithGainsSchema.safeParse(input)
+    expect(result.success).toBe(true)
+  })
+
+  it('[DS-SCH-002] schema accepts gains with thresholdXp null', () => {
+    const input = {
+      matchId: 'match-1',
+      matchParticipantId: 'mp-1',
+      gains: [{ unitId: 'unit-1', descriptions: ['+1 CC'], thresholdXp: null }],
+    }
+    const result = completeEvolutionsWithGainsSchema.safeParse(input)
+    expect(result.success).toBe(true)
+  })
+
+  it('[DS-SCH-003] schema accepts gains without thresholdXp (backward compat)', () => {
+    const input = {
+      matchId: 'match-1',
+      matchParticipantId: 'mp-1',
+      gains: [{ unitId: 'unit-1', descriptions: ['+1 CC'] }],
+    }
+    const result = completeEvolutionsWithGainsSchema.safeParse(input)
+    expect(result.success).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deroute Sanglante — HONOUR_THRESHOLDS constant (AC2, AC9)
+// ---------------------------------------------------------------------------
+
+describe('[AC2][AC9][P0] HONOUR_THRESHOLDS constant', () => {
+  it('[DS-HON-001] HONOUR_THRESHOLDS is exported from constants.ts', () => {
+    expect(HONOUR_THRESHOLDS).toBeDefined()
+  })
+
+  it('[DS-HON-002] HONOUR_THRESHOLDS contains exactly [3, 9]', () => {
+    expect(Array.from(HONOUR_THRESHOLDS)).toEqual([3, 9])
+  })
+
+  it('[DS-HON-003] HONOUR_THRESHOLDS is readonly (type-level, not modifiable at runtime)', () => {
+    // Can be iterated and used as a Set
+    const asSet = new Set<number>(HONOUR_THRESHOLDS)
+    expect(asSet.has(3)).toBe(true)
+    expect(asSet.has(9)).toBe(true)
+    expect(asSet.size).toBe(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deroute Sanglante — evolutions.ts structural tests (AC1, AC6, AC8)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][AC6][P0] completeEvolutionsWithGainsTransaction — deroute tier-down (structural)', () => {
+  it('[DS-TXN-001] re-entry reversal: un-clears gains with clearedByMatchParticipantId before deleting', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    // Must un-clear gains before deleting current match gains
+    expect(code).toMatch(/clearedByMatchParticipantId:\s*null/)
+    expect(code).toMatch(/cleared:\s*false[\s\S]{0,100}clearedByMatchParticipantId:\s*null/)
+  })
+
+  it('[DS-TXN-002] deroute_sanglante case locks unit row with FOR UPDATE', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    // The deroute case must use FOR UPDATE on the units table
+    expect(code).toContain("case 'deroute_sanglante'")
+    expect(code).toMatch(/deroute_sanglante[\s\S]{0,1200}\.for\('update'\)/)
+  })
+
+  it('[DS-TXN-003] deroute case calls detectLostThresholds imported from tier.ts', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    expect(code).toMatch(/import.*detectLostThresholds.*from.*tier/)
+    expect(code).toContain('detectLostThresholds(')
+  })
+
+  it('[DS-TXN-004] tier-down soft-delete uses clearedByMatchParticipantId for reversibility', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    expect(code).toMatch(/cleared:\s*true[\s\S]{0,100}clearedByMatchParticipantId:\s*matchParticipantId/)
+  })
+
+  it('[DS-TXN-005] thresholdXp is inserted with tier-up gains', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    // thresholdXp must be passed when inserting unitGains
+    expect(code).toMatch(/thresholdXp.*thresholdXp/)
+  })
+
+  it('[DS-TXN-006] HONOUR_THRESHOLDS exclusion is handled by detectLostThresholds (not duplicated in evolutions.ts)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    // HONOUR_THRESHOLDS should NOT be imported in evolutions.ts — exclusion is in tier.ts detectLostThresholds
+    expect(code).not.toMatch(/import.*HONOUR_THRESHOLDS/)
+    expect(code).not.toContain('honourSet')
+    // detectLostThresholds (which handles honour exclusion internally) must still be called
+    expect(code).toContain('detectLostThresholds(')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deroute Sanglante — wizard XP loss structural tests (AC3, AC4, AC5, AC11, AC12)
+// ---------------------------------------------------------------------------
+
+describe('[AC3][AC4][AC5][P0] Wizard — deroute XP loss (structural)', () => {
+  it('[DS-WIZ-001] wizard deroute branch uses full tierLoss not capped at match gain', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    // The old actualLoss = Math.min(tierLoss, currentXpGained) must NOT be present
+    expect(code).not.toContain('Math.min(tierLoss')
+    // tierLoss is passed to server via derouteXpLost; server applies GREATEST(0, ...) floor
+    expect(code).toContain('derouteXpLost: tierLoss')
+  })
+
+  it('[DS-WIZ-002] wizard passes derouteXpLost to submitUnitXpFn (not adjusted xpGained)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    expect(code).toContain('derouteXpLost: tierLoss')
+  })
+
+  it('[DS-WIZ-003] preMatchXp calculation accounts for previousDerouteXpLost', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    expect(code).toContain('previousDerouteXpLost')
+    expect(code).toMatch(/previousXpGained.*previousDerouteXpLost|previousDerouteXpLost.*previousXpGained/)
+  })
+
+  it('[DS-WIZ-004] transitionToPhase2OrComplete contains AC12 invariant guard (throw, not console.assert)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    expect(code).toContain('AC12 invariant violated')
+    expect(code).toMatch(/throw new Error.*AC12/)
+    expect(code).not.toContain('console.assert')
+  })
+
+  it('[DS-WIZ-005] xpResultsRef is updated with server-returned newXp (post-deroute) after deroute processing', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    // xpResultsRef must use the authoritative server value (submitResult.data.newXp), not client-computed newTotalXp
+    expect(code).toMatch(/xpResultsRef\.current\.set\(currentFlaggedUnit\.id[\s\S]{0,100}submitResult\.data\.newXp/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deroute Sanglante — upsertMatchXpEntryWithIncrement delta computation (AC3, AC5)
+// ---------------------------------------------------------------------------
+
+describe('[AC3][AC5][P0] upsertMatchXpEntryWithIncrement — delta with derouteXpLost', () => {
+  it('[DS-UPD-001] evolutions.ts uses GREATEST(0, ...) for floor-at-zero on unit XP', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    expect(code).toContain('GREATEST(0,')
+  })
+
+  it('[DS-UPD-002] upsertMatchXpEntryWithIncrement accepts derouteXpLost parameter', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    expect(code).toMatch(/upsertMatchXpEntryWithIncrement[\s\S]{0,200}derouteXpLost/)
+  })
+
+  it('[DS-UPD-003] delta formula subtracts deroute delta from XP gain delta', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    // Must contain the combined delta computation
+    expect(code).toMatch(/xpGained.*previousXpGained.*derouteXpLost.*previousDeroute|delta.*xpGained.*deroute/)
+  })
+
+  it('[DS-UPD-004] getMatchXpEntries returns derouteXpLost field', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    expect(code).toMatch(/getMatchXpEntries[\s\S]{0,300}derouteXpLost/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Deroute Sanglante — schema DB columns (AC1, AC8)
+// ---------------------------------------------------------------------------
+
+describe('[AC1][AC8][P0] Schema — new DB columns', () => {
+  it('[DS-DB-001] schema.ts defines thresholdXp on unitGains', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/schema.ts', 'utf-8')
+    expect(code).toContain('threshold_xp')
+    expect(code).toContain('thresholdXp')
+  })
+
+  it('[DS-DB-002] schema.ts defines clearedByMatchParticipantId on unitGains with onDelete set null', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/schema.ts', 'utf-8')
+    expect(code).toContain('cleared_by_match_participant_id')
+    expect(code).toContain('clearedByMatchParticipantId')
+    expect(code).toMatch(/clearedByMatchParticipantId[\s\S]{0,100}onDelete:\s*'set null'/)
+  })
+
+  it('[DS-DB-003] schema.ts defines derouteXpLost on matchXpEntries with default 0 and CHECK >= 0', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/schema.ts', 'utf-8')
+    expect(code).toContain('deroute_xp_lost')
+    expect(code).toContain('derouteXpLost')
+    expect(code).toContain('mxe_deroute_xp_lost_non_negative')
   })
 })
