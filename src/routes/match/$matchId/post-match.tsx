@@ -231,7 +231,7 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
 
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
     }
     const participantArmyId = await getMatchParticipantArmyId(data.matchParticipantId)
     if (participantArmyId !== army.id) {
@@ -239,7 +239,7 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
     }
     const unit = await getUnitById(data.unitId)
     if (!unit || unit.armyId !== army.id) {
-      return { success: false, error: { code: 'FORBIDDEN', message: "Cette unite n'appartient pas a votre armee" } }
+      return { success: false, error: { code: 'FORBIDDEN', message: "Cette unité n'appartient pas à votre armée" } }
     }
     const { newUnitXp } = await upsertMatchXpEntryWithIncrement(data.matchParticipantId, data.unitId, data.xpGained)
     return { success: true, data: { unitId: data.unitId, newXp: newUnitXp } }
@@ -265,13 +265,13 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, completeEvolutionsWithGainsTransaction } = await import('../../../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
     }
     const participant = await getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId)
     if (!participant) {
       return {
         success: false,
-        error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
+        error: { code: 'FORBIDDEN', message: "Vous n'êtes pas participant de cette partie" },
       }
     }
     // Verify matchParticipantId matches the actual participant (prevents cross-match injection)
@@ -282,7 +282,7 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     if (participant.evolutionsEnteredAt !== null) {
       const latestMatchId = await getLatestMatchIdForArmy(army.id)
       if (data.matchId !== latestMatchId) {
-        return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la derniere partie peut etre modifiee' } }
+        return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la dernière partie peut être modifiée' } }
       }
     }
     // Verify all unitIds in gains and consequences belong to this army
@@ -315,7 +315,7 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
       await completeEvolutionsWithGainsTransaction(data.matchParticipantId, data.matchId, data.gains, data.consequences ?? [], army.id, data.championKilledIds, resolvedMatchType)
     } catch (err) {
       if (err instanceof Error && err.message === 'NOT_LATEST_MATCH') {
-        return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la derniere partie peut etre modifiee' } }
+        return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la dernière partie peut être modifiée' } }
       }
       throw err
     }
@@ -359,7 +359,7 @@ function PostMatchRoute() {
             marginBottom: '1.5rem',
           }}
         >
-          Evolutions déjà saisies pour cette partie
+          Évolutions déjà saisies pour cette partie
         </p>
         <Link
           to="/"

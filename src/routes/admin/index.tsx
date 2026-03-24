@@ -202,10 +202,10 @@ const createMatchFn = createServerFn({ method: 'POST' })
     const army1 = await getArmyById(data.army1Id)
     const army2 = await getArmyById(data.army2Id)
     if (!army1 || !army1.playerId) {
-      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 1 n'est assignee a aucun joueur" } }
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armée 1 n'est assignée à aucun joueur" } }
     }
     if (!army2 || !army2.playerId) {
-      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armee 2 n'est assignee a aucun joueur" } }
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: "L'armée 2 n'est assignée à aucun joueur" } }
     }
     const result = await createMatchWithParticipants({
       player1Id: army1.playerId,

@@ -312,7 +312,7 @@ function AppHeader({
                     opacity: army ? 1 : 0.5,
                   }}
                 >
-                  Voir mon armee
+                  Voir mon armée
                 </button>
                 {session.isAdmin && (
                   <button

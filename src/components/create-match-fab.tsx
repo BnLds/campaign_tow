@@ -74,12 +74,12 @@ export const createMatchFn = createServerFn({ method: 'POST' })
     // AC10 — Reject players without army
     const playerArmy = await getPlayerArmy(session.playerId)
     if (!playerArmy) {
-      throw new Error('Vous devez avoir une armee pour creer une partie')
+      throw new Error('Vous devez avoir une armée pour créer une partie')
     }
 
     // AC8 — Reject self-match
     if (data.opponentPlayerId === session.playerId) {
-      throw new Error('Vous ne pouvez pas jouer contre vous-meme')
+      throw new Error('Vous ne pouvez pas jouer contre vous-même')
     }
 
     // Validate opponent player exists, lookup their army (may be null)
@@ -213,7 +213,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
       queryClient.invalidateQueries({ queryKey: ['army-info'] })
       router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la creation de la partie.')
+      setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la création de la partie.')
     } finally {
       // H1 — ensure isSubmitting is always reset (covers both success and error paths)
       setIsSubmitting(false)
@@ -239,14 +239,14 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
             textAlign: 'right',
           }}
         >
-          Vous devez avoir une armee pour creer une partie
+          Vous devez avoir une armée pour créer une partie
         </div>
       )}
 
       {/* FAB button */}
       <button
         data-testid="create-match-fab"
-        aria-label="Creer une partie"
+        aria-label="Créer une partie"
         onClick={handleFabClick}
         style={{
           position: 'absolute',
@@ -284,7 +284,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
               Nouvelle partie
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Choisir un adversaire et une date pour creer une nouvelle partie
+              Choisir un adversaire et une date pour créer une nouvelle partie
             </DialogDescription>
           </DialogHeader>
 
@@ -311,7 +311,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
                     fontSize: 13,
                   }}
                 >
-                  Reessayer
+                  Réessayer
                 </button>
               </div>
             ) : opponents.length === 0 ? (
@@ -340,7 +340,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
                     <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       {opponent.hasArmy
                         ? `${opponent.armyName} — ${opponent.faction}`
-                        : 'Armee non attribuee'}
+                        : 'Armée non attribuée'}
                     </div>
                   </button>
                 ))}
@@ -422,7 +422,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
               width: '100%',
             }}
           >
-            {isSubmitting ? 'Creation en cours...' : 'Creer la partie'}
+            {isSubmitting ? 'Création en cours...' : 'Créer la partie'}
           </button>
         </DialogContent>
       </Dialog>

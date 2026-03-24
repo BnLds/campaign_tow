@@ -279,7 +279,7 @@ export function TimelineEntry({
         <>
         {hasEvolutions && isLatestMatch && isSelecting && (
           <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0.25rem 0 0', fontStyle: 'italic' }}>
-            Changer le resultat ne modifie pas le rapport — pensez a le re-saisir si necessaire.
+            Changer le résultat ne modifie pas le rapport — pensez à le re-saisir si nécessaire.
           </p>
         )}
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>

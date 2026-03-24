@@ -40,13 +40,13 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults, updateMatchResultOnLatest } = await import('../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
     }
     const participant = await getMatchParticipantByMatchAndPlayer(data.matchId, context.session.playerId)
     if (!participant) {
       return {
         success: false,
-        error: { code: 'FORBIDDEN', message: "Vous n'etes pas participant de cette partie" },
+        error: { code: 'FORBIDDEN', message: "Vous n'êtes pas participant de cette partie" },
       }
     }
     // First-time result entry (result is null) or re-edit on latest match
@@ -54,7 +54,7 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
       ? await updateMatchResults(data.matchId, context.session.playerId, data.result)
       : await updateMatchResultOnLatest(data.matchId, context.session.playerId, army.id, data.result)
     if (!updated) {
-      return { success: false, error: { code: 'SERVER_ERROR', message: 'Echec de la mise a jour du resultat' } }
+      return { success: false, error: { code: 'SERVER_ERROR', message: 'Échec de la mise à jour du résultat' } }
     }
     return { success: true, data: { participantId: participant.id, result: data.result } }
   })
@@ -87,7 +87,7 @@ const createInitialSetupMatchFn = createServerFn({ method: 'POST' })
     const { getPlayerArmy, createInitialSetupMatch } = await import('../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
     }
     const matchId = await createInitialSetupMatch(context.session.playerId, army.id)
     return { success: true, data: { matchId } }
@@ -106,7 +106,7 @@ const skipInitialXpFn = createServerFn({ method: 'POST' })
 
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
-      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armee assignee' } }
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
     }
 
     await db.transaction(async (tx) => {
@@ -393,7 +393,7 @@ function CampaignView() {
               Modifier le rapport ?
             </p>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
-              Les ameliorations et consequences devront etre re-saisies. Les XP seront pre-remplis.
+              Les améliorations et conséquences devront être re-saisies. Les XP seront pré-remplis.
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
@@ -476,7 +476,7 @@ function CampaignView() {
         ) : army === null ? (
           /* Logged in but no army assigned */
           <ArmyImportForm onSuccess={async (data) => {
-            setImportSuccess(`Armee importee : ${data.armyName} (${data.faction}) — ${data.unitCount} unite${data.unitCount > 1 ? 's' : ''}`)
+            setImportSuccess(`Armée importée : ${data.armyName} (${data.faction}) — ${data.unitCount} unité${data.unitCount > 1 ? 's' : ''}`)
             await queryClient.invalidateQueries({ queryKey: ['session'] })
             await queryClient.invalidateQueries({ queryKey: ['army-info'] })
             await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
@@ -502,7 +502,7 @@ function CampaignView() {
 
               {timeline.length === 0 ? (
                 <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
-                  Aucune partie jouee pour le moment
+                  Aucune partie jouée pour le moment
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

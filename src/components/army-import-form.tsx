@@ -25,7 +25,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
         const { armyName, faction, unitCount } = response.data
         setResult({
           success: true,
-          message: `Armee importee : ${armyName} (${faction}) — ${unitCount} unite${unitCount > 1 ? 's' : ''}`,
+          message: `Armée importée : ${armyName} (${faction}) — ${unitCount} unité${unitCount > 1 ? 's' : ''}`,
         })
         setOwbText('')
         await onSuccess(response.data)
@@ -33,7 +33,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
         setResult({ success: false, message: response.error.message })
       }
     } catch {
-      setResult({ success: false, message: "Erreur serveur — veuillez reessayer" })
+      setResult({ success: false, message: "Erreur serveur — veuillez réessayer" })
     } finally {
       setSubmitting(false)
     }
@@ -59,7 +59,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
           marginBottom: '0.5rem',
         }}
       >
-        Creer votre armee
+        Créer votre armée
       </h2>
       <p
         style={{
@@ -69,7 +69,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
           marginBottom: '0.75rem',
         }}
       >
-        Collez ici l'export de votre armee depuis Old World Builder
+        Collez ici l'export de votre armée depuis Old World Builder
       </p>
 
       <textarea
@@ -77,7 +77,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
         value={owbText}
         onChange={(e) => setOwbText(e.target.value)}
         disabled={submitting}
-        placeholder="Collez ici l'export de votre armee depuis Old World Builder..."
+        placeholder="Collez ici l'export de votre armée depuis Old World Builder..."
         rows={6}
         maxLength={50000}
         style={{

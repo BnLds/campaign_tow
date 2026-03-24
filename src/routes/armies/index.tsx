@@ -75,7 +75,7 @@ function ArmiesListView() {
           marginBottom: '1.5rem',
         }}
       >
-        Armees
+        Armées
       </h1>
 
       {!isGuest && !hasOwnArmy && (
@@ -89,10 +89,10 @@ function ArmiesListView() {
       {armies.length === 0 ? (
         <div>
           <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
-            Aucune armee dans la campagne
+            Aucune armée dans la campagne
           </p>
           <Link to="/" style={{ color: 'var(--color-brand)', fontSize: '0.875rem' }}>
-            Retour a la campagne
+            Retour à la campagne
           </Link>
         </div>
       ) : (
