@@ -52,7 +52,7 @@ src/
     armies/
       index.tsx          ← Army list
       $armyId.tsx        ← Army detail view
-    references.tsx
+    territories.tsx
     login.tsx
     match/
       new.tsx            ← Match creation
@@ -145,7 +145,7 @@ Three session states — check via `player.isGuest` / `player.isAdmin`:
 - otherwise → Authenticated player
 
 Route guard rules:
-- **Read-only routes** (`/`, `/armies`, `/armies/$armyId`, `/references`): Allow guest sessions. Redirect to `/login` only if no session at all.
+- **Read-only routes** (`/`, `/armies`, `/armies/$armyId`, `/territories`): Allow guest sessions. Redirect to `/login` only if no session at all.
 - **Write routes** (`/match/new`, `/match/$matchId/post-match`): Require non-guest session. Redirect to `/login` if guest or no session.
 - **Admin routes** (`/admin`): Require `player.isAdmin === true`. Reject otherwise.
 
@@ -261,7 +261,7 @@ function MyRouteComponent() {
 
 **Why it can be missed:** Tests that do a fresh login first (e.g. `loginAsReturning()`) happen to visit `/login` which sets the attribute — so the attribute persists across SPA navigations. Tests using `storageState` skip the login page entirely and navigate straight to the target route; if that route doesn't set the attribute, `waitForHydration()` times out. The bug only surfaces for routes that lack the block.
 
-**Routes that MUST include it:** every file in `src/routes/` that has a visible component (`index.tsx`, `login.tsx`, `admin/index.tsx`, `armies/index.tsx`, `armies/$armyId.tsx`, `references.tsx`, etc.).
+**Routes that MUST include it:** every file in `src/routes/` that has a visible component (`index.tsx`, `login.tsx`, `admin/index.tsx`, `armies/index.tsx`, `armies/$armyId.tsx`, `territories.tsx`, etc.).
 
 ---
 

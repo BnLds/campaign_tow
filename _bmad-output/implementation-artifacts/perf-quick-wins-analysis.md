@@ -80,7 +80,7 @@ No `defaultOptions` are set. This means:
 ```typescript
 <Link to="/" ... >          // Line 59
 <Link to="/armies" ... >    // Line 84
-<Link to="/references" ... > // Line 109
+<Link to="/territories" ... > // Line 109
 ```
 
 None of the `<Link>` components use `preload="intent"` (TanStack Router supports this). When a user taps a tab, the loader starts only after the tap — no preloading on hover or touch start.

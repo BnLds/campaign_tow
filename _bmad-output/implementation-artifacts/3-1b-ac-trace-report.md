@@ -42,7 +42,7 @@ Status: All 118 tests PASS
 | TAB-013 | TabBar accepts currentPath prop (string) | PASS |
 | TAB-014 | TabBar computes isCampagne active state from currentPath | PASS |
 | TAB-015 | TabBar computes isArmees active state — matches /armies and /armies/* paths | PASS |
-| TAB-016 | TabBar computes isReferences active state from /references path | PASS |
+| TAB-016 | TabBar computes isTerritoires active state from /territories path | PASS |
 | TAB-017 | TabBar applies active background color #dfe8f4 to active tab | PASS |
 | TAB-018 | TabBar applies navy color #334155 to active tab text | PASS |
 | TAB-019 | TabBar applies muted color #9a8d7f to inactive tab text | PASS |
@@ -64,7 +64,7 @@ Status: All 118 tests PASS
 | TAB-009 | tab-bar.tsx imports Link from @tanstack/react-router for navigation | PASS |
 | TAB-010 | Campagne tab links to "/" route | PASS |
 | TAB-011 | Armees tab links to "/armies" route | PASS |
-| TAB-012 | References tab links to "/references" route | PASS |
+| TAB-012 | References tab links to "/territories" route | PASS |
 
 ### AC3 — ArmyListItem with avatar, record, and gold variant
 
@@ -144,27 +144,27 @@ Note: AC5 is covered indirectly — the TabBar component itself has no concept o
 
 ### AC6 — References placeholder route exists
 
-**Test file:** `src/routes/__tests__/references.test.tsx`
+**Test file:** `src/routes/__tests__/territories.test.tsx`
 
 | Test ID | Test Name | Status |
 |---|---|---|
-| REF-001 | src/routes/references.tsx file exists | PASS |
-| REF-002 | references.tsx does NOT exist at references/index.tsx (correct path) | PASS |
-| REF-003 | references.tsx uses createFileRoute for "/references" | PASS |
-| REF-004 | references.tsx exports a Route using createFileRoute | PASS |
-| REF-005 | references.tsx renders "References" as title | PASS |
-| REF-006 | references.tsx uses Cinzel font for the title (var(--font-display)) | PASS |
-| REF-007 | references.tsx renders placeholder text indicating content coming soon | PASS |
-| REF-008 | references.tsx placeholder text is in italic style | PASS |
-| REF-009 | references.tsx imports useHydrated (data-app-hydrated pattern) | PASS |
-| REF-010 | references.tsx sets data-app-hydrated attribute on hydration | PASS |
-| REF-011 | references.tsx uses 1rem padding | PASS |
-| REF-012 | references.tsx uses max-width 720px and margin auto | PASS |
-| REF-013 | references.tsx does NOT define a loader (static placeholder) | PASS |
+| REF-001 | src/routes/territories.tsx file exists | PASS |
+| REF-002 | territories.tsx does NOT exist at references/index.tsx (correct path) | PASS |
+| REF-003 | territories.tsx uses createFileRoute for "/territories" | PASS |
+| REF-004 | territories.tsx exports a Route using createFileRoute | PASS |
+| REF-005 | territories.tsx renders "References" as title | PASS |
+| REF-006 | territories.tsx uses Cinzel font for the title (var(--font-display)) | PASS |
+| REF-007 | territories.tsx renders placeholder text indicating content coming soon | PASS |
+| REF-008 | territories.tsx placeholder text is in italic style | PASS |
+| REF-009 | territories.tsx imports useHydrated (data-app-hydrated pattern) | PASS |
+| REF-010 | territories.tsx sets data-app-hydrated attribute on hydration | PASS |
+| REF-011 | territories.tsx uses 1rem padding | PASS |
+| REF-012 | territories.tsx uses max-width 720px and margin auto | PASS |
+| REF-013 | territories.tsx does NOT define a loader (static placeholder) | PASS |
 
 ### AC7 — Layout structure: header + scrollable content + fixed TabBar
 
-**Test files:** `src/routes/__tests__/references.test.tsx`, `src/components/__tests__/tab-bar.test.tsx`
+**Test files:** `src/routes/__tests__/territories.test.tsx`, `src/components/__tests__/tab-bar.test.tsx`
 
 | Test ID | Test Name | Status |
 |---|---|---|
@@ -179,7 +179,7 @@ Note: AC5 is covered indirectly — the TabBar component itself has no concept o
 
 ### AC8 — Army detail view has back navigation and contextual header
 
-**Test file:** `src/routes/__tests__/references.test.tsx`
+**Test file:** `src/routes/__tests__/territories.test.tsx`
 
 | Test ID | Test Name | Status |
 |---|---|---|
@@ -235,7 +235,7 @@ Minor note: AC5 (guest user sees TabBar) has no dedicated isolated test for the 
 | AC3 | `src/components/army-list-item.tsx`, `src/routes/armies/index.tsx`, `src/db/queries.ts` |
 | AC4 | `src/db/queries.ts`, `src/routes/index.tsx` |
 | AC5 | `src/components/tab-bar.tsx`, `src/routes/__root.tsx` |
-| AC6 | `src/routes/references.tsx` |
+| AC6 | `src/routes/territories.tsx` |
 | AC7 | `src/routes/__root.tsx` |
 | AC8 | `src/routes/armies/$armyId.tsx` |
 | AC9 | `src/components/tab-bar.tsx` |
@@ -245,7 +245,7 @@ Minor note: AC5 (guest user sees TabBar) has no dedicated isolated test for the 
 
 - `src/components/tab-bar.tsx` — TabBar component (AC1, AC2, AC5, AC9)
 - `src/components/army-list-item.tsx` — ArmyListItem component (AC3, AC10)
-- `src/routes/references.tsx` — References placeholder route (AC6)
+- `src/routes/territories.tsx` — References placeholder route (AC6)
 - `src/routes/__root.tsx` — Layout refactor with TabBar integration (AC1, AC5, AC7)
 - `src/routes/index.tsx` — Campaign view header record display (AC4, AC10)
 - `src/routes/armies/index.tsx` — Armies list using ArmyListItem + sorting (AC3)

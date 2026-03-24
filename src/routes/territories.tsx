@@ -1,15 +1,15 @@
-// Campaign TOW — /references route
-// Placeholder page for campaign reference tables (epic 5).
+// Campaign TOW — /territories route
+// Placeholder page for territories.
 
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useHydrated } from '../lib/useHydrated'
 
-export const Route = createFileRoute('/references')({
-  component: ReferencesView,
+export const Route = createFileRoute('/territories')({
+  component: TerritoriesView,
 })
 
-function ReferencesView() {
+function TerritoriesView() {
   const hydrated = useHydrated()
 
   useEffect(() => {
@@ -29,7 +29,7 @@ function ReferencesView() {
           marginBottom: '1rem',
         }}
       >
-        References
+        Territoires
       </h1>
       <p
         style={{
@@ -38,7 +38,7 @@ function ReferencesView() {
           fontStyle: 'italic',
         }}
       >
-        Contenu a venir — tables de reference de campagne
+        En construction
       </p>
     </main>
   )

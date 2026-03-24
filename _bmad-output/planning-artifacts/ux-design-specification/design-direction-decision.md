@@ -68,7 +68,7 @@ immédiate même dans une liste de 15 joueurs.
 - `shadcn/ui` Card component as base, with tier-specific border and shadow overrides
 - FAB : `position: absolute; right: 16px; bottom: 62px` — z-index au-dessus du
   contenu, sous les modals
-- `TabBar` : tab actif = route courante (`/campagne`, `/armees`, `/references`) —
+- `TabBar` : tab actif = route courante (`/campagne`, `/armees`, `/territories`) —
   logique simple, pas de state contextuel
 - Action chips : `ScrollArea` horizontal, `scroll-snap-type: x proximity`,
   un chip = un item pending (invite ou post-match), même composant avec prop `type`

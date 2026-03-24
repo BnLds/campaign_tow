@@ -15,7 +15,7 @@ Three `<Link>` components (lines 59, 84, 109) without `preload` prop:
 ```typescript
 <Link to="/" ...>           // Campagne
 <Link to="/armies" ...>     // Armees
-<Link to="/references" ...> // References
+<Link to="/territories" ...> // References
 ```
 
 Currently, the loader only starts **after** the user taps/clicks. On mobile, this adds the full loader duration to perceived navigation time.
@@ -38,7 +38,7 @@ Currently, the loader only starts **after** the user taps/clicks. On mobile, thi
 
 **Line 109** — References tab:
 ```typescript
-<Link to="/references" preload="intent" ...>
+<Link to="/territories" preload="intent" ...>
 ```
 
 `preload="intent"` triggers the route loader when the user hovers (desktop) or touches (mobile `touchstart`). By the time the click/tap fires, data is already loaded or nearly loaded.

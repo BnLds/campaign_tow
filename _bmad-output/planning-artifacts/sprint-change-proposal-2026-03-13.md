@@ -214,7 +214,7 @@ Never use session === null as proxy for guest — always check player.isGuest.*
 - otherwise → Authenticated player
 
 **Route guard rules:**
-- Read-only routes (/, /armies, /armies/$armyId, /references):
+- Read-only routes (/, /armies, /armies/$armyId, /territories):
   Allow guest sessions. Redirect to /login only if no session at all.
 - Write routes (/match/new, /match/$matchId/post-match):
   Require non-guest session. Redirect to /login if guest or no session.

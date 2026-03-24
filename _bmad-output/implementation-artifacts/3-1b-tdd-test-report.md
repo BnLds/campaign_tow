@@ -25,8 +25,8 @@ Test groups:
 - File exists + named export
 - 3 fixed tabs with correct labels (Campagne, Armees, References)
 - Emoji icons present (📜 🛡 📖)
-- Each tab links to correct route (/, /armies, /references)
-- Active state styling (currentPath prop, isCampagne/isArmees/isReferences logic)
+- Each tab links to correct route (/, /armies, /territories)
+- Active state styling (currentPath prop, isCampagne/isArmees/isTerritoires logic)
 - Color tokens: #dfe8f4 (active bg), #334155 (active text), #9a8d7f (inactive)
 - /admin excluded from Campagne; /login excluded from isCampagne
 - Indicator bar as real DOM `<span>` (24px wide, 3px tall)
@@ -88,14 +88,14 @@ Test groups (Campaign view integration — Tasks 5.2–5.4):
 - "parties" text in record format (e.g. "4 parties")
 - Green #2d7a3a for wins, red #b82c2c for losses
 
-### 4. `src/routes/__tests__/references.test.tsx` — 21 tests
+### 4. `src/routes/__tests__/territories.test.tsx` — 21 tests
 19/21 tests fail. 2 pass (pre-existing assertions in existing files: "Aucune partie" in index.tsx and similar).
 
 Covers: AC6, AC7, AC8 — Tasks 3.1–3.5, 4.2, 4.3, 7.1–7.2, 8.17
 
 Test groups:
-- File exists at src/routes/references.tsx (not references/index.tsx)
-- createFileRoute('/references') + exported Route
+- File exists at src/routes/territories.tsx (not references/index.tsx)
+- createFileRoute('/territories') + exported Route
 - Title "References" with Cinzel font
 - Placeholder text "Contenu" / "venir" + italic style
 - data-app-hydrated pattern (useHydrated + data-app-hydrated attribute)

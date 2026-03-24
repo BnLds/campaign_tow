@@ -52,7 +52,7 @@ So that I can switch between Campaign, Armies, and References views naturally an
 
 **Given** I am on any view,
 **When** I tap a tab,
-**Then** I navigate to the corresponding route (/ → Campagne, /armies → Armées, /references → Références)
+**Then** I navigate to the corresponding route (/ → Campagne, /armies → Armées, /territories → Références)
 
 **Given** I am on the Armies list view,
 **When** the page loads,
@@ -77,7 +77,7 @@ So that I can switch between Campaign, Armies, and References views naturally an
 - *Layout structure: header (existing) → main content (flex-grow, scroll) → TabBar (fixed bottom)*
 - *TabBar: state = current route only, no contextual logic*
 - *ArmyListItem: thin composition of shadcn primitives*
-- */references route: create placeholder page (content filled in Epic 5)*
+- */territories route: create placeholder page (content filled in Epic 5)*
 - *Ensure CreateMatchFab positioning works with TabBar (bottom: 62px) for story 3.2*
 
 ---

@@ -18,7 +18,7 @@ Then a TabBar with 3 fixed tabs (Campagne / Armees / References) is visible at t
 **AC2 — Tab navigation routes correctly:**
 Given I am on any view,
 When I tap a tab,
-Then I navigate to the corresponding route: Campagne -> `/`, Armees -> `/armies`, References -> `/references`.
+Then I navigate to the corresponding route: Campagne -> `/`, Armees -> `/armies`, References -> `/territories`.
 
 **AC3 — ArmyListItem component with avatar, record, and gold variant:**
 Given I am on the Armies list view,
@@ -41,10 +41,10 @@ Given I am logged in as a guest,
 When I view the app,
 Then the TabBar is still visible and functional (all three tabs accessible).
 
-**AC6 — References placeholder route exists:**
-Given I tap the References tab,
+**AC6 — Territories placeholder route exists:**
+Given I tap the Territoires tab,
 When the route loads,
-Then I see a placeholder page with title "References" (Cinzel 700) and a message indicating content coming soon. The TabBar shows the References tab as active.
+Then I see a placeholder page with title "References" (Cinzel 700) and a message indicating content coming soon. The TabBar shows the Territoires tab as active.
 
 **AC7 — Layout structure: header + scrollable content + fixed TabBar:**
 Given I am on any authenticated view,
@@ -74,7 +74,7 @@ This story bridges the gap between the working data layer (story 3.1) and the va
 
 1. **TabBar component** — 3 fixed tabs at bottom of screen, styled per UX mockup
 2. **ArmyListItem component** — proper list item with avatar, record, gold variant
-3. **References placeholder route** — `/references` with placeholder content
+3. **Territories placeholder route** — `/territories` with placeholder content
 4. **Layout refactor** — `__root.tsx` gains the TabBar in the layout, content area scrolls
 5. **Campaign view header enhancement** — adds win/draw/loss record
 6. **Army detail contextual navigation** — back button, correct tab highlight
@@ -99,7 +99,7 @@ This story bridges the gap between the working data layer (story 3.1) and the va
 |---|---|
 | `TabBar` component | `src/components/tab-bar.tsx` |
 | `ArmyListItem` component | `src/components/army-list-item.tsx` |
-| References route | `src/routes/references.tsx` |
+| References route | `src/routes/territories.tsx` |
 | Layout update | `src/routes/__root.tsx` — add TabBar to RootLayout |
 | Armies list refactor | `src/routes/armies/index.tsx` — use ArmyListItem |
 | Campaign header update | `src/routes/index.tsx` — add win/draw/loss record |
@@ -110,7 +110,7 @@ This story bridges the gap between the working data layer (story 3.1) and the va
 **IN scope:**
 - TabBar component with 3 fixed tabs, route-based active state
 - ArmyListItem component with avatar, record, gold variant, chevron
-- References placeholder route
+- Territories placeholder route
 - Layout refactor in `__root.tsx` (header + scroll content + TabBar)
 - Campaign view header: add win/draw/loss record
 - Army detail: back navigation link
@@ -128,10 +128,10 @@ This story bridges the gap between the working data layer (story 3.1) and the va
 
 - [x] Task 1 — Create `TabBar` component (`src/components/tab-bar.tsx`) (AC: 1, 2, 5, 9)
   - [x] 1.1 — Define TabBar component with 3 fixed tabs: Campagne (emoji scroll), Armees (emoji shield), References (emoji book). Each tab has an icon + label.
-  - [x] 1.2 — Accept a `currentPath` prop (string). Determine active tab by matching: `/` or paths not under `/armies` or `/references` -> Campagne; `/armies` or `/armies/*` -> Armees; `/references` -> References. No tab active for `/admin` or `/login`.
+  - [x] 1.2 — Accept a `currentPath` prop (string). Determine active tab by matching: `/` or paths not under `/armies` or `/territories` -> Campagne; `/armies` or `/armies/*` -> Armees; `/territories` -> Territoires. No tab active for `/admin` or `/login`.
   - [x] 1.3 — Active tab styling: background `#dfe8f4`, text color `#334155` (navy), inset box-shadow `inset 0 0 0 1px #c7d3e4`, navy indicator bar at top (pseudo-element or top-border trick: width 24px, height 3px, `border-radius: 999px`, centered above tab). Inactive: color `#9a8d7f`.
   - [x] 1.4 — TabBar container: flex-shrink 0 in the flex column layout, height 58px, background `rgba(236,228,216,0.96)`, border-top `1px solid #d2c3af`, `backdrop-filter: blur(12px)`, z-index 3, grid with 3 equal columns. Shadow: `box-shadow: 0 -6px 20px rgba(0,0,0,.04)` (from mockup).
-  - [x] 1.5 — Each tab is a `<Link>` element using TanStack Router, navigating to `/`, `/armies`, `/references` respectively. Style with `textDecoration: 'none'` and `color: inherit` to avoid default link styles.
+  - [x] 1.5 — Each tab is a `<Link>` element using TanStack Router, navigating to `/`, `/armies`, `/territories` respectively. Style with `textDecoration: 'none'` and `color: inherit` to avoid default link styles.
   - [x] 1.6 — Tab text: font-size 9px, font-weight 800, letter-spacing 0.04em, uppercase (font-family Inter via `--font-body`). Icon: font-size 16px. Tab layout: flex column, centered, gap 2px, border-radius 12px, padding 4px 6px.
   - [x] 1.7 — Add `data-testid="tab-bar"` on container, `data-testid="tab-campagne"`, `data-testid="tab-armees"`, `data-testid="tab-references"` on each tab link.
   - [x] 1.8 — Indicator bar implementation: since inline styles cannot create pseudo-elements, use a conditional `<span>` element (width 24px, height 3px, border-radius 999px, background `#334155`, positioned absolutely at top -5px, centered via left 50% + translateX(-50%)) rendered only on the active tab.
@@ -147,8 +147,8 @@ This story bridges the gap between the working data layer (story 3.1) and the va
   - [x] 2.8 — Add `data-testid="army-list-item"` on root, `data-testid="army-avatar"` on avatar.
   - [x] 2.9 — Margin between items: `margin-bottom: 7px` (matching mockup `.list-item` spacing of `0 4px 7px`; the horizontal margins are handled by the parent container).
 
-- [x] Task 3 — Create References placeholder route (`src/routes/references.tsx`) (AC: 6)
-  - [x] 3.1 — Create route file at `src/routes/references.tsx` using `createFileRoute('/references')`.
+- [x] Task 3 — Create Territories placeholder route (`src/routes/territories.tsx`) (AC: 6)
+  - [x] 3.1 — Create route file at `src/routes/territories.tsx` using `createFileRoute('/territories')`.
   - [x] 3.2 — Render a page with title "References" (Cinzel 700, 1.5rem) and placeholder text "Contenu a venir — tables de reference de campagne" (Inter, `--color-text-secondary`, italic).
   - [x] 3.3 — Include `data-app-hydrated` pattern (useHydrated + useEffect).
   - [x] 3.4 — Use same layout padding as other views: `padding: 1rem`, `max-width: 720px`, `margin: 0 auto`.
@@ -184,7 +184,7 @@ This story bridges the gap between the working data layer (story 3.1) and the va
 
 - [x] Task 8 — Write unit tests (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
   - [x] 8.1 — Test TabBar: renders 3 tabs with correct labels and icons
-  - [x] 8.2 — Test TabBar: active state matches current path (/ -> Campagne, /armies -> Armees, /armies/xyz -> Armees, /references -> References)
+  - [x] 8.2 — Test TabBar: active state matches current path (/ -> Campagne, /armies -> Armees, /armies/xyz -> Armees, /territories -> Territoires)
   - [x] 8.3 — Test TabBar: no tab active for `/admin` path
   - [x] 8.4 — Test TabBar: each tab links to the correct route
   - [x] 8.5 — Test ArmyListItem: renders avatar with first letter of army name
@@ -240,15 +240,15 @@ Do NOT use `position: fixed` — it causes issues with mobile browser chrome (dy
 Active state is determined purely by the current route path:
 - `/` -> Campagne
 - `/armies` or `/armies/*` -> Armees
-- `/references` -> References
+- `/territories` -> Territoires
 - `/admin` -> no tab active (admin is separate)
 - `/login` -> TabBar not rendered at all
 
 Use `useLocation()` from `@tanstack/react-router` to get the current pathname. Pattern matching:
 ```typescript
 const isArmees = pathname === '/armies' || pathname.startsWith('/armies/')
-const isReferences = pathname === '/references'
-const isCampagne = !isArmees && !isReferences && pathname !== '/login' && pathname !== '/admin'
+const isTerritoires = pathname === '/territories'
+const isCampagne = !isArmees && !isTerritoires && pathname !== '/login' && pathname !== '/admin'
 ```
 
 ### CRITICAL — Indicator Bar Without Pseudo-elements
@@ -354,7 +354,7 @@ The Campaign header format is different: "Orques & Gobelins . 3V . 1D . 4 partie
 
 ### References Route — File Path
 
-Must be at `src/routes/references.tsx` (NOT `src/routes/references/index.tsx`). This matches the architecture patterns file which lists `references.tsx` at the routes level. TanStack Router will generate the route for `/references`.
+Must be at `src/routes/territories.tsx` (NOT `src/routes/territories/index.tsx`). This matches the architecture patterns file which lists `territories.tsx` at the routes level. TanStack Router will generate the route for `/territories`.
 
 ### RISK — Root Layout Refactor Breaks Existing Views
 

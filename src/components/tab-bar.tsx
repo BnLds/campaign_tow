@@ -1,5 +1,5 @@
 // Campaign TOW — TabBar component
-// 3 fixed tabs: Campagne / Armees / References
+// 3 fixed tabs: Campagne / Armees / Territoires
 // Active state determined by currentPath prop
 
 import { Link } from '@tanstack/react-router'
@@ -10,8 +10,8 @@ interface TabBarProps {
 
 export function TabBar({ currentPath }: TabBarProps) {
   const isArmees = currentPath === '/armies' || currentPath.startsWith('/armies/')
-  const isReferences = currentPath === '/references'
-  const isCampagne = !isArmees && !isReferences && currentPath !== '/login' && !currentPath.startsWith('/admin')
+  const isTerritoires = currentPath === '/territories'
+  const isCampagne = !isArmees && !isTerritoires && currentPath !== '/login' && !currentPath.startsWith('/admin')
 
   const containerStyle: React.CSSProperties = {
     display: 'grid',
@@ -107,15 +107,15 @@ export function TabBar({ currentPath }: TabBarProps) {
         <span>Armees</span>
       </Link>
 
-      {/* References tab */}
+      {/* Territoires tab */}
       <Link
-        to="/references"
+        to="/territories"
         preload="intent"
-        data-testid="tab-references"
-        aria-current={isReferences ? 'page' : undefined}
-        style={tabStyle(isReferences)}
+        data-testid="tab-territoires"
+        aria-current={isTerritoires ? 'page' : undefined}
+        style={tabStyle(isTerritoires)}
       >
-        {isReferences && (
+        {isTerritoires && (
           <span
             style={{
               position: 'absolute',
@@ -130,7 +130,7 @@ export function TabBar({ currentPath }: TabBarProps) {
           />
         )}
         <span style={iconStyle}>📖</span>
-        <span>References</span>
+        <span>Territoires</span>
       </Link>
     </nav>
   )
