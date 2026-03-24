@@ -56,7 +56,7 @@ const loadArmyFn = createServerFn({ method: 'GET' })
       const tier = calculateTier(unit.xp, unit.type)
 
       return {
-        unit: { id: unit.id, name: unit.name, type: unit.type, xp: unit.xp, points: unit.points },
+        unit: { id: unit.id, name: unit.name, nickname: unit.nickname, type: unit.type, xp: unit.xp, points: unit.points },
         composedView,
         tier,
         subProfiles: unit.subProfiles.map((sp) => ({
@@ -312,6 +312,40 @@ const updatePointsFn = createServerFn({ method: 'POST' })
   })
 
 // ---------------------------------------------------------------------------
+// Server function — update unit nickname
+// ---------------------------------------------------------------------------
+
+const updateNicknameFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(
+    z.object({
+      armyId: z.string(),
+      unitId: z.string(),
+      nickname: z.string().trim().max(80).nullable(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { getUnitById, updateUnitNickname } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    if (unit.status !== 'active') {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: 'Impossible de modifier une unité au cimetière' },
+      }
+    }
+    // Zod .trim() may produce "" for whitespace-only input; normalize to null
+    const nickname = data.nickname === '' ? null : data.nickname
+    await updateUnitNickname(data.unitId, nickname)
+    return { success: true as const }
+  })
+
+// ---------------------------------------------------------------------------
 // Server function — send unit to graveyard
 // ---------------------------------------------------------------------------
 
@@ -451,7 +485,7 @@ const TYPE_ORDER = ['Personnages', 'Unités de base', 'Unités spéciales', 'Uni
 
 function groupUnitsByType(
   unitCards: Array<{
-    unit: { id: string; name: string; type: string; xp: number; points: number | null }
+    unit: { id: string; name: string; nickname: string | null; type: string; xp: number; points: number | null }
     composedView: ComposedUnitView
     tier: TierLevel
     subProfiles: Array<{ id: string; label: string; isMount: boolean; sortOrder: number }>
@@ -703,6 +737,7 @@ function ArmyView() {
                   armyId={army.id}
                   unitId={card.unit.id}
                   unitName={card.unit.name}
+                  unitNickname={card.unit.nickname}
                   unitType={card.unit.type}
                   currentXp={card.unit.xp}
                   currentPoints={card.unit.points}
@@ -715,6 +750,7 @@ function ArmyView() {
                   removeUnitGainFn={removeUnitGainFn}
                   updateXpFn={updateXpFn}
                   updatePointsFn={updatePointsFn}
+                  updateNicknameFn={updateNicknameFn}
                   fetchUnitDeltasFn={fetchUnitDeltasFn}
                   toggleMountFn={toggleMountFn}
                   sendToGraveyardFn={sendToGraveyardFn}
@@ -776,8 +812,20 @@ function ArmyView() {
                     color: 'var(--color-text-secondary)',
                   }}
                 >
-                  {gu.name}
+                  {gu.nickname ?? gu.name}
                 </span>
+                {gu.nickname && (
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--color-text-secondary)',
+                      fontStyle: 'italic',
+                      marginLeft: '0.25rem',
+                    }}
+                  >
+                    ({gu.name})
+                  </span>
+                )}
                 <span
                   style={{
                     fontSize: '0.75rem',

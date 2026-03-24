@@ -18,6 +18,7 @@ export async function createArmyWithUnits(
         .values({
           armyId: army.id,
           name: unit.name,
+          nickname: unit.nickname,
           type: unit.type,
           points: unit.points,
           modelCount: unit.modelCount,
@@ -117,6 +118,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
   faction: string
   playerId: string | null
   playerDisplayName: string | null
+  needsInitialXp: boolean
 } | null> {
   const rows = await db
     .select({
@@ -125,6 +127,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
       faction: armies.faction,
       playerId: armies.playerId,
       playerDisplayName: players.displayName,
+      needsInitialXp: armies.needsInitialXp,
     })
     .from(armies)
     .leftJoin(players, eq(armies.playerId, players.id))

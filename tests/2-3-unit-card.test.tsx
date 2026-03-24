@@ -53,8 +53,8 @@ function makeComposedView(
   }
 }
 
-function makeUnit(name = 'Archers', type = 'Unités de base', xp = 0) {
-  return { id: 'unit-1', name, type, xp }
+function makeUnit(name = 'Archers', type = 'Unités de base', xp = 0, nickname: string | null = null) {
+  return { id: 'unit-1', name, nickname, type, xp, points: null }
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +272,29 @@ describe('[AC3] UnitCard — mount sub-profile label indicator', () => {
     )
 
     expect(container.textContent?.toLowerCase()).not.toContain('monture')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests nickname display
+// ---------------------------------------------------------------------------
+
+describe('[NICK] UnitCard — affichage du surnom', () => {
+  it('[NICK-001] displays nickname as primary label when present', () => {
+    const unit = makeUnit('Saurus Scar-Veteran', 'Personnages', 0, 'Xlaco-Tok')
+    const composedView = makeComposedView([makeSubProfile('Saurus Scar-Veteran')])
+    const { container } = render(
+      <UnitCard unit={unit} composedView={composedView} tier={0} />
+    )
+    expect(container.textContent).toContain('Xlaco-Tok')
+    expect(container.textContent).toContain('Saurus Scar-Veteran')
+  })
+
+  it('[NICK-002] displays unit name as primary label when nickname is null', () => {
+    const unit = makeUnit('Guerriers Saurus', 'Unités de base', 0, null)
+    const composedView = makeComposedView([makeSubProfile('Guerriers Saurus')])
+    render(<UnitCard unit={unit} composedView={composedView} tier={0} />)
+    expect(screen.getAllByText('Guerriers Saurus').length).toBeGreaterThan(0)
   })
 })
 

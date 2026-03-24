@@ -91,6 +91,14 @@ export const submitUnitXpSchema = z.object({
 })
 export type SubmitUnitXpInput = z.infer<typeof submitUnitXpSchema>
 
+// Initial XP entry — same as submitUnitXpSchema but allows 0-999
+export const submitInitialXpSchema = z.object({
+  matchParticipantId: z.string().min(1),
+  unitId: z.string().min(1),
+  xpGained: z.number().int().min(0).max(999),
+})
+export type SubmitInitialXpInput = z.infer<typeof submitInitialXpSchema>
+
 export const completeEvolutionsSchema = z.object({
   matchId: z.string().min(1),
 })
@@ -165,6 +173,7 @@ const addUnitsSubProfileSchema = z.object({
 
 const addUnitsUnitSchema = z.object({
   name: z.string().max(200),
+  nickname: z.string().max(80).nullable().optional(),
   type: z.string().max(100),
   points: z.number().int().min(0).max(9999),
   modelCount: z.number().int().min(1).max(999).nullable(),

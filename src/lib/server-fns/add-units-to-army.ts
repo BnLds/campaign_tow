@@ -23,6 +23,7 @@ export const addUnitsToArmyFn = createServerFn({ method: 'POST' })
             .values({
               armyId: data.armyId,
               name: unit.name,
+              nickname: unit.nickname ?? null,
               type: unit.type,
               points: unit.points,
               modelCount: unit.modelCount,

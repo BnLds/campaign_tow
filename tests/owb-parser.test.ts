@@ -94,3 +94,76 @@ describe('[OWB-BT] normalizeBlockText — structure', () => {
     expect(out).not.toContain('---')
   })
 })
+
+describe('[OWB-NICK] nickname extraction', () => {
+  it('[OWB-BT-009] extracts nickname from "Nickname, UnitType" format (blocktext)', () => {
+    const result = parseOwbExport(army3text)
+    const xlaco = result.units[0]
+    expect(xlaco.nickname).toMatch(/Xlaco/)
+    expect(xlaco.name).toMatch(/Saurus/)
+  })
+
+  it('[OWB-BT-010] units without comma in name have null nickname (plaintext army_2.txt)', () => {
+    const army2text = readFileSync(resolve(ROOT, 'docs/army_2.txt'), 'utf-8')
+    const result = parseOwbExport(army2text)
+    for (const unit of result.units) {
+      expect(unit.nickname, `${unit.name} should have null nickname`).toBeNull()
+    }
+  })
+
+  it('[OWB-BT-011] all units with comma in original name have a non-null nickname', () => {
+    const result = parseOwbExport(army3text)
+    const named = result.units.filter(u => u.nickname !== null)
+    expect(named.length).toBeGreaterThan(0)
+    for (const u of named) {
+      expect(u.name.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('[OWB-BT-012] name field contains unit type after nickname extraction', () => {
+    const result = parseOwbExport(army3text)
+    const saurus = result.units.find(u => u.nickname?.includes('Gardiens'))
+    expect(saurus).toBeDefined()
+    expect(saurus!.name).toBe('Guerriers Saurus')
+  })
+
+  it('[OWB-PT-NICK] handles plaintext format with nickname (comma in unit name)', () => {
+    const plaintext = `Les Braves, Orques et Gobelins [300 pts],
+Warhammer: The Old World, Orques et Gobelins, Colonne de Bataille
+Personnages [100 pts],
+Gork le Terrible, Boss Orque [100 pts]
+(Arme lourde, Armure lourde)
+,
+[Orc Warboss] M(4) CC(5) CT(3) F(5) E(4) PV(3) I(3) A(4) Cd(8),
+Unites de base [200 pts],
+20 Garcons Orques [200 pts]
+(Armes de base, Boucliers)
+,
+[Orc Boy] M(4) CC(3) CT(3) F(3) E(4) PV(1) I(2) A(1) Cd(7),
+[Boss] M(4) CC(3) CT(3) F(3) E(4) PV(1) I(2) A(2) Cd(7),`
+    const result = parseOwbExport(plaintext)
+    expect(result.units[0].nickname).toBe('Gork le Terrible')
+    expect(result.units[0].name).toBe('Boss Orque')
+    expect(result.units[1].nickname).toBeNull()
+    expect(result.units[1].name).toBe('Garcons Orques')
+  })
+
+  it('[OWB-PT-NICK-CRLF] handles CRLF line endings in plaintext with nickname', () => {
+    const plaintext = `Les Braves, Orques et Gobelins [300 pts],
+Warhammer: The Old World, Orques et Gobelins, Colonne de Bataille
+Personnages [100 pts],
+Gork le Terrible, Boss Orque [100 pts]
+(Arme lourde, Armure lourde)
+,
+[Orc Warboss] M(4) CC(5) CT(3) F(5) E(4) PV(3) I(3) A(4) Cd(8),
+Unites de base [200 pts],
+20 Garcons Orques [200 pts]
+(Armes de base, Boucliers)
+,
+[Orc Boy] M(4) CC(3) CT(3) F(3) E(4) PV(1) I(2) A(1) Cd(7),
+[Boss] M(4) CC(3) CT(3) F(3) E(4) PV(1) I(2) A(2) Cd(7),`.replace(/\n/g, '\r\n')
+    const result = parseOwbExport(plaintext)
+    expect(result.units[0].nickname).toBe('Gork le Terrible')
+    expect(result.units[0].name).toBe('Boss Orque')
+  })
+})

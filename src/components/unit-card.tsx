@@ -12,7 +12,7 @@ import type { TierLevel } from '../lib/tier'
 // ---------------------------------------------------------------------------
 
 interface UnitCardProps {
-  unit: { id: string; name: string; type: string; xp: number; points: number | null }
+  unit: { id: string; name: string; nickname: string | null; type: string; xp: number; points: number | null }
   composedView: ComposedUnitView
   tier: TierLevel
   action?: React.ReactNode
@@ -347,16 +347,35 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
     >
       {/* Header: unit name on top, XP + tier label + action below */}
       <div style={{ padding: '0.625rem 0.75rem' }}>
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 700,
-            fontSize: '1rem',
-            color: 'var(--color-text-primary)',
-          }}
-        >
-          {unit.name}
-        </div>
+        {(() => {
+          const displayNickname = unit.nickname && unit.nickname !== unit.name ? unit.nickname : null
+          return (
+            <>
+              <div
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
+                {displayNickname ?? unit.name}
+              </div>
+              {displayNickname && (
+                <div
+                  style={{
+                    fontFamily: 'var(--font-body)',
+                    fontWeight: 400,
+                    fontSize: '0.8rem',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  {unit.name}
+                </div>
+              )}
+            </>
+          )
+        })()}
         <div
           style={{
             display: 'flex',

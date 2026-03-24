@@ -257,6 +257,15 @@ export async function updateUnitXp(unitId: string, xp: number): Promise<boolean>
   return result.length > 0
 }
 
+export async function updateUnitNickname(unitId: string, nickname: string | null): Promise<boolean> {
+  const result = await db
+    .update(units)
+    .set({ nickname })
+    .where(eq(units.id, unitId))
+    .returning()
+  return result.length > 0
+}
+
 export async function updateUnitPoints(unitId: string, points: number | null): Promise<boolean> {
   const result = await db
     .update(units)
@@ -286,6 +295,7 @@ export async function getUnitById(unitId: string) {
       id: units.id,
       armyId: units.armyId,
       name: units.name,
+      nickname: units.nickname,
       type: units.type,
       xp: units.xp,
       status: units.status,
@@ -301,6 +311,7 @@ export async function getGraveyardUnits(armyId: string) {
     .select({
       id: units.id,
       name: units.name,
+      nickname: units.nickname,
       type: units.type,
       graveyardReason: units.graveyardReason,
     })

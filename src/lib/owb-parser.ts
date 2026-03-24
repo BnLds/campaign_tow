@@ -19,6 +19,7 @@ export interface ParsedSubProfile {
 
 export interface ParsedUnit {
   name: string
+  nickname: string | null
   type: string
   points: number
   modelCount: number | null
@@ -271,10 +272,21 @@ export function parseOwbExport(text: string): ParsedArmy {
       const unitMatch = line.match(/^- (\d+ )?(.+?) \[(\d+) pts\]/)
       if (unitMatch) {
         const modelCount = unitMatch[1] ? parseInt(unitMatch[1].trim(), 10) : null
-        const name = unitMatch[2].trim()
+        const rawName = unitMatch[2].trim()
         const points = parseInt(unitMatch[3], 10)
+        // Nickname extraction: OWB exports use "Nickname, UnitType" when the user names a unit.
+        // INVARIANT: canonical OWB unit type names never contain commas — verified across
+        // known exports. If OWB ever changes this, the split would produce incorrect results.
+        const commaIdx = rawName.indexOf(',')
+        let nickname: string | null = null
+        let unitName = rawName
+        if (commaIdx !== -1) {
+          nickname = rawName.slice(0, commaIdx).trim().slice(0, 80)
+          unitName = rawName.slice(commaIdx + 1).trim()
+        }
         currentUnit = {
-          name,
+          name: unitName,
+          nickname,
           type: currentType,
           points,
           modelCount,

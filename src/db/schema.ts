@@ -10,6 +10,9 @@ export const matchResultEnum = pgEnum('match_result', ['victory', 'defeat', 'dra
 // Unit status — active (in play) or graveyard (destroyed, kept for reference)
 export const unitStatusEnum = pgEnum('unit_status', ['active', 'graveyard'])
 
+// Initial XP entry flow — match type enum
+export const matchTypeEnum = pgEnum('match_type', ['standard', 'initial_setup'])
+
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
@@ -37,6 +40,7 @@ export const armies = pgTable('armies', {
   name: text('name').notNull(),
   faction: text('faction').notNull(),
   playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
+  needsInitialXp: boolean('needs_initial_xp').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
   // One army per player max — nullable unique allows multiple unassigned armies
@@ -49,6 +53,7 @@ export const units = pgTable('units', {
     .notNull()
     .references(() => armies.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  nickname: text('nickname'),
   type: text('type').notNull(),
   xp: integer('xp').notNull().default(0),
   points: integer('points'),
@@ -108,6 +113,7 @@ export const unitGains = pgTable('unit_gains', {
 export const matches = pgTable('matches', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   date: timestamp('date').notNull(),
+  matchType: matchTypeEnum('match_type').notNull().default('standard'),
   createdByPlayerId: text('created_by_player_id').references(() => players.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [

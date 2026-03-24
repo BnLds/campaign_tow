@@ -79,6 +79,10 @@ type UpdatePointsFn = (args: {
   data: { armyId: string; unitId: string; points: number | null }
 }) => Promise<{ success: boolean; error?: { code: string; message: string } }>
 
+type UpdateNicknameFn = (args: {
+  data: { armyId: string; unitId: string; nickname: string | null }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
+
 type FetchUnitDeltasFn = (args: {
   data: { armyId: string; unitId: string }
 }) => Promise<{ statModifiers: StatModifierRow[]; unitGains: UnitGainRow[] }>
@@ -106,6 +110,7 @@ interface UnitEditPanelProps {
   armyId: string
   unitId: string
   unitName: string
+  unitNickname: string | null
   unitType: string
   currentXp: number
   currentPoints: number | null
@@ -118,6 +123,7 @@ interface UnitEditPanelProps {
   removeUnitGainFn: RemoveUnitGainFn
   updateXpFn: UpdateXpFn
   updatePointsFn: UpdatePointsFn
+  updateNicknameFn: UpdateNicknameFn
   fetchUnitDeltasFn: FetchUnitDeltasFn
   toggleMountFn: ToggleMountFn
   sendToGraveyardFn: SendToGraveyardFn
@@ -172,6 +178,7 @@ export function UnitEditPanel({
   armyId,
   unitId,
   unitName,
+  unitNickname,
   unitType,
   currentXp,
   currentPoints,
@@ -184,6 +191,7 @@ export function UnitEditPanel({
   removeUnitGainFn,
   updateXpFn,
   updatePointsFn,
+  updateNicknameFn,
   fetchUnitDeltasFn,
   toggleMountFn,
   sendToGraveyardFn,
@@ -224,6 +232,11 @@ export function UnitEditPanel({
     setPointsValue(currentPoints !== null ? String(currentPoints) : '')
   }, [currentPoints])
 
+  // Sync nicknameInput when unitNickname prop changes
+  useEffect(() => {
+    setNicknameInput(unitNickname ?? '')
+  }, [unitNickname])
+
   // Mount toggle state
   const [togglingMountId, setTogglingMountId] = useState<string | null>(null)
   const mountFeedback = useFeedback()
@@ -238,6 +251,11 @@ export function UnitEditPanel({
   const [sendingToGraveyard, setSendingToGraveyard] = useState(false)
   const [deletingUnit, setDeletingUnit] = useState(false)
   const dangerFeedback = useFeedback()
+
+  // Nickname state
+  const [nicknameInput, setNicknameInput] = useState(unitNickname ?? '')
+  const [nicknameSaving, setNicknameSaving] = useState(false)
+  const nicknameFeedback = useFeedback()
 
   // Sync xpValue when currentXp prop changes (C3 — avoid stale XP after parent re-render)
   useEffect(() => {
@@ -437,6 +455,27 @@ export function UnitEditPanel({
     }
   }
 
+  async function handleNicknameBlur() {
+    if (nicknameSaving) return
+    const trimmed = nicknameInput.trim()
+    const newVal = trimmed === '' ? null : trimmed
+    if (newVal === (unitNickname ?? null)) return
+    setNicknameSaving(true)
+    try {
+      const result = await updateNicknameFn({ data: { armyId, unitId, nickname: newVal } })
+      if (result.success) {
+        nicknameFeedback.show('Surnom enregistré', false)
+        await onMutationSuccess()
+      } else {
+        nicknameFeedback.show(result.error?.message ?? 'Erreur', true)
+      }
+    } catch {
+      nicknameFeedback.show('Erreur réseau', true)
+    } finally {
+      setNicknameSaving(false)
+    }
+  }
+
   // Feedback message helper
   const FeedbackMsg = ({ message }: { message: { text: string; isError: boolean } | null }) => {
     if (!message) return null
@@ -489,6 +528,24 @@ export function UnitEditPanel({
         <Button variant="ghost" size="sm" onClick={onClose}>
           ✕
         </Button>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section Surnom — blur-save nickname field */}
+      {/* ------------------------------------------------------------------ */}
+      <div style={{ marginBottom: '1rem' }}>
+        <Label htmlFor={`nickname-${unitId}`} style={{ fontSize: '0.8rem' }}>Surnom</Label>
+        <Input
+          id={`nickname-${unitId}`}
+          value={nicknameInput}
+          onChange={(e) => setNicknameInput(e.target.value)}
+          onBlur={handleNicknameBlur}
+          disabled={nicknameSaving}
+          maxLength={80}
+          placeholder="Aucun surnom"
+          style={{ marginTop: '0.25rem' }}
+        />
+        <FeedbackMsg message={nicknameFeedback.message} />
       </div>
 
       {/* ------------------------------------------------------------------ */}
