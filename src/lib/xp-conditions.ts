@@ -6,14 +6,13 @@ export type XpCondition = {
   label: string
   xp: number
   group: 'base' | 'general' | 'exploit' | 'feat'
-  inputType?: 'radio'
 }
 
 export const CHARACTER_XP_CONDITIONS: XpCondition[] = [
   { id: 'deployed', label: 'Le personnage est déployé sur le champ de bataille', xp: 1, group: 'base' },
   { id: 'alive', label: 'Le personnage est en vie et n\'est pas en fuite à la fin de la bataille', xp: 1, group: 'base' },
-  { id: 'general_win', label: 'C\'est le général et il remporte la bataille', xp: 2, group: 'general', inputType: 'radio' },
-  { id: 'general_draw', label: 'C\'est le général et la partie est une égalité', xp: 1, group: 'general', inputType: 'radio' },
+  { id: 'general_win', label: 'C\'est le général et il remporte la bataille', xp: 2, group: 'general' },
+  { id: 'general_draw', label: 'C\'est le général et la partie est une égalité', xp: 1, group: 'general' },
   { id: 'exploit_duel', label: 'Exploit : Remporter un duel contre un autre personnage ou un champion qui a 2 PV ou plus', xp: 1, group: 'exploit' },
   { id: 'exploit_destroy_unit', label: 'Exploit : Détruire une unité à lui seul', xp: 1, group: 'exploit' },
   { id: 'exploit_objective', label: 'Exploit : Accomplir un objectif de scénario', xp: 1, group: 'exploit' },

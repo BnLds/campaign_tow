@@ -103,20 +103,7 @@ describe('[AC6][P0] PostMatchWizard — renders first unit name and XP input (Ta
     expect(screen.queryByTestId('xp-condition-general_win')).toBeNull()
   })
 
-  // 10.18 — shows current XP of the unit (XP avant cette partie)
-  it('[4.1-WIZ-005] renders current XP value for the displayed unit', () => {
-    render(
-      <PostMatchWizard
-        matchId={MATCH_ID}
-        matchParticipantId={PARTICIPANT_ID}
-        units={sampleUnits}
-        onComplete={vi.fn()}
-        onCancel={vi.fn()}
-      />
-    )
-    // Current XP of first unit is 5 — shown in "XP avant cette partie : 5"
-    expect(screen.getByText(/XP avant cette partie\s*:\s*5/)).not.toBeNull()
-  })
+
 })
 
 // ---------------------------------------------------------------------------
@@ -706,7 +693,7 @@ describe('[AC6][P1] PostMatchWizard — clear UX labels for XP context (Story 4-
     { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
   ]
 
-  it('[4.1b-WIZ-005] renders "XP avant cette partie" label', () => {
+  it('[4.1b-WIZ-005] does not render removed XP labels', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -716,37 +703,8 @@ describe('[AC6][P1] PostMatchWizard — clear UX labels for XP context (Story 4-
         onCancel={vi.fn()}
       />
     )
-    expect(screen.getByText(/XP avant cette partie/)).not.toBeNull()
-  })
-
-  it('[4.1b-WIZ-006] renders "XP gagné lors de cette partie" as input label', () => {
-    render(
-      <PostMatchWizard
-        matchId={MATCH_ID}
-        matchParticipantId={PARTICIPANT_ID}
-        units={unitsWithPrevXp}
-        onComplete={vi.fn()}
-        onCancel={vi.fn()}
-      />
-    )
-    expect(screen.getByText(/XP gagn[eé] lors de cette partie/)).not.toBeNull()
-  })
-
-  it('[4.1b-WIZ-007] displays correct XP before match value: xp - (previousXpGained ?? 0)', () => {
-    // Unit has xp=8, previousXpGained=3 → pre-match XP should be 5
-    render(
-      <PostMatchWizard
-        matchId={MATCH_ID}
-        matchParticipantId={PARTICIPANT_ID}
-        units={unitsWithPrevXp}
-        onComplete={vi.fn()}
-        onCancel={vi.fn()}
-      />
-    )
-    // The pre-match XP value "5" should appear near the "XP avant cette partie" label
-    const preMatchLabel = screen.getByText(/XP avant cette partie/)
-    // The value 5 should be rendered in the same context
-    expect(preMatchLabel.closest('[data-testid]')?.textContent ?? document.body.textContent).toMatch(/5/)
+    expect(screen.queryByText(/XP avant cette partie/)).toBeNull()
+    expect(screen.queryByText(/XP gagn[eé] lors de cette partie/)).toBeNull()
   })
 })
 
@@ -762,18 +720,12 @@ describe('[AC2][P0] PostMatchWizard — source contract for previousXpGained (St
     expect(code).toMatch(/previousXpGained\s*[:\?]/)
   })
 
-  it('[4.1b-WIZ-009] post-match-wizard.tsx contains "XP avant cette partie" label text', () => {
+  it('[4.1b-WIZ-009] post-match-wizard.tsx does NOT contain removed XP labels', () => {
     const { readFileSync } = require('node:fs')
     const { resolve: resolvePath } = require('node:path')
     const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toContain('XP avant cette partie')
-  })
-
-  it('[4.1b-WIZ-010] post-match-wizard.tsx contains "XP gagné lors de cette partie" label text', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toMatch(/XP gagn[eé] lors de cette partie/)
+    expect(code).not.toContain('XP avant cette partie')
+    expect(code).not.toMatch(/XP gagn[eé] lors de cette partie/)
   })
 })
 
@@ -1258,7 +1210,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('3')
   })
 
-  it('[XP-CB-008] general_win and general_draw are mutually exclusive (radio)', () => {
+  it('[XP-CB-008] general_win and general_draw are mutually exclusive (checkboxes)', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -1275,6 +1227,68 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('1')
     expect((screen.getByTestId('xp-condition-general_win') as HTMLInputElement).checked).toBe(false)
     expect((screen.getByTestId('xp-condition-general_draw') as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('[XP-CB-008b] general_win can be unchecked by clicking again', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={characterUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    const generalWin = screen.getByTestId('xp-condition-general_win') as HTMLInputElement
+    // Check
+    fireEvent.click(generalWin)
+    expect(generalWin.checked).toBe(true)
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
+    // Uncheck by clicking again
+    fireEvent.click(generalWin)
+    expect(generalWin.checked).toBe(false)
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('0')
+  })
+
+  it('[XP-CB-008c] back-nav preserves general_win selection for character', async () => {
+    const mixedUnits = [
+      { id: 'unit-1', name: 'Seigneur', type: 'Personnages', xp: 10 },
+      { id: 'unit-2', name: 'Hallebardiers', type: 'Infanterie', xp: 5 },
+    ]
+    const onSubmitUnitXp = vi.fn().mockResolvedValue({ success: true, data: { unitId: 'unit-1', newXp: 12 } })
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={mixedUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmitUnitXp}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />
+    )
+
+    // Check general_win on character step
+    fireEvent.click(screen.getByTestId('xp-condition-general_win'))
+    expect((screen.getByTestId('xp-condition-general_win') as HTMLInputElement).checked).toBe(true)
+
+    // Advance to next unit
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-progress').textContent).toMatch(/2\s*\/\s*2/)
+    })
+
+    // Go back
+    fireEvent.click(screen.getByTestId('wizard-back-button'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-progress').textContent).toMatch(/1\s*\/\s*2/)
+    })
+
+    // general_win should still be checked
+    expect((screen.getByTestId('xp-condition-general_win') as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
   })
 
   it('[XP-CB-009] re-entry + advance + back: hint disappears, checkboxes restored', async () => {
@@ -1331,7 +1345,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     expect(group).not.toBeNull()
   })
 
-  it('[XP-CB-011] accessibility: role="radiogroup" wraps general conditions for characters', () => {
+  it('[XP-CB-011] general conditions render as checkboxes in accessible group (not radios)', () => {
     render(
       <PostMatchWizard
         matchId={MATCH_ID}
@@ -1341,8 +1355,15 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
         onCancel={vi.fn()}
       />
     )
-    const radiogroup = screen.getByRole('radiogroup', { name: /général/i })
-    expect(radiogroup).not.toBeNull()
+    const generalWin = screen.getByTestId('xp-condition-general_win') as HTMLInputElement
+    expect(generalWin.type).toBe('checkbox')
+    const generalDraw = screen.getByTestId('xp-condition-general_draw') as HTMLInputElement
+    expect(generalDraw.type).toBe('checkbox')
+    // No "Aucun (pas le général)" option
+    expect(screen.queryByTestId('xp-condition-general_none')).toBeNull()
+    // Accessible group wrapping general conditions
+    const group = screen.getByRole('group', { name: /général/i })
+    expect(group).not.toBeNull()
   })
 
   it('[XP-CB-012] re-entry warning disappears when a checkbox is checked', () => {

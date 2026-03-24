@@ -1078,31 +1078,10 @@ export function PostMatchWizard({
         >
           {currentUnit.type}
         </p>
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
-            margin: 0,
-          }}
-        >
-          XP avant cette partie : {currentUnit.xp - (currentUnit.previousXpGained ?? 0)}
-        </p>
       </div>
 
       {/* XP checkboxes */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-primary)',
-            margin: 0,
-          }}
-        >
-          XP gagné lors de cette partie
-        </p>
-
         {showPreviousXpHint && currentUnit.previousXpGained != null && (
           <>
             <p
@@ -1148,18 +1127,20 @@ export function PostMatchWizard({
               })
             }
 
-            const selectRadio = (id: string) => {
+            const toggleGeneralCondition = (id: string) => {
               setCheckedConditions((prev) => {
                 const next = new Set(prev)
-                // Remove all general conditions first
-                for (const gc of generalConditions) next.delete(gc.id)
-                // Add selected one (if not "none")
-                if (id !== 'general_none') next.add(id)
+                if (next.has(id)) {
+                  // Uncheck — just remove it
+                  next.delete(id)
+                } else {
+                  // Check — remove all other general conditions first (mutual exclusivity)
+                  for (const gc of generalConditions) next.delete(gc.id)
+                  next.add(id)
+                }
                 return next
               })
             }
-
-            const isGeneralNoneSelected = !generalConditions.some((gc) => checkedConditions.has(gc.id))
 
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1189,8 +1170,8 @@ export function PostMatchWizard({
 
                 {generalConditions.length > 0 && (
                   <fieldset
-                    role="radiogroup"
-                    aria-label="Résultat en tant que général"
+                    role="group"
+                    aria-label="Général (un seul choix possible)"
                     style={{
                       border: 'none',
                       margin: 0,
@@ -1215,36 +1196,14 @@ export function PostMatchWizard({
                       >
                         <input
                           data-testid={`xp-condition-${c.id}`}
-                          type="radio"
-                          name="general_result"
+                          type="checkbox"
                           checked={checkedConditions.has(c.id)}
-                          onChange={() => selectRadio(c.id)}
+                          onChange={() => toggleGeneralCondition(c.id)}
                           style={{ marginTop: '0.15rem' }}
                         />
                         <span>{c.label} <strong>+{c.xp} XP</strong></span>
                       </label>
                     ))}
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.5rem',
-                        fontFamily: 'var(--font-body)',
-                        fontSize: '0.85rem',
-                        color: 'var(--color-text-secondary)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <input
-                        data-testid="xp-condition-general_none"
-                        type="radio"
-                        name="general_result"
-                        checked={isGeneralNoneSelected}
-                        onChange={() => selectRadio('general_none')}
-                        style={{ marginTop: '0.15rem' }}
-                      />
-                      <span>Aucun (pas le général)</span>
-                    </label>
                   </fieldset>
                 )}
 
