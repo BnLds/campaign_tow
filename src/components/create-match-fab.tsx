@@ -212,6 +212,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
       queryClient.invalidateQueries({ queryKey: ['session'] })
       queryClient.invalidateQueries({ queryKey: ['army-info'] })
       router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+      void router.navigate({ to: '/' })
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la création de la partie.')
     } finally {
