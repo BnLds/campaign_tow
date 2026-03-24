@@ -5,11 +5,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useHydrated } from '../lib/useHydrated'
 import { WelcomeModal } from '../components/welcome-modal'
 import { TimelineEntry } from '../components/timeline-entry'
-import { ActionChip } from '../components/action-chip'
 import { ArmyImportForm } from '../components/army-import-form'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
-import type { TimelineEntryData, PendingMatchData } from '../db/queries'
+import type { TimelineEntryData } from '../db/queries'
 import { updateDisplayNameSchema, submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
 import { sessionQueryOptions } from '../lib/session-queries'
 
@@ -134,15 +133,13 @@ const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
         isGuest: true as const,
         army: null,
         timeline: [] as TimelineEntryData[],
-        pendingMatches: [] as PendingMatchData[],
         initialSetupMatch: null as { matchId: string; matchParticipantId: string; evolutionsEnteredAt: string | null } | null,
       }
     }
-    const { getPlayerArmy, getTimelineForArmy, getPendingMatches, getInitialSetupMatchForArmy } = await import('../db/queries')
+    const { getPlayerArmy, getTimelineForArmy, getInitialSetupMatchForArmy } = await import('../db/queries')
     const army = await getPlayerArmy(session.playerId)
-    const [timeline, pendingMatches, initialSetupMatchRaw] = await Promise.all([
+    const [timeline, initialSetupMatchRaw] = await Promise.all([
       army ? getTimelineForArmy(army.id) : Promise.resolve([] as TimelineEntryData[]),
-      getPendingMatches(session.playerId),
       army?.needsInitialXp ? getInitialSetupMatchForArmy(army.id) : Promise.resolve(null),
     ])
     const initialSetupMatch = initialSetupMatchRaw
@@ -152,7 +149,7 @@ const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
           evolutionsEnteredAt: initialSetupMatchRaw.evolutionsEnteredAt?.toISOString() ?? null,
         }
       : null
-    return { isGuest: false as const, army, timeline, pendingMatches, initialSetupMatch }
+    return { isGuest: false as const, army, timeline, initialSetupMatch }
   })
 
 export const Route = createFileRoute('/')({
@@ -173,13 +170,16 @@ function CampaignView() {
   const hasSeenWelcome = sessionQuery?.hasSeenWelcome ?? session?.hasSeenWelcome ?? true
   const [modalDismissed, setModalDismissed] = useState(false)
   const modalOpen = !hasSeenWelcome && !modalDismissed
-  const [resultPickerMatchId, setResultPickerMatchId] = useState<string | null>(null)
   const [reentryConfirmMatchId, setReentryConfirmMatchId] = useState<string | null>(null)
   const [deleteConfirmMatch, setDeleteConfirmMatch] = useState<{ matchId: string; opponentName: string; date: string } | null>(null)
+  const [skipXpConfirmOpen, setSkipXpConfirmOpen] = useState(false)
+  const [skipXpError, setSkipXpError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string } | null>(null)
+  const [blockToast, setBlockToast] = useState<string | null>(null)
+  const blockToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
   const hydrated = useHydrated()
-  const { isGuest, army, timeline, pendingMatches, initialSetupMatch } = Route.useLoaderData()
+  const { isGuest, army, timeline, initialSetupMatch } = Route.useLoaderData()
 
   // Ref to track toast timeout — clears previous timeout on each new toast, and on unmount
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -189,8 +189,16 @@ function CampaignView() {
     }
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (blockToastTimeoutRef.current) clearTimeout(blockToastTimeoutRef.current)
+    }
+  }, [])
+
   // Double-submit guard for delete mutation
   const deleteMatchInProgressRef = useRef(false)
+  // Double-submit guard for skip-XP mutation
+  const skipXpInProgressRef = useRef(false)
 
   // Auto-create initial setup match on mount if needed (useRef guard prevents double-run in React Strict Mode)
   const initialMatchCreatedRef = useRef(false)
@@ -249,6 +257,8 @@ function CampaignView() {
         ? `${session?.displayName ?? 'Joueur'} a supprimé le match`
         : (result.error.message ?? 'Erreur lors de la suppression')
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+      if (blockToastTimeoutRef.current) clearTimeout(blockToastTimeoutRef.current)
+      setBlockToast(null)
       setToast({ message })
       toastTimeoutRef.current = setTimeout(() => setToast(null), 5000)
       await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
@@ -257,7 +267,60 @@ function CampaignView() {
     }
   }
 
+  const handleSkipInitialXp = () => {
+    setSkipXpConfirmOpen(true)
+  }
+
+  const confirmSkipInitialXp = async () => {
+    if (skipXpInProgressRef.current) return
+    skipXpInProgressRef.current = true
+    setSkipXpError(null)
+    try {
+      const result = await skipInitialXpFn()
+      if (!result.success) {
+        setSkipXpError(result.error.message ?? 'Erreur lors du passage de l\'XP initiale')
+        return
+      }
+      setSkipXpConfirmOpen(false)
+      await router.invalidate({ filter: (d) => d.routeId === '/' })
+    } catch {
+      setSkipXpError('Une erreur est survenue')
+    } finally {
+      skipXpInProgressRef.current = false
+    }
+  }
+
+  const showBlockToast = (message: string) => {
+    if (blockToastTimeoutRef.current) clearTimeout(blockToastTimeoutRef.current)
+    setToast(null)
+    setBlockToast(message)
+    blockToastTimeoutRef.current = setTimeout(() => setBlockToast(null), 3000)
+  }
+
   const handleEvolutionStart = (matchId: string) => {
+    // Priority 1: initial XP not done — block all standard matches
+    if (army?.needsInitialXp && matchId !== initialSetupMatch?.matchId) {
+      if (initialSetupMatch === null || initialSetupMatch.evolutionsEnteredAt === null) {
+        showBlockToast("Remplissez d'abord l'XP initiale de votre armée")
+        return
+      }
+    }
+    // Priority 2: previous standard match with result entered but evolutions not yet filled.
+    // Timeline is sorted newest-first (getTimelineForArmy: ORDER BY date DESC, createdAt DESC),
+    // so "older" = higher index in array.
+    // Note: matches with result === null are intentionally excluded — the player first needs to
+    // enter a result (separate action), then fill post-match evolutions. Only the second step
+    // (result set, evolutions missing) triggers the ordering block.
+    const matchIndex = timeline.findIndex((e) => e.matchId === matchId)
+    if (matchIndex !== -1) {
+      const olderUnfilled = timeline
+        .slice(matchIndex + 1)
+        .some((e) => e.matchType !== 'initial_setup' && e.result !== null && !e.hasEvolutions)
+      if (olderUnfilled) {
+        showBlockToast("Remplissez d'abord le rapport du match précédent")
+        return
+      }
+    }
     void router.navigate({ to: '/match/$matchId/post-match', params: { matchId } })
   }
 
@@ -287,6 +350,12 @@ function CampaignView() {
       {toast && (
         <div style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-malus)', color: '#fff', padding: '0.625rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 600, zIndex: 50, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
           {toast.message}
+        </div>
+      )}
+      {/* Toast navy — blocage rapport post-match */}
+      {blockToast && (
+        <div data-testid="block-toast" style={{ position: 'fixed', bottom: 70, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-brand-dark)', color: '#fff', padding: '0.625rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 600, zIndex: 50, maxWidth: 'calc(100vw - 2rem)', textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+          {blockToast}
         </div>
       )}
       {/* Modal de confirmation — suppression de match */}
@@ -344,31 +413,34 @@ function CampaignView() {
           </div>
         </div>
       )}
-      {resultPickerMatchId && (
+      {/* Modal de confirmation — passer l'XP initiale */}
+      {skipXpConfirmOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
-            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '1rem', color: 'var(--color-text-primary)' }}>
-              Résultat de la partie
+          <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, maxWidth: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--color-text-primary)' }}>
+              Passer l&apos;XP initiale ?
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {(['victory', 'defeat', 'draw'] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={async () => {
-                    const matchId = resultPickerMatchId
-                    setResultPickerMatchId(null)
-                    await handleResultSubmit(matchId, r)
-                  }}
-                  style={{ padding: '0.6rem 1rem', borderRadius: 8, border: '1px solid var(--color-separator)', background: 'var(--color-background)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.9rem', textAlign: 'left' }}
-                >
-                  {r === 'victory' ? 'Victoire' : r === 'defeat' ? 'Défaite' : 'Nul'}
-                </button>
-              ))}
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
+              Les unités ne recevront aucune XP de départ. Cette action ne peut pas être annulée depuis l&apos;interface.
+            </p>
+            {skipXpError && (
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.8125rem', color: 'var(--color-malus)', margin: '0 0 0.75rem' }}>
+                {skipXpError}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
-                onClick={() => setResultPickerMatchId(null)}
-                style={{ marginTop: '0.25rem', padding: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-body)', fontSize: '0.85rem' }}
+                onClick={() => { setSkipXpConfirmOpen(false); setSkipXpError(null) }}
+                style={{ padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid var(--color-separator)', background: 'var(--color-background)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.875rem' }}
               >
                 Annuler
+              </button>
+              <button
+                data-testid="confirm-skip-initial-xp"
+                onClick={() => { void confirmSkipInitialXp() }}
+                style={{ padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: '#334155', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.875rem' }}
+              >
+                Confirmer
               </button>
             </div>
           </div>
@@ -412,70 +484,6 @@ function CampaignView() {
         ) : (
           /* Logged in with an army */
           <>
-            {/* Action strip — initial XP chips (shown before regular pending matches) */}
-            {army.needsInitialXp && initialSetupMatch && initialSetupMatch.evolutionsEnteredAt === null && (
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 8, alignItems: 'center', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-                <ActionChip
-                  label="Remplir l'XP de mon armée"
-                  href={'/match/' + initialSetupMatch.matchId + '/post-match'}
-                  variant="danger"
-                />
-                <ActionChip
-                  label="Passer l'XP initiale"
-                  onClick={async () => {
-                    await skipInitialXpFn()
-                    await router.invalidate({ filter: (d) => d.routeId === '/' })
-                  }}
-                />
-              </div>
-            )}
-
-          {/* Action strip — pending matches */}
-            {pendingMatches.length > 0 && (
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 12, alignItems: 'center', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
-              >
-                {pendingMatches.map((match) => {
-                  // H4 — safe date formatting: fallback to raw date string if parsing fails
-                  let formattedDate: string
-                  try {
-                    const parsed = new Date(match.date)
-                    if (isNaN(parsed.getTime())) throw new Error('invalid date')
-                    formattedDate = new Intl.DateTimeFormat('fr-FR', {
-                      day: 'numeric',
-                      month: 'short',
-                    }).format(parsed)
-                  } catch {
-                    formattedDate = match.date
-                  }
-
-                  const opponentLabel = match.opponentArmyName ?? match.opponentPlayerName
-
-                  const label = match.myResult === null
-                    ? `Resultat a entrer -- vs ${opponentLabel} . ${formattedDate}`
-                    : `Rapport de bataille -- vs ${opponentLabel} . ${formattedDate}`
-
-                  // myResult !== null → result entered, evolutions pending → navigate to post-match
-                  if (match.myResult !== null) {
-                    return (
-                      <ActionChip
-                        key={match.matchId}
-                        label={label}
-                        href={'/match/' + match.matchId + '/post-match'}
-                      />
-                    )
-                  }
-
-                  return (
-                    <ActionChip
-                      key={match.matchId}
-                      label={label}
-                      onClick={() => setResultPickerMatchId(match.matchId)}
-                    />
-                  )
-                })}
-              </div>
-            )}
-
             {/* Timeline */}
             <section>
               <h2
@@ -519,6 +527,7 @@ function CampaignView() {
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}
                       onPostMatchReentry={handlePostMatchReentry}
+                      onSkipInitialXp={entry.matchType === 'initial_setup' ? handleSkipInitialXp : undefined}
                       onDelete={!entry.hasEvolutions ? (matchId) => {
                         const opponent = entry.opponent
                         const opponentName = opponent?.name ?? opponent?.playerName ?? 'Adversaire'

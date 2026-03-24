@@ -135,7 +135,7 @@ describe('[AC4][AC5][P0] Campaign view — toast + router.invalidate — src/rou
 
   it('[DEL-018] Campaign view calls router.invalidate after deleteMatchFn (AC5)', () => {
     const code = indexRoute()
-    expect(code).toMatch(/deleteMatchFn[\s\S]{0,400}router\.invalidate/)
+    expect(code).toMatch(/deleteMatchFn[\s\S]{0,600}router\.invalidate/)
   })
 })
 
