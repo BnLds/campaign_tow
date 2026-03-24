@@ -279,13 +279,19 @@ export async function completeEvolutionsWithGainsTransaction(
           })
           break
         }
-        case 'death':
+        case 'death': {
+          const deathReason = 'Mort (MHC)'
           await tx.insert(unitGains).values({
             unitId: consequence.unitId,
-            description: 'Mort (MHC)',
+            description: deathReason,
             matchParticipantId,
           })
+          await tx
+            .update(units)
+            .set({ status: 'graveyard', graveyardReason: deathReason })
+            .where(eq(units.id, consequence.unitId))
           break
+        }
         case 'moral_brise':
           await tx.insert(statModifiers).values({
             unitId: consequence.unitId,

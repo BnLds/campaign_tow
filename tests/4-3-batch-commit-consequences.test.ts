@@ -199,6 +199,14 @@ describe('[AC8][P0] Consequence processing — death (Task 12.5)', () => {
     // Expected DB call: insertUnitGain('char-1', 'Mort (MHC)', matchParticipantId)
     expect(consequence.type).toBe('death')
   })
+
+  it('[4.3-TXN-004b] death auto-sends unit to graveyard', async () => {
+    const { readFileSync } = await import('node:fs')
+    const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
+    // The death case must update the unit status to graveyard in the same transaction
+    expect(code).toMatch(/case 'death':[\s\S]{0,400}\.update\(units\)[\s\S]{0,200}status:\s*'graveyard'/)
+    expect(code).toMatch(/case 'death':[\s\S]{0,400}graveyardReason:\s*deathReason/)
+  })
 })
 
 // ---------------------------------------------------------------------------

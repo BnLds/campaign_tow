@@ -83,6 +83,7 @@ const loadArmyFn = createServerFn({ method: 'GET' })
       unitCards,
       graveyardUnits,
       isOwner,
+      isAdmin: session.isAdmin,
     }
   })
 
@@ -521,7 +522,7 @@ function groupUnitsByType(
 
 
 function ArmyView() {
-  const { army, unitCards, graveyardUnits, isOwner } = Route.useLoaderData()
+  const { army, unitCards, graveyardUnits, isOwner, isAdmin } = Route.useLoaderData()
   const hydrated = useHydrated()
   const router = useRouter()
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null)
@@ -742,6 +743,7 @@ function ArmyView() {
                   currentXp={card.unit.xp}
                   currentPoints={card.unit.points}
                   subProfiles={card.subProfiles}
+                  isAdmin={isAdmin}
                   onClose={() => setEditingUnitId(null)}
                   onMutationSuccess={handleMutationSuccess}
                   addStatModifierFn={addStatModifierFn}

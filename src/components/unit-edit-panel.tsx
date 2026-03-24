@@ -115,6 +115,7 @@ interface UnitEditPanelProps {
   currentXp: number
   currentPoints: number | null
   subProfiles: SubProfileItem[]
+  isAdmin: boolean
   onClose: () => void
   onMutationSuccess: () => Promise<void>
   addStatModifierFn: AddStatModifierFn
@@ -183,6 +184,7 @@ export function UnitEditPanel({
   currentXp,
   currentPoints,
   subProfiles,
+  isAdmin,
   onClose,
   onMutationSuccess,
   addStatModifierFn,
@@ -263,7 +265,12 @@ export function UnitEditPanel({
   }, [currentXp])
 
   // Fetch deltas on mount and after unitId changes (M2 — cancel on unmount)
+  // Skip fetch when not admin — deltas are only displayed in admin-only sections
   useEffect(() => {
+    if (!isAdmin) {
+      setLoadingDeltas(false)
+      return
+    }
     let mounted = true
     async function fetchDeltas() {
       setLoadingDeltas(true)
@@ -280,7 +287,7 @@ export function UnitEditPanel({
     }
     void fetchDeltas()
     return () => { mounted = false }
-  }, [unitId]) // armyId and fetchUnitDeltasFn are stable for the lifecycle of a given panel
+  }, [unitId, isAdmin]) // armyId and fetchUnitDeltasFn are stable for the lifecycle of a given panel
 
   // Refetch deltas after mutations (not tied to mount lifecycle)
   const refetchDeltas = async () => {
@@ -618,9 +625,9 @@ export function UnitEditPanel({
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 1 — Modificateurs de stats */}
+      {/* Section 1 — Modificateurs de stats (admin only) */}
       {/* ------------------------------------------------------------------ */}
-      <section
+      {isAdmin && <section
         data-testid="section-stat-modifiers"
         style={{ marginBottom: '1.5rem' }}
       >
@@ -717,21 +724,71 @@ export function UnitEditPanel({
               </Select>
             </div>
 
-            {/* Delta input */}
+            {/* Delta input with +/- buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <Label htmlFor={`mod-delta-${unitId}`} style={{ fontSize: '0.75rem' }}>
                 Delta
               </Label>
-              <Input
-                id={`mod-delta-${unitId}`}
-                type="number"
-                step="1"
-                value={modDelta}
-                onChange={(e) => setModDelta(e.target.value)}
-                placeholder="+1 / -1"
-                style={{ width: '5rem' }}
-                required
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <button
+                  type="button"
+                  disabled={addingMod}
+                  onClick={() => setModDelta(String((parseInt(modDelta, 10) || 0) - 1))}
+                  className="delta-stepper"
+                  style={{
+                    width: '2rem',
+                    height: '2rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--color-separator)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-malus)',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    cursor: addingMod ? 'not-allowed' : 'pointer',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    opacity: addingMod ? 0.5 : 1,
+                  }}
+                  aria-label="Diminuer delta"
+                >
+                  −
+                </button>
+                <Input
+                  id={`mod-delta-${unitId}`}
+                  type="number"
+                  step="1"
+                  value={modDelta}
+                  onChange={(e) => setModDelta(e.target.value)}
+                  placeholder="+1 / -1"
+                  style={{ width: '4.5rem', textAlign: 'center' }}
+                  required
+                />
+                <button
+                  type="button"
+                  disabled={addingMod}
+                  onClick={() => setModDelta(String((parseInt(modDelta, 10) || 0) + 1))}
+                  className="delta-stepper"
+                  style={{
+                    width: '2rem',
+                    height: '2rem',
+                    borderRadius: '0.375rem',
+                    border: '1px solid var(--color-separator)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-bonus)',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    cursor: addingMod ? 'not-allowed' : 'pointer',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    opacity: addingMod ? 0.5 : 1,
+                  }}
+                  aria-label="Augmenter delta"
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             {/* Source input */}
@@ -778,12 +835,12 @@ export function UnitEditPanel({
           </Button>
           <FeedbackMsg message={modFeedback.message} />
         </form>
-      </section>
+      </section>}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 2 — Capacités acquises */}
+      {/* Section 2 — Capacités acquises (admin only) */}
       {/* ------------------------------------------------------------------ */}
-      <section
+      {isAdmin && <section
         data-testid="section-unit-gains"
         style={{ marginBottom: '1.5rem' }}
       >
@@ -864,7 +921,7 @@ export function UnitEditPanel({
           </Button>
           <FeedbackMsg message={gainFeedback.message} />
         </form>
-      </section>
+      </section>}
 
       {/* ------------------------------------------------------------------ */}
       {/* Section 3 — Coût en points */}
