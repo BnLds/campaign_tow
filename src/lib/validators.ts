@@ -58,7 +58,8 @@ export const createMatchSchema = z.object({
   result1: z.enum(['victory', 'defeat', 'draw']).nullable(),
   army2Id: z.string().min(1, "L'armée 2 est requise"),
   result2: z.enum(['victory', 'defeat', 'draw']).nullable(),
-  date: z.string().min(1, 'La date est requise'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
+  time: z.string().regex(/^\d{2}:\d{2}$/, "Format d'heure invalide (HH:MM)"),
   evolutionsEntered: z.boolean(),
 })
 export type CreateMatchInput = z.infer<typeof createMatchSchema>

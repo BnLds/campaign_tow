@@ -22,6 +22,7 @@ export type TimelineEntryProps = {
   onEvolutionStart?: (matchId: string) => void
   onPostMatchReentry?: (matchId: string) => void
   onDelete?: (matchId: string) => void
+  onSkipInitialXp?: () => void
   unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
 }
 
@@ -55,11 +56,21 @@ const RESULT_CONFIG = {
 function formatDate(isoDate: string): string {
   const d = new Date(isoDate)
   if (isNaN(d.getTime())) return isoDate // fallback: return raw string
-  return new Intl.DateTimeFormat('fr-FR', {
+  const tz = 'UTC' // Paris wall-clock stored as UTC — display as-is
+  const datePart = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: tz,
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   }).format(d)
+  // Don't show "00:00" for legacy matches stored at midnight
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return datePart
+  const timePart = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d)
+  return `${datePart}, ${timePart}`
 }
 
 export function TimelineEntry({
@@ -75,6 +86,7 @@ export function TimelineEntry({
   onEvolutionStart,
   onPostMatchReentry,
   onDelete,
+  onSkipInitialXp,
   unitXpEntries,
 }: TimelineEntryProps) {
   const isInitialSetup = matchType === 'initial_setup'
@@ -433,6 +445,28 @@ export function TimelineEntry({
           }}
         >
           Au rapport ! <span aria-hidden="true">›</span>
+        </button>
+      )}
+
+      {/* "Passer l'XP initiale" button — only for initial_setup, when editable and not yet filled */}
+      {isEditable && isInitialSetup && !hasEvolutions && onSkipInitialXp && (
+        <button
+          type="button"
+          data-testid="skip-initial-xp"
+          onClick={onSkipInitialXp}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.8125rem',
+            color: 'var(--color-text-secondary)',
+            textDecoration: 'underline',
+            alignSelf: 'center',
+            padding: '0.25rem 0',
+          }}
+        >
+          Passer l&apos;XP initiale
         </button>
       )}
 

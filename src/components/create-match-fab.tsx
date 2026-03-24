@@ -60,7 +60,7 @@ export const loadOpponentsFn = createServerFn({ method: 'GET' })
 
 export const createMatchFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().optional() }))
+  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/) }))
   .handler(async ({ context, data }) => {
     const { session } = context
 
@@ -90,10 +90,8 @@ export const createMatchFn = createServerFn({ method: 'POST' })
     }
     const opponentArmy = await getPlayerArmy(data.opponentPlayerId)
 
-    // AC3 — Parse and validate date, normalize to midnight UTC
-    const matchDate = data.date
-      ? new Date(data.date + 'T00:00:00Z')
-      : new Date(new Date().toISOString().split('T')[0] + 'T00:00:00Z')
+    // AC3 — Parse and validate date + time (Paris wall-clock stored as UTC)
+    const matchDate = new Date(`${data.date}T${data.time}:00Z`)
 
     if (isNaN(matchDate.getTime())) {
       throw new Error('Date invalide')
@@ -146,6 +144,10 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
   // Dialog state
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [time, setTime] = useState(() => {
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -166,8 +168,10 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
       setIsSubmitting(false)
       return
     }
-    // M5 — reset date to today when dialog opens
+    // M5 — reset date to today and time to now when dialog opens
     setDate(new Date().toISOString().split('T')[0])
+    const now = new Date()
+    setTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
     setSelectedOpponent(null)
     setSubmitError(null)
   }, [open])
@@ -199,7 +203,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await createMatchFn({ data: { opponentPlayerId: selectedOpponent, date } })
+      await createMatchFn({ data: { opponentPlayerId: selectedOpponent, date, time } })
       setOpen(false)
       setSelectedOpponent(null)
       // H1 — reset isSubmitting on success path (finally will also run but setOpen triggers useEffect reset)
@@ -344,29 +348,55 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
             )}
           </div>
 
-          {/* Date input */}
-          <div>
-            <label
-              htmlFor="match-date"
-              style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
-            >
-              Date de la partie
-            </label>
-            <input
-              id="match-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              style={{
-                width: '100%',
-                border: '1px solid #e0d5c8',
-                borderRadius: 8,
-                padding: '8px 10px',
-                fontSize: 14,
-                color: 'var(--color-text-primary)',
-                background: '#fffbf5',
-              }}
-            />
+          {/* Date + time inputs */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="match-date"
+                style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
+              >
+                Date
+              </label>
+              <input
+                id="match-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  border: '1px solid #e0d5c8',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  fontSize: 14,
+                  color: 'var(--color-text-primary)',
+                  background: '#fffbf5',
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label
+                htmlFor="match-time"
+                style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
+              >
+                Heure
+              </label>
+              <input
+                id="match-time"
+                type="time"
+                required
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                style={{
+                  width: '100%',
+                  border: '1px solid #e0d5c8',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  fontSize: 14,
+                  color: 'var(--color-text-primary)',
+                  background: '#fffbf5',
+                }}
+              />
+            </div>
           </div>
 
           {/* Submit error */}
