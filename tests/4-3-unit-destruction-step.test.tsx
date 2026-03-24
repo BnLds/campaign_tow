@@ -22,7 +22,7 @@ import type { DestructionResult } from '../src/components/unit-destruction-step'
 describe('[AC14,AC28][P0] UnitDestructionStep — renders destruction options (Task 10.1)', () => {
   it('[4.3-DES-001] renders all 6 destruction table rows with dice result prefixes', () => {
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     expect(screen.getByText(/2-3 — Déroute Sanglante/)).toBeDefined()
     expect(screen.getByText(/4-6 — Pertes Catastrophiques/)).toBeDefined()
@@ -40,7 +40,7 @@ describe('[AC14,AC28][P0] UnitDestructionStep — renders destruction options (T
 describe('[AC14][P0] UnitDestructionStep — confirm button state (Task 10.2)', () => {
   it('[4.3-DES-002] confirm button is disabled when no selection is made', () => {
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     const confirmButton = screen.getByTestId('consequence-confirm')
     expect(confirmButton).toBeDisabled()
@@ -55,7 +55,7 @@ describe('[AC18][P0] UnitDestructionStep — confirm enabled on selection (Task 
   it('[4.3-DES-003] confirm button is enabled after selecting "Survivants Endurcis"', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/9-10 — Survivants Endurcis/))
 
@@ -65,24 +65,24 @@ describe('[AC18][P0] UnitDestructionStep — confirm enabled on selection (Task 
 })
 
 // ---------------------------------------------------------------------------
-// Task 10.4 — Banner checkbox appears and defaults to unchecked (AC: 21)
+// Task 10.4 — Banner auto-loss message (AC: 21)
 // ---------------------------------------------------------------------------
 
-describe('[AC21][P0] UnitDestructionStep — banner checkbox (Task 10.4)', () => {
-  it('[4.3-DES-004] banner checkbox appears and defaults to unchecked', () => {
+describe('[AC21][P0] UnitDestructionStep — banner auto-loss (Task 10.4)', () => {
+  it('[4.3-DES-004] shows banner loss message when hasBannerGain is true', () => {
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={true} onConfirm={onConfirm} />)
 
-    const bannerCheckbox = screen.getByTestId('banner-lost-checkbox')
-    expect(bannerCheckbox).toBeDefined()
-    expect((bannerCheckbox as HTMLInputElement).checked).toBe(false)
+    const message = screen.getByTestId('banner-lost-message')
+    expect(message).toBeDefined()
+    expect(message.textContent).toBe("L'unité perd sa bannière gratuite !")
   })
 
-  it('[4.3-DES-005] banner checkbox label reads "L\'unité possédait une bannière"', () => {
+  it('[4.3-DES-005] hides banner loss message when hasBannerGain is false', () => {
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
-    expect(screen.getByText(/L'unité possédait une bannière/)).toBeDefined()
+    expect(screen.queryByTestId('banner-lost-message')).toBeNull()
   })
 })
 
@@ -94,7 +94,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
   it('[4.3-DES-006] "Déroute Sanglante" → onConfirm({ type: "deroute_sanglante" })', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/2-3 — Déroute Sanglante/))
     await user.click(screen.getByTestId('consequence-confirm'))
@@ -105,7 +105,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
   it('[4.3-DES-007] "Pertes Catastrophiques" → onConfirm({ type: "pertes_catastrophiques" })', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/4-6 — Pertes Catastrophiques/))
     await user.click(screen.getByTestId('consequence-confirm'))
@@ -116,7 +116,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
   it('[4.3-DES-008] "Moral Brisé" → onConfirm({ type: "moral_brise" })', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/7-8 — Moral Brisé/))
     await user.click(screen.getByTestId('consequence-confirm'))
@@ -127,7 +127,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
   it('[4.3-DES-009] "Survivants Endurcis" → onConfirm({ type: "survivants_endurcis" })', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/9-10 — Survivants Endurcis/))
     await user.click(screen.getByTestId('consequence-confirm'))
@@ -138,7 +138,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
   it('[4.3-DES-010] "Rancune" → onConfirm({ type: "rancune" })', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/11 — Rancune/))
     await user.click(screen.getByTestId('consequence-confirm'))
@@ -149,7 +149,7 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
   it('[4.3-DES-011] "Fureur Vengeresse" → onConfirm({ type: "fureur_vengeresse" })', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/12 — Fureur Vengeresse/))
     await user.click(screen.getByTestId('consequence-confirm'))
@@ -159,17 +159,16 @@ describe('[AC15-AC20][P0] UnitDestructionStep — onConfirm results (Task 10.5)'
 })
 
 // ---------------------------------------------------------------------------
-// Task 10.6 — onConfirm includes bannerLost=true when checked (AC: 21)
+// Task 10.6 — onConfirm includes bannerLost=true automatically when hasBannerGain (AC: 21)
 // ---------------------------------------------------------------------------
 
 describe('[AC21][P0] UnitDestructionStep — banner lost flag (Task 10.6)', () => {
-  it('[4.3-DES-012] checking banner checkbox includes bannerLost=true in result', async () => {
+  it('[4.3-DES-012] hasBannerGain=true automatically sets bannerLost=true in result', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={true} onConfirm={onConfirm} />)
 
     await user.click(screen.getByText(/9-10 — Survivants Endurcis/))
-    await user.click(screen.getByTestId('banner-lost-checkbox'))
     await user.click(screen.getByTestId('consequence-confirm'))
 
     expect(onConfirm).toHaveBeenCalledWith({ type: 'survivants_endurcis', bannerLost: true })
@@ -183,7 +182,7 @@ describe('[AC21][P0] UnitDestructionStep — banner lost flag (Task 10.6)', () =
 describe('[AC14][P1] UnitDestructionStep — unit name display (Task 10.7)', () => {
   it('[4.3-DES-013] displays unit name in step header', () => {
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     expect(screen.getByText('Hallebardiers')).toBeDefined()
   })
@@ -196,7 +195,7 @@ describe('[AC14][P1] UnitDestructionStep — unit name display (Task 10.7)', () 
 describe('[AC26][P1] UnitDestructionStep — red theme', () => {
   it('[4.3-DES-014] step container uses malus background styling', () => {
     const onConfirm = vi.fn()
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} />)
 
     const container = screen.getByTestId('unit-destruction-step')
     expect(container.className).toMatch(/malus/)
@@ -210,7 +209,7 @@ describe.skip('[AC22][P1] UnitDestructionStep — back button', () => {
     const onConfirm = vi.fn()
     const onBack = vi.fn()
     // @ts-expect-error onBack prop removed — back button is handled by wizard
-    render(<UnitDestructionStep unitName="Hallebardiers" onConfirm={onConfirm} onBack={onBack} />)
+    render(<UnitDestructionStep unitName="Hallebardiers" hasBannerGain={false} onConfirm={onConfirm} onBack={onBack} />)
 
     await user.click(screen.getByTestId('consequence-back'))
 

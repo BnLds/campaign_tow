@@ -28,7 +28,7 @@ type TierUpQueueEntry = ThresholdEntry & {
   commandement: number  // current CD value for constraint checks
 }
 
-type FlaggedUnit = { id: string; name: string; type: string }
+type FlaggedUnit = { id: string; name: string; type: string; existingGains: string[] }
 
 // ---------------------------------------------------------------------------
 // Helper — expand multi-selection entries into sequential single-pick steps
@@ -417,7 +417,7 @@ export function PostMatchWizard({
         // All XP entered — compute flagged units for Phase 1.5
         const characters = units.filter((u) => u.type === 'Personnages' && consequenceFlagsRef.current.get(u.id))
         const unitsFlagged = units.filter((u) => u.type !== 'Personnages' && consequenceFlagsRef.current.get(u.id))
-        const flagged: FlaggedUnit[] = [...characters, ...unitsFlagged].map((u) => ({ id: u.id, name: u.name, type: u.type }))
+        const flagged: FlaggedUnit[] = [...characters, ...unitsFlagged].map((u) => ({ id: u.id, name: u.name, type: u.type, existingGains: u.existingGains ?? [] }))
         flaggedUnitsRef.current = flagged
 
         if (flagged.length > 0) {
@@ -994,6 +994,7 @@ export function PostMatchWizard({
           <UnitDestructionStep
             key={consequenceIndex}
             unitName={currentFlaggedUnit.name}
+            hasBannerGain={currentFlaggedUnit.existingGains.includes('Bannière gratuite')}
             onConfirm={(result) => void handleConsequenceConfirm(result)}
           />
         )}
@@ -1417,7 +1418,7 @@ export function PostMatchWizard({
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.875rem',
-            color: '#b82c2c',
+            color: 'var(--color-malus)',
             margin: 0,
           }}
         >
