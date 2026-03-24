@@ -74,9 +74,9 @@ const getInviteDataFn = createServerFn({ method: 'GET' })
       return { status: 'invalid' }
     }
 
-    const { getWebRequest } = await import('@tanstack/react-start/server')
-    const req = getWebRequest()
-    const ip = req ? getClientIp(req) : 'unknown'
+    const { getRequest } = await import('@tanstack/react-start/server')
+    const req = getRequest()
+    const ip = getClientIp(req)
 
     if (isInviteRateLimited(ip)) {
       return { status: 'rate_limited' }
@@ -97,9 +97,9 @@ const getInviteDataFn = createServerFn({ method: 'GET' })
 const autoLoginViaInviteFn = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ token: z.string().uuid() }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
-    const { getWebRequest } = await import('@tanstack/react-start/server')
-    const req = getWebRequest()
-    const ip = req ? getClientIp(req) : 'unknown'
+    const { getRequest } = await import('@tanstack/react-start/server')
+    const req = getRequest()
+    const ip = getClientIp(req)
 
     if (isInviteRateLimited(ip)) {
       return { success: false, error: { code: 'RATE_LIMITED', message: 'Trop de tentatives, réessayez plus tard.' } }
@@ -130,9 +130,9 @@ const completeInviteSetupFn = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }): Promise<ServerResult<null>> => {
-    const { getWebRequest } = await import('@tanstack/react-start/server')
-    const req = getWebRequest()
-    const ip = req ? getClientIp(req) : 'unknown'
+    const { getRequest } = await import('@tanstack/react-start/server')
+    const req = getRequest()
+    const ip = getClientIp(req)
 
     if (isInviteRateLimited(ip)) {
       return { success: false, error: { code: 'RATE_LIMITED', message: 'Trop de tentatives, réessayez plus tard.' } }
