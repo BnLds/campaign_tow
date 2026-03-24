@@ -1190,6 +1190,7 @@ export function PostMatchWizard({
               min={0}
               max={999}
               value={numericXpValue}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setNumericXpValue(Math.min(999, Math.max(0, parseInt(e.target.value, 10) || 0)))}
               style={{
                 fontFamily: 'var(--font-body)',
