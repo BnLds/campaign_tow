@@ -56,7 +56,7 @@ const loadArmyFn = createServerFn({ method: 'GET' })
       const tier = calculateTier(unit.xp, unit.type)
 
       return {
-        unit: { id: unit.id, name: unit.name, type: unit.type, xp: unit.xp },
+        unit: { id: unit.id, name: unit.name, type: unit.type, xp: unit.xp, points: unit.points },
         composedView,
         tier,
         subProfiles: unit.subProfiles.map((sp) => ({
@@ -274,6 +274,44 @@ const updateXpFn = createServerFn({ method: 'POST' })
   })
 
 // ---------------------------------------------------------------------------
+// Server function — update unit points
+// ---------------------------------------------------------------------------
+
+const updatePointsFn = createServerFn({ method: 'POST' })
+  .middleware([armyOwnerMiddleware])
+  .inputValidator(
+    z.object({
+      armyId: z.string(),
+      unitId: z.string(),
+      points: z.number().int().min(0, { message: 'Le coût doit être >= 0' }).max(99999, { message: 'Le coût ne peut pas dépasser 99999' }).nullable(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { getUnitById, updateUnitPoints } = await import('../../db/queries')
+    const unit = await getUnitById(data.unitId)
+    if (!unit || unit.armyId !== data.armyId) {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: "Cette unité n'appartient pas à cette armée" },
+      }
+    }
+    if (unit.status !== 'active') {
+      return {
+        success: false as const,
+        error: { code: 'BAD_REQUEST', message: 'Impossible de modifier une unité au cimetière' },
+      }
+    }
+    const updated = await updateUnitPoints(data.unitId, data.points)
+    if (!updated) {
+      return {
+        success: false as const,
+        error: { code: 'NOT_FOUND', message: "Cette unité n'existe plus" },
+      }
+    }
+    return { success: true as const }
+  })
+
+// ---------------------------------------------------------------------------
 // Server function — send unit to graveyard
 // ---------------------------------------------------------------------------
 
@@ -413,7 +451,7 @@ const TYPE_ORDER = ['Personnages', 'Unités de base', 'Unités spéciales', 'Uni
 
 function groupUnitsByType(
   unitCards: Array<{
-    unit: { id: string; name: string; type: string; xp: number }
+    unit: { id: string; name: string; type: string; xp: number; points: number | null }
     composedView: ComposedUnitView
     tier: TierLevel
     subProfiles: Array<{ id: string; label: string; isMount: boolean; sortOrder: number }>
@@ -471,6 +509,8 @@ function ArmyView() {
 
   const groups = groupUnitsByType(unitCards)
   const totalXp = unitCards.reduce((sum, c) => sum + c.unit.xp, 0)
+  const totalPoints = unitCards.reduce((sum, c) => sum + (c.unit.points ?? 0), 0)
+  const allHavePoints = unitCards.length > 0 && unitCards.every((c) => c.unit.points !== null)
 
   const handleMutationSuccess = async () => {
     await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
@@ -480,7 +520,7 @@ function ArmyView() {
     <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
       {/* Army header */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.5rem', flexWrap: 'wrap' }}>
           <Link
             to="/armies"
             className="nav-btn-brand"
@@ -517,6 +557,25 @@ function ArmyView() {
           >
             {army.name}
           </h1>
+          {allHavePoints && (
+            <span
+              data-testid="army-total-points"
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                color: 'var(--color-brand)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-brand)',
+                borderRadius: 999,
+                padding: '0.125rem 0.5rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              {totalPoints} pts
+            </span>
+          )}
           {unitCards.length > 0 && (
             <span
               data-testid="army-total-xp"
@@ -646,6 +705,7 @@ function ArmyView() {
                   unitName={card.unit.name}
                   unitType={card.unit.type}
                   currentXp={card.unit.xp}
+                  currentPoints={card.unit.points}
                   subProfiles={card.subProfiles}
                   onClose={() => setEditingUnitId(null)}
                   onMutationSuccess={handleMutationSuccess}
@@ -654,6 +714,7 @@ function ArmyView() {
                   addUnitGainFn={addUnitGainFn}
                   removeUnitGainFn={removeUnitGainFn}
                   updateXpFn={updateXpFn}
+                  updatePointsFn={updatePointsFn}
                   fetchUnitDeltasFn={fetchUnitDeltasFn}
                   toggleMountFn={toggleMountFn}
                   sendToGraveyardFn={sendToGraveyardFn}

@@ -12,7 +12,7 @@ import type { TierLevel } from '../lib/tier'
 // ---------------------------------------------------------------------------
 
 interface UnitCardProps {
-  unit: { id: string; name: string; type: string; xp: number }
+  unit: { id: string; name: string; type: string; xp: number; points: number | null }
   composedView: ComposedUnitView
   tier: TierLevel
   action?: React.ReactNode
@@ -365,6 +365,21 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
             marginTop: '0.25rem',
           }}
         >
+          {unit.points !== null && (
+            <>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: 'var(--color-brand)',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                {unit.points} pts
+              </span>
+              <span style={{ color: 'var(--color-separator)', fontSize: '0.65rem' }}>·</span>
+            </>
+          )}
           <span
             data-testid="xp-tier-label"
             style={{

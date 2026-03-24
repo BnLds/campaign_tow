@@ -257,6 +257,15 @@ export async function updateUnitXp(unitId: string, xp: number): Promise<boolean>
   return result.length > 0
 }
 
+export async function updateUnitPoints(unitId: string, points: number | null): Promise<boolean> {
+  const result = await db
+    .update(units)
+    .set({ points })
+    .where(eq(units.id, unitId))
+    .returning()
+  return result.length > 0
+}
+
 export async function getSubProfileById(subProfileId: string) {
   const rows = await db
     .select({ id: subProfiles.id, unitId: subProfiles.unitId, isMount: subProfiles.isMount })

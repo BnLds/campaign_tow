@@ -75,6 +75,10 @@ type UpdateXpFn = (args: {
   data: { armyId: string; unitId: string; xp: number }
 }) => Promise<{ success: boolean; data?: { xp: number; tier: TierLevel }; error?: { code: string; message: string } }>
 
+type UpdatePointsFn = (args: {
+  data: { armyId: string; unitId: string; points: number | null }
+}) => Promise<{ success: boolean; error?: { code: string; message: string } }>
+
 type FetchUnitDeltasFn = (args: {
   data: { armyId: string; unitId: string }
 }) => Promise<{ statModifiers: StatModifierRow[]; unitGains: UnitGainRow[] }>
@@ -104,6 +108,7 @@ interface UnitEditPanelProps {
   unitName: string
   unitType: string
   currentXp: number
+  currentPoints: number | null
   subProfiles: SubProfileItem[]
   onClose: () => void
   onMutationSuccess: () => Promise<void>
@@ -112,6 +117,7 @@ interface UnitEditPanelProps {
   addUnitGainFn: AddUnitGainFn
   removeUnitGainFn: RemoveUnitGainFn
   updateXpFn: UpdateXpFn
+  updatePointsFn: UpdatePointsFn
   fetchUnitDeltasFn: FetchUnitDeltasFn
   toggleMountFn: ToggleMountFn
   sendToGraveyardFn: SendToGraveyardFn
@@ -168,6 +174,7 @@ export function UnitEditPanel({
   unitName,
   unitType,
   currentXp,
+  currentPoints,
   subProfiles,
   onClose,
   onMutationSuccess,
@@ -176,6 +183,7 @@ export function UnitEditPanel({
   addUnitGainFn,
   removeUnitGainFn,
   updateXpFn,
+  updatePointsFn,
   fetchUnitDeltasFn,
   toggleMountFn,
   sendToGraveyardFn,
@@ -205,6 +213,16 @@ export function UnitEditPanel({
   const [currentTier, setCurrentTier] = useState<TierLevel | null>(null)
   const [confirmedXpUpdate, setConfirmedXpUpdate] = useState(false)
   const xpFeedback = useFeedback()
+
+  // Points form state
+  const [pointsValue, setPointsValue] = useState(currentPoints !== null ? String(currentPoints) : '')
+  const [updatingPoints, setUpdatingPoints] = useState(false)
+  const pointsFeedback = useFeedback()
+
+  // Sync pointsValue when currentPoints prop changes (avoid stale value after parent re-render)
+  useEffect(() => {
+    setPointsValue(currentPoints !== null ? String(currentPoints) : '')
+  }, [currentPoints])
 
   // Mount toggle state
   const [togglingMountId, setTogglingMountId] = useState<string | null>(null)
@@ -387,6 +405,35 @@ export function UnitEditPanel({
       xpFeedback.show('Erreur lors de la mise à jour', true)
     } finally {
       setUpdatingXp(false)
+    }
+  }
+
+  const handleUpdatePoints = async (e: React.FormEvent) => {
+    e.preventDefault()
+    let points: number | null
+    if (pointsValue.trim() === '') {
+      points = null
+    } else {
+      const parsed = parseInt(pointsValue, 10)
+      if (Number.isNaN(parsed) || parsed < 0) {
+        pointsFeedback.show('Veuillez entrer un nombre valide', true)
+        return
+      }
+      points = parsed
+    }
+    setUpdatingPoints(true)
+    try {
+      const result = await updatePointsFn({ data: { armyId, unitId, points } })
+      if (result.success) {
+        pointsFeedback.show(points !== null ? `Coût mis à jour (${points} pts)` : 'Coût effacé', false)
+        await onMutationSuccess()
+      } else {
+        pointsFeedback.show(result.error?.message ?? 'Erreur inconnue', true)
+      }
+    } catch {
+      pointsFeedback.show('Erreur lors de la mise à jour', true)
+    } finally {
+      setUpdatingPoints(false)
     }
   }
 
@@ -763,9 +810,56 @@ export function UnitEditPanel({
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 3 — Points d'expérience */}
+      {/* Section 3 — Coût en points */}
       {/* ------------------------------------------------------------------ */}
-      <section data-testid="section-xp">
+      <section data-testid="section-points">
+        <h4
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontWeight: 700,
+            fontSize: '0.8rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            color: 'var(--color-section-label)',
+            marginBottom: '0.75rem',
+          }}
+        >
+          Coût en points
+        </h4>
+
+        <form onSubmit={handleUpdatePoints} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <Label htmlFor={`points-input-${unitId}`} style={{ fontSize: '0.75rem' }}>
+                Valeur
+              </Label>
+              <Input
+                id={`points-input-${unitId}`}
+                type="number"
+                min={0}
+                step={1}
+                value={pointsValue}
+                onChange={(e) => setPointsValue(e.target.value)}
+                style={{ width: '6rem' }}
+                disabled={updatingPoints}
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={updatingPoints}
+              size="sm"
+            >
+              {updatingPoints ? 'Mise à jour...' : 'Mettre à jour'}
+            </Button>
+          </div>
+          <FeedbackMsg message={pointsFeedback.message} />
+        </form>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Section 4 — Points d'expérience */}
+      {/* ------------------------------------------------------------------ */}
+      <section data-testid="section-xp" style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem', paddingTop: '1rem' }}>
         <h4
           style={{
             fontFamily: 'var(--font-body)',
