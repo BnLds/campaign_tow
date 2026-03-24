@@ -1370,7 +1370,8 @@ export function PostMatchWizard({
           cursor: 'pointer',
           fontFamily: 'var(--font-body)',
           fontSize: '0.875rem',
-          color: 'var(--color-text-secondary)',
+          fontWeight: 600,
+          color: 'var(--color-malus)',
         }}
       >
         <input
@@ -1395,7 +1396,8 @@ export function PostMatchWizard({
             cursor: 'pointer',
             fontFamily: 'var(--font-body)',
             fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
+            fontWeight: 600,
+            color: 'var(--color-malus)',
           }}
         >
           <input
