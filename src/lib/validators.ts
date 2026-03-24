@@ -18,7 +18,7 @@ export type UpdateDisplayNameInput = z.infer<typeof updateDisplayNameSchema>
 // Admin — Create player account (invite link flow)
 export const createPlayerSchema = z.object({
   username: z.string().trim().min(2, 'Username must be at least 2 characters').max(50, 'Username must be 50 characters or less'),
-  displayName: z.string().trim().min(1).max(100).optional(),
+  displayName: z.string().trim().max(100).optional().transform(v => v || undefined),
 })
 export type CreatePlayerInput = z.infer<typeof createPlayerSchema>
 
