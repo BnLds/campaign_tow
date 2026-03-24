@@ -971,67 +971,69 @@ export function UnitEditPanel({
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 4 — Points d'expérience */}
+      {/* Section 4 — Points d'expérience (admin only) */}
       {/* ------------------------------------------------------------------ */}
-      <section data-testid="section-xp" style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem', paddingTop: '1rem' }}>
-        <h4
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontWeight: 700,
-            fontSize: '0.8rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            color: 'var(--color-section-label)',
-            marginBottom: '0.75rem',
-          }}
-        >
-          Points d'expérience
-        </h4>
+      {isAdmin && (
+        <section data-testid="section-xp" style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem', paddingTop: '1rem' }}>
+          <h4
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'var(--color-section-label)',
+              marginBottom: '0.75rem',
+            }}
+          >
+            Points d'expérience
+          </h4>
 
-        <form onSubmit={handleUpdateXp} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <Label htmlFor={`xp-input-${unitId}`} style={{ fontSize: '0.75rem' }}>
-                XP total
-              </Label>
-              <Input
-                id={`xp-input-${unitId}`}
-                type="number"
-                min={0}
-                step={1}
-                value={xpValue}
-                onChange={(e) => setXpValue(e.target.value)}
-                style={{ width: '6rem' }}
-                required
-              />
+          <form onSubmit={handleUpdateXp} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <Label htmlFor={`xp-input-${unitId}`} style={{ fontSize: '0.75rem' }}>
+                  XP total
+                </Label>
+                <Input
+                  id={`xp-input-${unitId}`}
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={xpValue}
+                  onChange={(e) => setXpValue(e.target.value)}
+                  style={{ width: '6rem' }}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={updatingXp}
+                size="sm"
+              >
+                {updatingXp ? 'Mise à jour...' : 'Mettre à jour'}
+              </Button>
             </div>
-            <Button
-              type="submit"
-              disabled={updatingXp}
-              size="sm"
-            >
-              {updatingXp ? 'Mise à jour...' : 'Mettre à jour'}
-            </Button>
-          </div>
 
-          {/* Show recalculated tier after update — always visible once confirmed, not tied to feedback timer */}
-          {confirmedXpUpdate && currentTier !== null && currentTier > 0 && tierLabel && (
-            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: tierColor }}>
-              {tierLabel}
-            </p>
-          )}
-          {confirmedXpUpdate && currentTier === 0 && (
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-              Aucun palier atteint
-            </p>
-          )}
+            {/* Show recalculated tier after update — always visible once confirmed, not tied to feedback timer */}
+            {confirmedXpUpdate && currentTier !== null && currentTier > 0 && tierLabel && (
+              <p style={{ fontSize: '0.8rem', fontWeight: 600, color: tierColor }}>
+                {tierLabel}
+              </p>
+            )}
+            {confirmedXpUpdate && currentTier === 0 && (
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                Aucun palier atteint
+              </p>
+            )}
 
-          <FeedbackMsg message={xpFeedback.message} />
-        </form>
-      </section>
+            <FeedbackMsg message={xpFeedback.message} />
+          </form>
+        </section>
+      )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Section 4 — Zone de danger */}
+      {/* Section 5 — Zone de danger */}
       {/* ------------------------------------------------------------------ */}
       <div
         style={{
