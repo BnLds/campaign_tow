@@ -133,7 +133,7 @@ const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
   })
 
 export const Route = createFileRoute('/')({
-  staleTime: 30_000,
+  staleTime: 10_000, // must stay below the 15s polling interval so invalidation triggers a re-fetch
   loader: async () => {
     return loadCampaignTimelineFn()
   },
@@ -193,6 +193,56 @@ function CampaignView() {
       document.documentElement.setAttribute('data-app-hydrated', 'true')
     }
   }, [hydrated])
+
+  // Stability: use army ID (primitive) rather than the army object so the effect
+  // does not restart on every poll cycle (loader returns a new object reference each time).
+  const armyId = army?.id ?? null
+
+  // Visibility-aware polling: auto-refresh timeline every ~15s so player B sees
+  // results submitted by player A without manual refresh.
+  useEffect(() => {
+    if (isGuest || armyId === null) return
+
+    const invalidate = async () => {
+      try {
+        await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+      } catch {
+        // Network errors must not break the polling interval
+      }
+    }
+
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
+    const startPolling = () => {
+      intervalId = setInterval(() => { void invalidate() }, 15_000)
+    }
+
+    const stopPolling = () => {
+      if (intervalId !== null) {
+        clearInterval(intervalId)
+        intervalId = null
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling()
+      } else {
+        void invalidate()
+        startPolling()
+      }
+    }
+
+    if (!document.hidden) {
+      startPolling()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isGuest, armyId, router])
 
   const handleResultSubmit = async (matchId: string, result: 'victory' | 'defeat' | 'draw') => {
     const response = await submitMatchResultFn({ data: { matchId, result } })
