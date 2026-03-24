@@ -23,7 +23,7 @@ export type DestructionResult = {
 // Table data
 // ---------------------------------------------------------------------------
 
-const DESTRUCTION_OPTIONS = [
+export const DESTRUCTION_OPTIONS = [
   { type: 'deroute_sanglante', label: '2-3 — Déroute Sanglante', ruleText: "L'unité perd 10/10/15/20/30 XP selon son palier. La perte d'XP se fait après l'ajout des gains de la bataille." },
   { type: 'pertes_catastrophiques', label: '4-6 — Pertes Catastrophiques', ruleText: "L'unité est à moitié d'effectif (arrondi à l'inférieur) pour la bataille suivante." },
   { type: 'moral_brise', label: '7-8 — Moral Brisé', ruleText: "L'unité perd 2 points de Commandement pour la bataille suivante." },

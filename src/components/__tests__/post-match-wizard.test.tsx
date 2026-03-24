@@ -1547,3 +1547,303 @@ describe('[AC3,AC4] PostMatchWizard — initial-xp mode', () => {
     expect(screen.queryByTestId('wizard-xp-numeric')).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Initial-XP Consequence Flow — integration tests
+// ---------------------------------------------------------------------------
+
+describe('[INIT-CSQ] PostMatchWizard — initial-xp consequence flow', () => {
+  const CAMPAIGN_PLAYERS = [
+    { playerId: 'player-alice', playerDisplayName: 'Alice' },
+    { playerId: 'player-bob', playerDisplayName: 'Bob' },
+  ]
+
+  const unitInitial = [
+    { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 0, previousXpGained: null, previousDerouteXpLost: 0 },
+  ]
+
+  const twoUnitsInitial = [
+    { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 0, previousXpGained: null, previousDerouteXpLost: 0 },
+    { id: 'unit-2', name: 'Chevaliers', type: 'Cavalerie', xp: 0, previousXpGained: null, previousDerouteXpLost: 0 },
+  ]
+
+  // [INIT-CSQ-001] InitialConsequenceStep rendered inline in initial-xp mode
+  it('[INIT-CSQ-001] renders InitialConsequenceStep in initial-xp mode when campaignPlayers provided', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={unitInitial}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('initial-consequence-add-btn')).not.toBeNull()
+  })
+
+  // [INIT-CSQ-002] consequence-toggle NOT rendered in initial-xp mode
+  it('[INIT-CSQ-002] consequence-toggle checkbox NOT rendered in initial-xp mode', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={unitInitial}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('consequence-toggle')).toBeNull()
+  })
+
+  // [INIT-CSQ-003] champion-killed-toggle NOT rendered in initial-xp mode
+  it('[INIT-CSQ-003] champion-killed-toggle NOT rendered in initial-xp mode', () => {
+    const unitWithChampion = [
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 0, previousXpGained: null, previousDerouteXpLost: 0, existingGains: ['Champion gratuit'] },
+    ]
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={unitWithChampion}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('champion-killed-toggle')).toBeNull()
+  })
+
+  // [INIT-CSQ-004] Adding a consequence includes it in onCompleteEvolutions with per-consequence opponentPlayerName
+  it('[INIT-CSQ-004] consequence in onCompleteEvolutions with per-consequence opponentPlayerName', async () => {
+    const onSubmit = vi.fn().mockImplementation((unitId: string, xp: number) =>
+      Promise.resolve({ success: true, data: { unitId, newXp: xp } })
+    )
+    const onComplete = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        opponentPlayerName="WizardOpponent"
+        units={unitInitial}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmit}
+        onCompleteEvolutions={onComplete}
+      />
+    )
+
+    // Add a rancune consequence (player-alice)
+    fireEvent.click(screen.getByTestId('initial-consequence-add-btn'))
+    fireEvent.click(screen.getByTestId('initial-consequence-type-rancune'))
+    fireEvent.change(screen.getByTestId('initial-consequence-player-select'), { target: { value: 'player-alice' } })
+    fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
+
+    // Submit XP for the unit
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+
+    const callArgs = onComplete.mock.calls[0]
+    const consequences = callArgs[3] as Array<{ type: string; opponentPlayerName?: string }>
+    expect(consequences).toBeDefined()
+    expect(consequences.length).toBe(1)
+    expect(consequences[0].type).toBe('rancune')
+    // Must use per-consequence player name, NOT wizard-level opponentPlayerName
+    expect(consequences[0].opponentPlayerName).toBe('Alice')
+    expect(consequences[0].opponentPlayerName).not.toBe('WizardOpponent')
+  })
+
+  // [INIT-CSQ-005] Consequences for multiple units accumulate correctly
+  it('[INIT-CSQ-005] consequences for multiple units accumulate in onCompleteEvolutions', async () => {
+    const onSubmit = vi.fn().mockImplementation((unitId: string, xp: number) =>
+      Promise.resolve({ success: true, data: { unitId, newXp: xp } })
+    )
+    const onComplete = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={twoUnitsInitial}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmit}
+        onCompleteEvolutions={onComplete}
+      />
+    )
+
+    // Add moral_brise to unit-1
+    fireEvent.click(screen.getByTestId('initial-consequence-add-btn'))
+    fireEvent.click(screen.getByTestId('initial-consequence-type-moral_brise'))
+    fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
+
+    // Submit unit-1 XP → advances to unit-2
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-unit-name').textContent).toContain('Chevaliers')
+    })
+
+    // Add pertes_catastrophiques to unit-2
+    fireEvent.click(screen.getByTestId('initial-consequence-add-btn'))
+    fireEvent.click(screen.getByTestId('initial-consequence-type-pertes_catastrophiques'))
+    fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
+
+    // Submit unit-2 XP
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+
+    const callArgs = onComplete.mock.calls[0]
+    const consequences = callArgs[3] as Array<{ type: string; unitId: string }>
+    expect(consequences).toBeDefined()
+    expect(consequences.length).toBe(2)
+    expect(consequences.find((c) => c.type === 'moral_brise')?.unitId).toBe('unit-1')
+    expect(consequences.find((c) => c.type === 'pertes_catastrophiques')?.unitId).toBe('unit-2')
+  })
+
+  // [INIT-CSQ-006] Zero consequences in initial-xp mode — empty array in onCompleteEvolutions
+  it('[INIT-CSQ-006] zero consequences — onCompleteEvolutions called with empty consequences array', async () => {
+    const onSubmit = vi.fn().mockImplementation((unitId: string, xp: number) =>
+      Promise.resolve({ success: true, data: { unitId, newXp: xp } })
+    )
+    const onComplete = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={unitInitial}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmit}
+        onCompleteEvolutions={onComplete}
+      />
+    )
+
+    // No consequences added — just submit XP
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+
+    const callArgs = onComplete.mock.calls[0]
+    const consequences = callArgs[3] as unknown[] | undefined
+    // Either undefined or empty array — both valid (server handles both)
+    const len = consequences?.length ?? 0
+    expect(len).toBe(0)
+  })
+
+  // [INIT-CSQ-007] post-match mode does NOT render InitialConsequenceStep
+  it('[INIT-CSQ-007] post-match mode does NOT render InitialConsequenceStep', () => {
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={sampleUnits}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('initial-consequence-add-btn')).toBeNull()
+  })
+
+  // [INIT-CSQ-008] Consequences for unit-1 persist when wizard advances to unit-2
+  it('[INIT-CSQ-008] unit-1 consequences still in accumulated state after advancing to unit-2', async () => {
+    const onSubmit = vi.fn().mockImplementation((unitId: string, xp: number) =>
+      Promise.resolve({ success: true, data: { unitId, newXp: xp } })
+    )
+    const onComplete = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={twoUnitsInitial}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmit}
+        onCompleteEvolutions={onComplete}
+      />
+    )
+
+    // Add consequence to unit-1
+    fireEvent.click(screen.getByTestId('initial-consequence-add-btn'))
+    fireEvent.click(screen.getByTestId('initial-consequence-type-moral_brise'))
+    fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
+
+    // Advance to unit-2
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-unit-name').textContent).toContain('Chevaliers')
+    })
+
+    // Complete unit-2 without adding consequences
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+
+    // Unit-1's consequence must still be in the batch (state preserved across step change)
+    const callArgs = onComplete.mock.calls[0]
+    const consequences = callArgs[3] as Array<{ type: string; unitId: string }>
+    expect(consequences?.find((c) => c.unitId === 'unit-1' && c.type === 'moral_brise')).toBeDefined()
+  })
+
+  // [INIT-CSQ-009] bannerLost absent (not false) on initial-xp entries
+  it('[INIT-CSQ-009] bannerLost field absent (not false) on initial-xp consequence entries', async () => {
+    const onSubmit = vi.fn().mockImplementation((unitId: string, xp: number) =>
+      Promise.resolve({ success: true, data: { unitId, newXp: xp } })
+    )
+    const onComplete = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        mode="initial-xp"
+        units={unitInitial}
+        campaignPlayers={CAMPAIGN_PLAYERS}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmitUnitXp={onSubmit}
+        onCompleteEvolutions={onComplete}
+      />
+    )
+
+    // Add moral_brise
+    fireEvent.click(screen.getByTestId('initial-consequence-add-btn'))
+    fireEvent.click(screen.getByTestId('initial-consequence-type-moral_brise'))
+    fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
+
+    fireEvent.click(screen.getByTestId('wizard-next-button'))
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+
+    const callArgs = onComplete.mock.calls[0]
+    const consequences = callArgs[3] as Array<Record<string, unknown>>
+    expect(consequences?.length).toBeGreaterThan(0)
+    // bannerLost must be absent (undefined), not false
+    expect(consequences[0]).not.toHaveProperty('bannerLost')
+  })
+})

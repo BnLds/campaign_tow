@@ -24,6 +24,7 @@ type PostMatchLoaderData = {
   opponentPlayerName: string
   mode: 'post-match' | 'initial-xp'
   units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
+  campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
 }
 
 // ---------------------------------------------------------------------------
@@ -37,7 +38,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo } = await import('../../../db/queries')
 
     // Load drizzle deps before round 1 (needed for match type + opponent query)
     const [
@@ -190,6 +191,15 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
         effectiveStats: baseStats,
       }
     })
+    // Load campaign players for initial-xp mode (Haine/Rancune picker)
+    let campaignPlayers: Array<{ playerId: string; playerDisplayName: string }> | undefined
+    if (mode === 'initial-xp') {
+      const allPlayers = await getAllPlayersWithArmyInfo()
+      campaignPlayers = allPlayers
+        .filter((p) => p.playerId !== context.session.playerId)
+        .map((p) => ({ playerId: p.playerId, playerDisplayName: p.displayName }))
+    }
+
     return {
       alreadyCompleted: false,
       reentry: isReentry,
@@ -198,6 +208,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       opponentPlayerName,
       mode,
       units,
+      campaignPlayers,
     }
   })
 
@@ -341,7 +352,7 @@ export const Route = createFileRoute('/match/$matchId/post-match')({
 
 function PostMatchRoute() {
   const loaderData = Route.useLoaderData()
-  const { alreadyCompleted, reentry: _reentry, matchId, matchParticipantId, opponentPlayerName, mode, units } = loaderData as PostMatchLoaderData
+  const { alreadyCompleted, reentry: _reentry, matchId, matchParticipantId, opponentPlayerName, mode, units, campaignPlayers } = loaderData as PostMatchLoaderData
   const hydrated = useHydrated()
   const router = useRouter()
 
@@ -404,6 +415,7 @@ function PostMatchRoute() {
         opponentPlayerName={opponentPlayerName}
         mode={mode}
         units={units}
+        campaignPlayers={campaignPlayers}
         onComplete={handleComplete}
         onCancel={handleComplete}
         onSubmitUnitXp={handleSubmitUnitXp}

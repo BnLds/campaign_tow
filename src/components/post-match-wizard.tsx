@@ -8,6 +8,8 @@ import { getXpConditionsForType, computeXpTotal } from '../lib/xp-conditions'
 import { TierUpStep } from './tier-up-step'
 import { InjuryBonusStep } from './injury-bonus-step'
 import { UnitDestructionStep } from './unit-destruction-step'
+import { InitialConsequenceStep } from './initial-consequence-step'
+import type { InitialConsequenceItem } from './initial-consequence-step'
 import { detectTierCrossings } from '../lib/tier'
 import { parseGainStat, STAT_CAP, UNCAPPED_STATS, CD_STAT } from '../lib/delta-composer'
 import type { ThresholdEntry } from '../lib/constants'
@@ -89,6 +91,8 @@ export type PostMatchWizardProps = {
   /** Batch commit: completes evolutions with all accumulated gains and consequences. Called once at the end.
    *  gains=[] and consequences=[] for the no-tierup, no-consequence path. */
   onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[], championKilledIds?: string[]) => Promise<ServerResult<{ matchId: string }>>
+  /** Campaign players (excluding current player) — for Haine/Rancune picker in initial-xp mode */
+  campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
 }
 
 export function PostMatchWizard({
@@ -101,6 +105,7 @@ export function PostMatchWizard({
   onCancel,
   onSubmitUnitXp,
   onCompleteEvolutions,
+  campaignPlayers,
 }: PostMatchWizardProps) {
   // Phase state: Phase 1 (xp) → Phase 1.5 (consequences) → Phase 2 (tierup)
   const [phase, setPhase] = useState<'xp' | 'consequences' | 'tierup'>('xp')
@@ -113,6 +118,10 @@ export function PostMatchWizard({
   const [error, setError] = useState<string | null>(null)
   // initial-xp mode: numeric input per unit
   const [numericXpValue, setNumericXpValue] = useState<number>(0)
+  // initial-xp mode: accumulated past consequences (multi-select, flat array with _localId for removal)
+  const [initialConsequences, setInitialConsequences] = useState<InitialConsequenceItem[]>([])
+  const initialConsequencesRef = useRef<InitialConsequenceItem[]>([])
+  const nextLocalIdRef = useRef(0)
 
   // Phase 1.5 (consequence) state
   const [consequenceIndex, setConsequenceIndex] = useState(0)
@@ -255,7 +264,25 @@ export function PostMatchWizard({
         consequences.push(entry)
       }
     }
+    // Append initial-xp mode consequences (already ConsequenceEntry-shaped, no transformation needed)
+    // CRITICAL: do NOT pass these through the pendingConsequencesRef loop above — they carry their own
+    // per-consequence opponentPlayerName and must not be overwritten by the wizard-level prop.
+    for (const item of initialConsequencesRef.current) {
+      const { _localId: _id, ...entry } = item
+      consequences.push(entry)
+    }
     return consequences
+  }
+
+  const handleAddInitialConsequence = (entry: ConsequenceEntry) => {
+    const newItem = { ...entry, _localId: nextLocalIdRef.current++ }
+    initialConsequencesRef.current = [...initialConsequencesRef.current, newItem]
+    setInitialConsequences(initialConsequencesRef.current)
+  }
+
+  const handleRemoveInitialConsequence = (localId: number) => {
+    initialConsequencesRef.current = initialConsequencesRef.current.filter((c) => c._localId !== localId)
+    setInitialConsequences(initialConsequencesRef.current)
   }
 
   const buildChampionKilledIds = (): string[] => {
@@ -414,6 +441,11 @@ export function PostMatchWizard({
       if (isLastXpStep) {
         // Save last step's checked conditions (for back-nav from Phase 1.5)
         submittedXpByStep.current.set(currentStep, new Set(checkedConditions))
+        // initial-xp: skip Phase 1.5 unconditionally — consequences are collected inline during Phase 1
+        if (mode === 'initial-xp') {
+          await transitionToPhase2OrComplete()
+          return
+        }
         // All XP entered — compute flagged units for Phase 1.5
         const characters = units.filter((u) => u.type === 'Personnages' && consequenceFlagsRef.current.get(u.id))
         const unitsFlagged = units.filter((u) => u.type !== 'Personnages' && consequenceFlagsRef.current.get(u.id))
@@ -1361,7 +1393,20 @@ export function PostMatchWizard({
         )}
       </div>
 
-      {/* Consequence toggle — MHC for characters, Détruite for units (AC1, AC12) */}
+      {/* Past consequences inline — initial-xp mode only */}
+      {mode === 'initial-xp' && campaignPlayers && (
+        <InitialConsequenceStep
+          unitId={currentUnit.id}
+          unitType={currentUnit.type}
+          campaignPlayers={campaignPlayers}
+          consequences={initialConsequences.filter((c) => c.unitId === currentUnit.id)}
+          onAdd={handleAddInitialConsequence}
+          onRemove={(localId) => handleRemoveInitialConsequence(localId)}
+        />
+      )}
+
+      {/* Consequence toggle — MHC for characters, Détruite for units (AC1, AC12) — post-match only */}
+      {mode !== 'initial-xp' && (
       <label
         style={{
           display: 'flex',
@@ -1385,9 +1430,10 @@ export function PostMatchWizard({
         />
         {currentUnit.type === 'Personnages' ? 'Mis Hors de Combat' : 'Détruite'}
       </label>
+      )}
 
-      {/* Champion killed in challenge — only for non-Personnages units that have a champion */}
-      {currentUnit.type !== 'Personnages' && (currentUnit.existingGains ?? []).some((g) => g === 'Champion gratuit') && (
+      {/* Champion killed in challenge — only for non-Personnages units that have a champion — post-match only */}
+      {mode !== 'initial-xp' && currentUnit.type !== 'Personnages' && (currentUnit.existingGains ?? []).some((g) => g === 'Champion gratuit') && (
         <label
           style={{
             display: 'flex',

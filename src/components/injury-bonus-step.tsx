@@ -20,7 +20,7 @@ export type InjuryResult =
 // Table data
 // ---------------------------------------------------------------------------
 
-const INJURY_OPTIONS = [
+export const INJURY_OPTIONS = [
   { type: 'death', label: '2 — Mort', ruleText: 'Le personnage est tué. Si la bataille est gagnée ou nulle, son équipement est récupéré. Sinon, il est perdu avec tout son matériel.' },
   { type: 'permanent_injury', label: '3 — Blessure Permanente', ruleText: 'Jetez 1D6 sur la sous-table des blessures permanentes.' },
   { type: 'grave_injury', label: '4-7 — Blessure Grave', ruleText: 'Commence la prochaine bataille avec –1 PV (minimum 1).' },
@@ -30,7 +30,7 @@ const INJURY_OPTIONS = [
 ] as const
 
 // 1D6 permanent injury sub-table — stat keys match delta-composer STAT_KEYS
-const PERMANENT_INJURY_SUBTABLE = [
+export const PERMANENT_INJURY_SUBTABLE = [
   { roll: '1', label: '1 — -1 Endurance', stat: 'e' },
   { roll: '2', label: '2 — -1 Initiative', stat: 'i' },
   { roll: '3', label: '3 — -1 CT', stat: 'ct' },
