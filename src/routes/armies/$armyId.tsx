@@ -633,7 +633,7 @@ function ArmyView() {
         </div>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
           {army.faction}
-          {army.player && ` — ${army.player.displayName}`}
+          {army.player && ` — ${army.player.username}`}
         </p>
       </div>
 

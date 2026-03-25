@@ -17,7 +17,6 @@ export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash'),
-  displayName: text('display_name').notNull(),
   isAdmin: boolean('is_admin').notNull().default(false),
   isGuest: boolean('is_guest').notNull().default(false),
   inviteToken: text('invite_token').unique(),

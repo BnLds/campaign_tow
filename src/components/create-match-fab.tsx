@@ -47,7 +47,7 @@ export const loadOpponentsFn = createServerFn({ method: 'GET' })
       .filter((p) => p.playerId !== context.session.playerId)
       .map((p) => ({
         playerId: p.playerId,
-        playerDisplayName: p.displayName,
+        playerUsername: p.username,
         armyId: p.armyId,
         armyName: p.armyName,
         faction: p.faction,
@@ -125,7 +125,7 @@ type CreateMatchFabProps = {
 
 type OpponentItem = {
   playerId: string
-  playerDisplayName: string
+  playerUsername: string
   armyName: string | null
   faction: string | null
   hasArmy: boolean
@@ -335,9 +335,9 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
                       cursor: 'pointer',
                     }}
                   >
-                    {/* playerDisplayName displayed with Cinzel (font-display) */}
+                    {/* playerUsername displayed with Cinzel (font-display) */}
                     <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>
-                      {opponent.playerDisplayName}
+                      {opponent.playerUsername}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       {opponent.hasArmy

@@ -454,7 +454,7 @@ describe('[AC2][AC8][P0] CreateMatchFab — opponent list in dialog (Task 3.4, 8
     // AC: 2, 8 — Test 8.25
     const code = getFab()
     // Must render player name (Cinzel) and army info per opponent item
-    expect(code).toMatch(/(playerDisplayName|armyName|faction)[\s\S]{0,300}(Cinzel|font-display)/)
+    expect(code).toMatch(/(playerUsername|armyName|faction)[\s\S]{0,300}(Cinzel|font-display)/)
   })
 
   it('[3.2-FAB-058] Dialog navigates to campaign view after match creation (Task 3.8)', () => {

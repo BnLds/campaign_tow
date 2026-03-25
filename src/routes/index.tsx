@@ -265,7 +265,7 @@ function CampaignView() {
     try {
       const result = await deleteMatchFn({ data: { matchId } })
       const message = result.success
-        ? `${session?.displayName ?? 'Joueur'} a supprimé le match`
+        ? `${session?.username ?? 'Joueur'} a supprimé le match`
         : (result.error.message ?? 'Erreur lors de la suppression')
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
       if (blockToastTimeoutRef.current) clearTimeout(blockToastTimeoutRef.current)

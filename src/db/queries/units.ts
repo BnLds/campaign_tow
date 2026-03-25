@@ -115,7 +115,7 @@ export async function getArmyWithUnits(armyId: string) {
       name: armies.name,
       faction: armies.faction,
       playerId: armies.playerId,
-      playerDisplayName: players.displayName,
+      playerUsername: players.username,
     })
     .from(armies)
     .leftJoin(players, eq(armies.playerId, players.id))
@@ -146,7 +146,7 @@ export async function getArmyWithUnits(armyId: string) {
     name: army.name,
     faction: army.faction,
     playerId: army.playerId,
-    player: army.playerDisplayName ? { displayName: army.playerDisplayName } : null,
+    player: army.playerUsername ? { username: army.playerUsername } : null,
     units: unitRows.map((u) => ({
       ...u,
       subProfiles: spRows.filter((sp) => sp.unitId === u.id),

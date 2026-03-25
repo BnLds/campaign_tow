@@ -53,9 +53,9 @@ describe('[AC3][P0] ArmyListItem — props definition (Task 2.1)', () => {
     expect(code).toMatch(/faction[\s]*:[\s]*string/)
   })
 
-  it('[3.1b-ALI-006] ArmyListItem accepts playerDisplayName prop (string | null)', () => {
+  it('[3.1b-ALI-006] ArmyListItem accepts playerUsername prop (string | null)', () => {
     const code = getArmyListItem()
-    expect(code).toMatch(/playerDisplayName[\s]*:[\s]*(string \| null|null \| string)/)
+    expect(code).toMatch(/playerUsername[\s]*:[\s]*(string \| null|null \| string)/)
   })
 
   it('[3.1b-ALI-007] ArmyListItem accepts record prop (object with wins/draws/losses or null)', () => {
@@ -112,9 +112,9 @@ describe('[AC3][P0] ArmyListItem — army info rendering (Task 2.3, 8.6)', () =>
     expect(code).toMatch(/\{faction\}/)
   })
 
-  it('[3.1b-ALI-015] ArmyListItem renders playerDisplayName', () => {
+  it('[3.1b-ALI-015] ArmyListItem renders playerUsername', () => {
     const code = getArmyListItem()
-    expect(code).toMatch(/\{playerDisplayName\}/)
+    expect(code).toMatch(/\{playerUsername\}/)
   })
 
   it('[3.1b-ALI-016] Army name uses white-space nowrap and text-overflow ellipsis for long names (8.12)', () => {

@@ -49,7 +49,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
       opponentName: oppArmy.name,
       opponentFaction: oppArmy.faction,
-      opponentPlayerName: oppPlayer.displayName,
+      opponentPlayerName: oppPlayer.username,
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
@@ -249,7 +249,7 @@ export async function getPendingMatches(playerId: string): Promise<PendingMatchD
       myEvolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
       opponentArmyName: oppArmy.name,
       opponentFaction: oppArmy.faction,
-      opponentPlayerName: oppPlayer.displayName,
+      opponentPlayerName: oppPlayer.username,
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
@@ -404,8 +404,8 @@ export async function getAllMatchesForAdmin(): Promise<AdminMatchRow[]> {
       matchId: matches.id,
       date: matches.date,
       matchType: matches.matchType,
-      player1Name: player1.displayName,
-      player2Name: player2.displayName,
+      player1Name: player1.username,
+      player2Name: player2.username,
       result1: matchParticipants.result,
       result2: p2.result,
       evolutions1EnteredAt: matchParticipants.evolutionsEnteredAt,

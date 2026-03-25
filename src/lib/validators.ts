@@ -2,6 +2,10 @@
 
 import { z } from 'zod'
 
+// Shared username field — single source of truth for username constraints
+const RESERVED_USERNAMES = new Set(['__guest__', 'admin', 'system'])
+const usernameField = z.string().trim().min(2, 'Le nom doit faire au moins 2 caracteres').max(50, 'Le nom ne peut pas depasser 50 caracteres').refine((v) => !RESERVED_USERNAMES.has(v.toLowerCase()), "Ce nom d'utilisateur est réservé")
+
 // Login form schema — used in loginFn and TanStack Form (AC2, AC3)
 export const loginSchema = z.object({
   username: z.string().trim().min(1, 'Username is required'),
@@ -9,22 +13,17 @@ export const loginSchema = z.object({
 })
 export type LoginInput = z.infer<typeof loginSchema>
 
-// Display name update schema — for profile settings
-export const updateDisplayNameSchema = z.object({
-  displayName: z.string().trim().min(1, 'Display name is required').max(100, 'Display name must be 100 characters or less'),
-})
-export type UpdateDisplayNameInput = z.infer<typeof updateDisplayNameSchema>
+// Username update schema — for profile settings and invite setup
+export const updateUsernameSchema = z.object({ username: usernameField })
+export type UpdateUsernameInput = z.infer<typeof updateUsernameSchema>
 
 // Admin — Create player account (invite link flow)
-export const createPlayerSchema = z.object({
-  username: z.string().trim().min(2, 'Username must be at least 2 characters').max(50, 'Username must be 50 characters or less'),
-  displayName: z.string().trim().max(100).optional().transform(v => v || undefined),
-})
+export const createPlayerSchema = z.object({ username: usernameField })
 export type CreatePlayerInput = z.infer<typeof createPlayerSchema>
 
-// Invite setup — first access via invite link (set display name + password)
-export const inviteSetupSchema = z.object({
-  displayName: z.string().trim().min(1, 'Le nom est requis').max(100),
+// Invite form schema — single merged schema for TanStack Form (username + password fields)
+export const inviteFormSchema = z.object({
+  username: usernameField,
   password: z.string().min(6, 'Le mot de passe doit faire au moins 6 caractères').max(100),
   confirmPassword: z.string().min(6).max(100),
 }).superRefine((d, ctx) => {
@@ -36,7 +35,7 @@ export const inviteSetupSchema = z.object({
     })
   }
 })
-export type InviteSetupInput = z.infer<typeof inviteSetupSchema>
+export type InviteFormInput = z.infer<typeof inviteFormSchema>
 
 // Password change — settings page
 export const changePasswordSchema = z.object({

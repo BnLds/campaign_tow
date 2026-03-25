@@ -186,7 +186,7 @@ describe('[AC4][AC7][P0] Armies list route — list rendering', () => {
     // All three fields must be referenced in the component rendering
     expect(route).toMatch(/(army\.name|\.name)/)
     expect(route).toMatch(/(army\.faction|\.faction)/)
-    expect(route).toMatch(/(playerDisplayName|displayName)/)
+    expect(route).toMatch(/playerUsername/)
   })
 
   it('[3.1-LST-010] armies/index.tsx links each army to /armies/$armyId (Task 6.3)', () => {

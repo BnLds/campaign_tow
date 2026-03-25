@@ -7,12 +7,12 @@ interface ArmyListItemProps {
   id: string
   name: string
   faction: string
-  playerDisplayName: string | null
+  playerUsername: string | null
   record: { wins: number; draws: number; losses: number } | null
   isOwn: boolean
 }
 
-export function ArmyListItem({ id, name, faction, playerDisplayName, record, isOwn }: ArmyListItemProps) {
+export function ArmyListItem({ id, name, faction, playerUsername, record, isOwn }: ArmyListItemProps) {
   const totalMatches = record ? record.wins + record.draws + record.losses : 0
 
   const itemStyle: React.CSSProperties = {
@@ -94,7 +94,7 @@ export function ArmyListItem({ id, name, faction, playerDisplayName, record, isO
   const ariaLabel = [
     name,
     faction,
-    playerDisplayName,
+    playerUsername,
     record && (record.wins + record.draws + record.losses) > 0
       ? [
           record.wins > 0 ? `${record.wins} victoire${record.wins > 1 ? 's' : ''}` : null,
@@ -123,7 +123,7 @@ export function ArmyListItem({ id, name, faction, playerDisplayName, record, isO
           <p style={armyNameStyle}>{name}</p>
           <p style={subtitleStyle}>
             {faction}
-            {playerDisplayName && ` · ${playerDisplayName}`}
+            {playerUsername && ` · ${playerUsername}`}
           </p>
         </div>
       </div>

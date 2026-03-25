@@ -16,7 +16,7 @@ import { useHydrated } from '../../lib/useHydrated'
 const createPlayerFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
   .inputValidator(createPlayerSchema)
-  .handler(async ({ data }): Promise<ServerResult<{ id: string; username: string; displayName: string; inviteToken: string }>> => {
+  .handler(async ({ data }): Promise<ServerResult<{ id: string; username: string; inviteToken: string }>> => {
     const { checkUsernameExists, createPlayer } = await import('../../db/queries')
 
     const exists = await checkUsernameExists(data.username)
@@ -28,7 +28,7 @@ const createPlayerFn = createServerFn({ method: 'POST' })
     }
 
     try {
-      const player = await createPlayer(data.username, data.displayName)
+      const player = await createPlayer(data.username)
       return { success: true, data: player }
     } catch {
       return {
@@ -387,7 +387,7 @@ function AdminPage() {
   })
 
   const form = useForm({
-    defaultValues: { username: '', displayName: '' },
+    defaultValues: { username: '' },
     validators: { onSubmit: createPlayerSchema },
     onSubmit: async ({ value }) => {
       setServerError(null)
@@ -674,30 +674,6 @@ function AdminPage() {
           )}
         </form.Field>
 
-        <form.Field name="displayName">
-          {(field) => (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <Label htmlFor="displayName">Nom d'affichage (optionnel)</Label>
-              <Input
-                id="displayName"
-                data-testid="admin-display-name-input"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                placeholder="Laisser vide pour utiliser le nom d'utilisateur"
-                style={{ marginTop: '0.25rem' }}
-              />
-              {field.state.meta.errors.length > 0 && (
-                <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                  {typeof field.state.meta.errors[0] === 'string'
-                    ? field.state.meta.errors[0]
-                    : (field.state.meta.errors[0] as { message: string } | undefined)?.message}
-                </p>
-              )}
-            </div>
-          )}
-        </form.Field>
-
         <Button
           type="submit"
           data-testid="admin-create-player-button"
@@ -745,7 +721,7 @@ function AdminPage() {
                 {player.username}
               </span>
               <span style={{ color: 'var(--color-text-secondary)', flex: 1 }}>
-                {player.displayName || '—'}
+                {player.username}
               </span>
               {player.isAdmin && (
                 <span
@@ -975,7 +951,7 @@ function AdminPage() {
                     {army.faction}
                   </span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', flex: '0 0 auto' }}>
-                    {army.playerDisplayName ?? 'Non assignée'}
+                    {army.playerUsername ?? 'Non assignée'}
                   </span>
                   <select
                     role="combobox"
@@ -995,7 +971,7 @@ function AdminPage() {
                     <option value="">— Choisir un joueur —</option>
                     {(playersQuery.data ?? []).map((player) => (
                       <option key={player.id} value={player.id}>
-                        {player.displayName || player.username}
+                        {player.username}
                       </option>
                     ))}
                   </select>

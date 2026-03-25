@@ -10,7 +10,7 @@ import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
 import { z } from 'zod'
 import type { ServerResult } from '../lib/types'
-import { inviteSetupSchema } from '../lib/validators'
+import { inviteFormSchema } from '../lib/validators'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -62,7 +62,7 @@ function recordInviteAttempt(ip: string): void {
 type InvitePageData =
   | { status: 'rate_limited' }
   | { status: 'invalid' }
-  | { status: 'setup'; playerId: string; displayName: string }
+  | { status: 'setup'; playerId: string; username: string }
   | { status: 'activated' }
 
 const getInviteDataFn = createServerFn({ method: 'GET' })
@@ -88,7 +88,7 @@ const getInviteDataFn = createServerFn({ method: 'GET' })
     if (!player) return { status: 'invalid' }
 
     if (!player.passwordHash) {
-      return { status: 'setup', playerId: player.id, displayName: player.displayName }
+      return { status: 'setup', playerId: player.id, username: player.username }
     }
 
     return { status: 'activated' }
@@ -125,7 +125,7 @@ const completeInviteSetupFn = createServerFn({ method: 'POST' })
     z.object({
       token: z.string().uuid(),
       playerId: z.string().uuid(),
-      displayName: z.string().trim().min(1).max(100),
+      username: z.string().trim().min(2).max(50),
       password: z.string().min(6).max(100),
     }),
   )
@@ -140,7 +140,7 @@ const completeInviteSetupFn = createServerFn({ method: 'POST' })
     recordInviteAttempt(ip)
 
     // Re-verify token ownership (TOCTOU prevention)
-    const { getPlayerByInviteToken, activatePlayer } = await import('../db/queries')
+    const { getPlayerByInviteToken, activatePlayer, checkUsernameExists } = await import('../db/queries')
     const player = await getPlayerByInviteToken(data.token)
     if (!player || player.id !== data.playerId) {
       return { success: false, error: { code: 'INVALID_TOKEN', message: 'Lien invalide' } }
@@ -150,13 +150,28 @@ const completeInviteSetupFn = createServerFn({ method: 'POST' })
       return { success: false, error: { code: 'ALREADY_ACTIVATED', message: 'Ce compte a déjà été activé' } }
     }
 
+    // Uniqueness check — short-circuit if username unchanged (avoid false positive on own record)
+    if (data.username !== player.username) {
+      const taken = await checkUsernameExists(data.username, data.playerId)
+      if (taken) {
+        return { success: false, error: { code: 'USERNAME_TAKEN', message: "Ce nom d'utilisateur est deja pris" } }
+      }
+    }
+
     const bcryptjs = await import('bcryptjs')
     const passwordHash = await bcryptjs.hash(data.password, 12)
 
     try {
-      await activatePlayer(data.playerId, passwordHash, data.displayName)
-    } catch {
-      return { success: false, error: { code: 'ALREADY_ACTIVATED', message: 'Ce compte a déjà été activé' } }
+      await activatePlayer(data.playerId, passwordHash, data.username)
+    } catch (err: unknown) {
+      const { isUniqueViolation } = await import('../lib/db-errors')
+      if (isUniqueViolation(err)) {
+        return { success: false, error: { code: 'USERNAME_TAKEN', message: "Ce nom d'utilisateur est deja pris" } }
+      }
+      if (err instanceof Error && err.message === 'Player already activated') {
+        return { success: false, error: { code: 'ALREADY_ACTIVATED', message: 'Ce compte a déjà été activé' } }
+      }
+      throw err
     }
 
     const { createSession } = await import('../lib/auth')
@@ -198,7 +213,7 @@ function InvitePage() {
     return <InviteErrorPage message="Lien invalide." />
   }
 
-  return <InviteSetupForm token={Route.useParams().token} playerId={data.playerId} defaultDisplayName={data.displayName} />
+  return <InviteSetupForm token={Route.useParams().token} playerId={data.playerId} defaultUsername={data.username} />
 }
 
 function InviteErrorPage({ message }: { message: string }) {
@@ -241,25 +256,25 @@ function InviteErrorPage({ message }: { message: string }) {
 function InviteSetupForm({
   token,
   playerId,
-  defaultDisplayName,
+  defaultUsername,
 }: {
   token: string
   playerId: string
-  defaultDisplayName: string
+  defaultUsername: string
 }) {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm({
-    defaultValues: { displayName: defaultDisplayName, password: '', confirmPassword: '' },
-    validators: { onSubmit: inviteSetupSchema },
+    defaultValues: { username: defaultUsername, password: '', confirmPassword: '' },
+    validators: { onSubmit: inviteFormSchema },
     onSubmit: async ({ value }) => {
       setServerError(null)
       const result = await completeInviteSetupFn({
         data: {
           token,
           playerId,
-          displayName: value.displayName,
+          username: value.username,
           password: value.password,
         },
       })
@@ -300,22 +315,26 @@ function InviteSetupForm({
           textAlign: 'center',
         }}
       >
-        Choisissez votre nom d'affichage et créez votre mot de passe pour accéder à la campagne.
+        Choisissez votre nom d'utilisateur et créez votre mot de passe pour accéder à la campagne.
       </p>
 
       <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}>
-        <form.Field name="displayName">
+        <form.Field name="username">
           {(field) => (
             <div style={{ marginBottom: '1rem' }}>
-              <Label htmlFor="displayName">Nom d'affichage</Label>
+              <Label htmlFor="username">Nom d'utilisateur</Label>
               <Input
-                id="displayName"
-                data-testid="invite-display-name-input"
+                id="username"
+                data-testid="invite-username-input"
+                autoComplete="username"
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
                 style={{ marginTop: '0.25rem' }}
               />
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                Ce nom sera votre identifiant de connexion.
+              </p>
               {field.state.meta.errors.length > 0 && (
                 <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                   {typeof field.state.meta.errors[0] === 'string'

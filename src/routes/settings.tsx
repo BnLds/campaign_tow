@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
-import { changePasswordSchema, updateDisplayNameSchema } from '../lib/validators'
+import { changePasswordSchema, updateUsernameSchema } from '../lib/validators'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -55,16 +55,36 @@ const changePasswordFn = createServerFn({ method: 'POST' })
     return { success: true, data: null }
   })
 
-const updateDisplayNameFn = createServerFn({ method: 'POST' })
+const updateUsernameFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(updateDisplayNameSchema)
-  .handler(async ({ context, data }): Promise<ServerResult<{ displayName: string }>> => {
+  .inputValidator(updateUsernameSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<{ username: string }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { updatePlayerDisplayName } = await import('../db/queries')
-    await updatePlayerDisplayName(context.session.playerId, data.displayName)
-    return { success: true, data: { displayName: data.displayName } }
+
+    // Short-circuit: no DB call needed if username is unchanged
+    if (data.username === context.session.username) {
+      return { success: true, data: { username: data.username } }
+    }
+
+    const { checkUsernameExists, updatePlayerUsername } = await import('../db/queries')
+    const taken = await checkUsernameExists(data.username, context.session.playerId)
+    if (taken) {
+      return { success: false, error: { code: 'USERNAME_TAKEN', message: "Ce nom d'utilisateur est deja pris" } }
+    }
+
+    try {
+      await updatePlayerUsername(context.session.playerId, data.username)
+    } catch (err: unknown) {
+      const { isUniqueViolation } = await import('../lib/db-errors')
+      if (isUniqueViolation(err)) {
+        return { success: false, error: { code: 'USERNAME_TAKEN', message: "Ce nom d'utilisateur est deja pris" } }
+      }
+      throw err
+    }
+
+    return { success: true, data: { username: data.username } }
   })
 
 // ---------------------------------------------------------------------------
@@ -92,8 +112,8 @@ function SettingsPage() {
   const queryClient = useQueryClient()
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [displayNameSuccess, setDisplayNameSuccess] = useState<string | null>(null)
-  const [displayNameError, setDisplayNameError] = useState<string | null>(null)
+  const [usernameSuccess, setUsernameSuccess] = useState<string | null>(null)
+  const [usernameError, setUsernameError] = useState<string | null>(null)
 
   const passwordForm = useForm({
     defaultValues: { currentPassword: '', newPassword: '', confirmNewPassword: '' },
@@ -111,19 +131,20 @@ function SettingsPage() {
     },
   })
 
-  const displayNameForm = useForm({
-    defaultValues: { displayName: session?.displayName ?? '' },
-    validators: { onSubmit: updateDisplayNameSchema },
+  const usernameForm = useForm({
+    defaultValues: { username: session?.username ?? '' },
+    validators: { onSubmit: updateUsernameSchema },
     onSubmit: async ({ value }) => {
-      setDisplayNameError(null)
-      setDisplayNameSuccess(null)
-      const result = await updateDisplayNameFn({ data: value })
+      if (!window.confirm("Attention : votre nom d'utilisateur sert aussi d'identifiant de connexion. Continuer ?")) return
+      setUsernameError(null)
+      setUsernameSuccess(null)
+      const result = await updateUsernameFn({ data: value })
       if (result.success) {
-        setDisplayNameSuccess('Nom d\'affichage mis à jour.')
+        setUsernameSuccess("Nom d'utilisateur mis a jour.")
         await queryClient.invalidateQueries(sessionQueryOptions())
         await router.invalidate()
       } else {
-        setDisplayNameError(result.error.message)
+        setUsernameError(result.error.message)
       }
     },
   })
@@ -158,22 +179,26 @@ function SettingsPage() {
         Paramètres
       </h1>
 
-      {/* Display name section */}
+      {/* Username section */}
       <section style={sectionStyle}>
-        <h2 style={headingStyle}>Nom d'affichage</h2>
-        <form onSubmit={(e) => { e.preventDefault(); displayNameForm.handleSubmit() }}>
-          <displayNameForm.Field name="displayName">
+        <h2 style={headingStyle}>Nom d'utilisateur</h2>
+        <form onSubmit={(e) => { e.preventDefault(); usernameForm.handleSubmit() }}>
+          <usernameForm.Field name="username">
             {(field) => (
               <div style={{ marginBottom: '1rem' }}>
-                <Label htmlFor="displayName">Nom d'affichage</Label>
+                <Label htmlFor="username">Nom d'utilisateur</Label>
                 <Input
-                  id="displayName"
-                  data-testid="settings-display-name-input"
+                  id="username"
+                  data-testid="settings-username-input"
+                  autoComplete="username"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
                   style={{ marginTop: '0.25rem' }}
                 />
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                  Ce nom sera votre identifiant de connexion.
+                </p>
                 {field.state.meta.errors.length > 0 && (
                   <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                     {typeof field.state.meta.errors[0] === 'string'
@@ -183,16 +208,16 @@ function SettingsPage() {
                 )}
               </div>
             )}
-          </displayNameForm.Field>
-          {displayNameSuccess && (
-            <p style={{ color: 'var(--color-bonus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{displayNameSuccess}</p>
+          </usernameForm.Field>
+          {usernameSuccess && (
+            <p style={{ color: 'var(--color-bonus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{usernameSuccess}</p>
           )}
-          {displayNameError && (
-            <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{displayNameError}</p>
+          {usernameError && (
+            <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{usernameError}</p>
           )}
           <Button
             type="submit"
-            data-testid="settings-display-name-submit"
+            data-testid="settings-username-submit"
             style={{ background: 'var(--color-brand)', color: 'white' }}
           >
             Enregistrer

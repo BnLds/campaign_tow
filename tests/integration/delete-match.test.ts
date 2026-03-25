@@ -128,9 +128,9 @@ describe('[AC4][AC5][P0] Campaign view — toast + router.invalidate — src/rou
     expect(code).toMatch(/setToast[\s\S]{0,100}setTimeout/)
   })
 
-  it('[DEL-017] Toast uses displayName from session for success message (AC4)', () => {
+  it('[DEL-017] Toast uses username from session for success message (AC4)', () => {
     const code = indexRoute()
-    expect(code).toMatch(/displayName[\s\S]{0,100}supprimé le match|supprimé le match[\s\S]{0,100}displayName/)
+    expect(code).toMatch(/username[\s\S]{0,100}supprimé le match|supprimé le match[\s\S]{0,100}username/)
   })
 
   it('[DEL-018] Campaign view calls router.invalidate after deleteMatchFn (AC5)', () => {

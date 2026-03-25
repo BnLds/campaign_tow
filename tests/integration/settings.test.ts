@@ -1,5 +1,5 @@
 // tests/integration/settings.test.ts
-// Settings page — password change + display name edit
+// Settings page — password change + username edit
 // Verifies: AC7 (password change), AC10 (settings link for non-guests)
 
 import { describe, it, expect } from 'vitest'
@@ -38,9 +38,30 @@ describe('[AC7][AC10][P0] Settings route — src/routes/settings.tsx', () => {
     expect(route).toMatch(/changePasswordSchema/)
   })
 
-  it('[settings-INT-007] settings route uses updateDisplayNameSchema for display name form', () => {
+  it('[settings-INT-007] settings route uses updateUsernameSchema for username form', () => {
     const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
-    expect(route).toContain('updateDisplayNameSchema')
+    expect(route).toContain('updateUsernameSchema')
+  })
+
+  it('[settings-INT-008] updateUsernameFn uses .middleware([authMiddleware]) (coupled)', () => {
+    const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
+    expect(route).toMatch(/updateUsernameFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[authMiddleware\]\)/)
+  })
+
+  it('[settings-INT-009] updateUsernameFn imports and uses isUniqueViolation from db-errors', () => {
+    const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
+    expect(route).toMatch(/isUniqueViolation[\s\S]{0,200}db-errors/)
+  })
+
+  it('[settings-INT-010] updateUsernameFn calls checkUsernameExists for uniqueness check', () => {
+    const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
+    expect(route).toContain('checkUsernameExists')
+  })
+
+  it('[settings-INT-011] updateUsernameFn does NOT call updatePlayerUsername when username is unchanged (short-circuit)', () => {
+    const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
+    // short-circuit: return before calling updatePlayerUsername when username matches session
+    expect(route).toMatch(/data\.username === context\.session\.username[\s\S]{0,200}return/)
   })
 })
 

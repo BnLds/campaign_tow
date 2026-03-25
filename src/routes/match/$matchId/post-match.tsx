@@ -24,7 +24,7 @@ type PostMatchLoaderData = {
   opponentPlayerName: string
   mode: 'post-match' | 'initial-xp'
   units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
-  campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
+  campaignPlayers?: Array<{ playerId: string; playerUsername: string }>
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       getPlayerArmy(context.session.playerId),
       getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId),
       db
-        .select({ playerName: oppPlayerAlias.displayName })
+        .select({ playerName: oppPlayerAlias.username })
         .from(oppParticipant)
         .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
         .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
@@ -192,12 +192,12 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       }
     })
     // Load campaign players for initial-xp mode (Haine/Rancune picker)
-    let campaignPlayers: Array<{ playerId: string; playerDisplayName: string }> | undefined
+    let campaignPlayers: Array<{ playerId: string; playerUsername: string }> | undefined
     if (mode === 'initial-xp') {
       const allPlayers = await getAllPlayersWithArmyInfo()
       campaignPlayers = allPlayers
         .filter((p) => p.playerId !== context.session.playerId)
-        .map((p) => ({ playerId: p.playerId, playerDisplayName: p.displayName }))
+        .map((p) => ({ playerId: p.playerId, playerUsername: p.username }))
     }
 
     return {

@@ -256,7 +256,7 @@ function AppHeader({
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 12, position: 'relative' }}>
           <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-            {session.displayName}
+            {session.username}
           </span>
           <button
             ref={hamburgerRef}

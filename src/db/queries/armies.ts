@@ -105,7 +105,7 @@ export async function getAllArmies() {
       name: armies.name,
       faction: armies.faction,
       playerId: armies.playerId,
-      playerDisplayName: players.displayName,
+      playerUsername: players.username,
     })
     .from(armies)
     .leftJoin(players, eq(armies.playerId, players.id))
@@ -117,7 +117,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
   name: string
   faction: string
   playerId: string | null
-  playerDisplayName: string | null
+  playerUsername: string | null
   needsInitialXp: boolean
 } | null> {
   const rows = await db
@@ -126,7 +126,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
       name: armies.name,
       faction: armies.faction,
       playerId: armies.playerId,
-      playerDisplayName: players.displayName,
+      playerUsername: players.username,
       needsInitialXp: armies.needsInitialXp,
     })
     .from(armies)

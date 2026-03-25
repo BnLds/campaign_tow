@@ -168,9 +168,9 @@ describe('[AC4][AC7][P0] DB queries — getAllArmies still present — src/db/qu
     expect(queries).toContain('export async function getAllArmies')
   })
 
-  it('[3.1-QRY-023] getAllArmies returns playerDisplayName (needed for armies list AC7)', () => {
+  it('[3.1-QRY-023] getAllArmies returns playerUsername (needed for armies list AC7)', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getAllArmies[\s\S]{0,600}playerDisplayName/)
+    expect(queries).toMatch(/getAllArmies[\s\S]{0,600}playerUsername/)
   })
 })
 

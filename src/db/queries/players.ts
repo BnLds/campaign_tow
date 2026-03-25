@@ -1,44 +1,47 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, ilike, isNull, ne, sql } from 'drizzle-orm'
 import { db } from '../index'
 import { players, armies } from '../schema'
 
-export async function getPlayerById(playerId: string): Promise<{ id: string; displayName: string } | null> {
+export async function getPlayerById(playerId: string): Promise<{ id: string; username: string } | null> {
   const rows = await db
-    .select({ id: players.id, displayName: players.displayName })
+    .select({ id: players.id, username: players.username })
     .from(players)
     .where(eq(players.id, playerId))
     .limit(1)
   return rows.length > 0 ? rows[0] : null
 }
 
-export async function updatePlayerDisplayName(playerId: string, displayName: string): Promise<void> {
-  await db.update(players).set({ displayName }).where(eq(players.id, playerId))
+export async function updatePlayerUsername(playerId: string, username: string): Promise<void> {
+  const result = await db.update(players).set({ username }).where(eq(players.id, playerId)).returning({ id: players.id })
+  if (result.length === 0) throw new Error('Player not found')
 }
 
-export async function checkUsernameExists(username: string): Promise<boolean> {
+export async function checkUsernameExists(username: string, excludePlayerId?: string): Promise<boolean> {
+  const conditions = [ilike(players.username, username)]
+  if (excludePlayerId !== undefined) {
+    conditions.push(ne(players.id, excludePlayerId))
+  }
   const existing = await db
     .select({ id: players.id })
     .from(players)
-    .where(eq(players.username, username))
+    .where(and(...conditions))
     .limit(1)
   return existing.length > 0
 }
 
 export async function createPlayer(
   username: string,
-  displayName?: string,
-): Promise<{ id: string; username: string; displayName: string; inviteToken: string }> {
+): Promise<{ id: string; username: string; inviteToken: string }> {
   const inviteToken = crypto.randomUUID()
   const [player] = await db
     .insert(players)
     .values({
       username,
       passwordHash: null,
-      displayName: displayName ?? username,
       isAdmin: false,
       inviteToken,
     })
-    .returning({ id: players.id, username: players.username, displayName: players.displayName, inviteToken: players.inviteToken })
+    .returning({ id: players.id, username: players.username, inviteToken: players.inviteToken })
   return { ...player, inviteToken: player.inviteToken! }
 }
 
@@ -47,7 +50,6 @@ export async function getAllPlayers() {
     .select({
       id: players.id,
       username: players.username,
-      displayName: players.displayName,
       isAdmin: players.isAdmin,
       createdAt: players.createdAt,
     })
@@ -64,7 +66,6 @@ export async function ensureGhostPlayer(): Promise<string> {
   await db.insert(players).values({
     username: '__guest__',
     passwordHash: '!no-login!',
-    displayName: 'Invité',
     isGuest: true,
     isAdmin: false,
   }).onConflictDoNothing({ target: players.username })
@@ -79,11 +80,11 @@ export async function ensureGhostPlayer(): Promise<string> {
   return result[0].id
 }
 
-export async function getAllPlayersWithArmyInfo(): Promise<Array<{ playerId: string; displayName: string; armyId: string | null; armyName: string | null; faction: string | null }>> {
+export async function getAllPlayersWithArmyInfo(): Promise<Array<{ playerId: string; username: string; armyId: string | null; armyName: string | null; faction: string | null }>> {
   return db
     .select({
       playerId: players.id,
-      displayName: players.displayName,
+      username: players.username,
       armyId: armies.id,
       armyName: armies.name,
       faction: armies.faction,
@@ -91,7 +92,7 @@ export async function getAllPlayersWithArmyInfo(): Promise<Array<{ playerId: str
     .from(players)
     .leftJoin(armies, eq(armies.playerId, players.id))
     .where(eq(players.isGuest, false))
-    .orderBy(players.displayName)
+    .orderBy(players.username)
 }
 
 export async function getGhostPlayerId(): Promise<string | null> {
@@ -105,12 +106,11 @@ export async function getGhostPlayerId(): Promise<string | null> {
 
 export async function getPlayerByInviteToken(
   token: string,
-): Promise<{ id: string; username: string; displayName: string; passwordHash: string | null; inviteToken: string } | null> {
+): Promise<{ id: string; username: string; passwordHash: string | null; inviteToken: string } | null> {
   const result = await db
     .select({
       id: players.id,
       username: players.username,
-      displayName: players.displayName,
       passwordHash: players.passwordHash,
       inviteToken: players.inviteToken,
     })
@@ -124,11 +124,11 @@ export async function getPlayerByInviteToken(
 export async function activatePlayer(
   playerId: string,
   passwordHash: string,
-  displayName: string,
+  username: string,
 ): Promise<void> {
   const result = await db
     .update(players)
-    .set({ passwordHash, displayName })
+    .set({ passwordHash, username })
     .where(and(eq(players.id, playerId), isNull(players.passwordHash)))
     .returning({ id: players.id })
   if (result.length === 0) {
