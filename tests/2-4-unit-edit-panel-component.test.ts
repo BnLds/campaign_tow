@@ -16,8 +16,12 @@ function getComponent() {
   return readFileSync(resolve(root, 'src/components/unit-edit-panel.tsx'), 'utf-8')
 }
 
-function getArmyRoute() {
-  return readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
+function getArmyView() {
+  return readFileSync(resolve(root, 'src/components/army-view.tsx'), 'utf-8')
+}
+
+function getUnitQueries() {
+  return readFileSync(resolve(root, 'src/server-fns/unit-queries.ts'), 'utf-8')
 }
 
 // ---------------------------------------------------------------------------
@@ -64,27 +68,27 @@ describe('[6.9] UnitEditPanel — STAT_KEYS array contains all 9 stats', () => {
 // Task 6.19 — Admin sees edit button
 // ---------------------------------------------------------------------------
 
-describe('[6.10][6.11][6.19] Edit button visibility — army route conditional rendering', () => {
-  it('[2.4-CMP-006] isOwner && conditional gates the edit button in the route', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/isOwner\s*&&/)
+describe('[6.10][6.11][6.19] Edit button visibility — ArmyView component conditional rendering', () => {
+  it('[2.4-CMP-006] isOwner && conditional gates the edit button in the ArmyView component', () => {
+    const view = getArmyView()
+    expect(view).toMatch(/isOwner\s*&&/)
   })
 
   it('[2.4-CMP-007] isOwner accounts for isGuest (guest exclusion via session.isGuest check)', () => {
-    const route = getArmyRoute()
+    const code = getUnitQueries()
     // isOwner is computed with !session.isGuest guard
-    expect(route).toMatch(/isOwner[\s\S]{0,300}isGuest|isGuest[\s\S]{0,300}isOwner/)
+    expect(code).toMatch(/isOwner[\s\S]{0,300}isGuest|isGuest[\s\S]{0,300}isOwner/)
   })
 
   it('[2.4-CMP-008] isOwner accounts for isAdmin override (admin can edit any army)', () => {
-    const route = getArmyRoute()
+    const code = getUnitQueries()
     // isOwner computation includes isAdmin as override
-    expect(route).toMatch(/isOwner[\s\S]{0,300}isAdmin|isAdmin[\s\S]{0,300}isOwner/)
+    expect(code).toMatch(/isOwner[\s\S]{0,300}isAdmin|isAdmin[\s\S]{0,300}isOwner/)
   })
 
-  it('[2.4-CMP-009] loader computes isOwner and returns it in loader data', () => {
-    const route = getArmyRoute()
-    expect(route).toContain('isOwner')
+  it('[2.4-CMP-009] loadArmyFn computes isOwner and returns it in loader data', () => {
+    const code = getUnitQueries()
+    expect(code).toContain('isOwner')
   })
 })
 
@@ -134,15 +138,15 @@ describe('[6.18] UnitEditPanel — form reset after successful submission', () =
 // Task 6.19 — Admin isAdmin check in loader
 // ---------------------------------------------------------------------------
 
-describe('[6.19] Army route loader — admin override in isOwner calculation', () => {
-  it('[2.4-CMP-016] loader checks session.isAdmin when computing isOwner', () => {
-    const route = getArmyRoute()
-    expect(route).toMatch(/session\.isAdmin/)
+describe('[6.19] loadArmyFn — admin override in isOwner calculation', () => {
+  it('[2.4-CMP-016] loadArmyFn checks session.isAdmin when computing isOwner', () => {
+    const code = getUnitQueries()
+    expect(code).toMatch(/session\.isAdmin/)
   })
 
   it('[2.4-CMP-017] isOwner is false for guest (session.isGuest blocks ownership)', () => {
-    const route = getArmyRoute()
+    const code = getUnitQueries()
     // The pattern: !session.isGuest && (session.isAdmin || ...)
-    expect(route).toMatch(/!session\.isGuest/)
+    expect(code).toMatch(/!session\.isGuest/)
   })
 })

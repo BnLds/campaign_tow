@@ -105,15 +105,15 @@ describe('[AC1][AC2][AC4][AC5][P0] Admin route — src/routes/admin/index.tsx', 
   })
 
   it('[1.4-INT-015] createPlayerFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // Function name and createServerFn must be coupled on the same assignment
-    expect(adminRoute).toMatch(/createPlayerFn\s*=\s*createServerFn/)
+    expect(adminPlayers).toMatch(/createPlayerFn\s*=\s*createServerFn/)
   })
 
   it('[1.4-INT-016] createPlayerFn uses .middleware([adminMiddleware]) — no inline session check in handler', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // createPlayerFn and .middleware([adminMiddleware]) must be in the same call chain
-    expect(adminRoute).toMatch(/createPlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    expect(adminPlayers).toMatch(/createPlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[1.4-INT-017] admin route has beforeLoad hook that checks isAdmin (route-level protection)', () => {
@@ -128,10 +128,10 @@ describe('[AC1][AC2][AC4][AC5][P0] Admin route — src/routes/admin/index.tsx', 
     expect(adminRoute).toMatch(/redirect[\s\S]{0,100}to:\s*['"]\/['"]/)
   })
 
-  it('[1.4-INT-019] adminMiddleware is imported from lib/middleware in admin route (import-protection pattern)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+  it('[1.4-INT-019] adminMiddleware is imported from lib/middleware in admin-players server fn (import-protection pattern)', () => {
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // Import source must be lib/middleware — not defined locally, not from auth.ts
-    expect(adminRoute).toMatch(/import\s*\{[^}]*adminMiddleware[^}]*\}\s*from\s*['"][^'"]*lib\/middleware['"]/)
+    expect(adminPlayers).toMatch(/import\s*\{[^}]*adminMiddleware[^}]*\}\s*from\s*['"][^'"]*lib\/middleware['"]/)
   })
 
 })

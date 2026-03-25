@@ -87,22 +87,22 @@ describe('[AC2][AC4][P0] DB queries — src/db/queries.ts', () => {
 // AC2 — listPlayersFn server function: src/routes/admin/index.tsx
 // ---------------------------------------------------------------------------
 
-describe('[AC2][P0] listPlayersFn server function — src/routes/admin/index.tsx', () => {
+describe('[AC2][P0] listPlayersFn server function — src/server-fns/admin-players.ts', () => {
   it('[1.6-INT-009] listPlayersFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/listPlayersFn\s*=\s*createServerFn/)
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toMatch(/listPlayersFn\s*=\s*createServerFn/)
   })
 
   it('[1.6-INT-010] listPlayersFn uses .middleware([adminMiddleware]) — enforces admin-only access (coupled chain)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // listPlayersFn and .middleware([adminMiddleware]) must be in the same call chain
-    expect(adminRoute).toMatch(/listPlayersFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    expect(adminPlayers).toMatch(/listPlayersFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[1.6-INT-011] listPlayersFn uses GET method (loader pattern — returns data directly, no ServerResult wrapper)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // method: 'GET' must be coupled with listPlayersFn declaration
-    expect(adminRoute).toMatch(/listPlayersFn[\s\S]{0,200}method:\s*['"]GET['"]/)
+    expect(adminPlayers).toMatch(/listPlayersFn[\s\S]{0,200}method:\s*['"]GET['"]/)
   })
 })
 
@@ -110,40 +110,40 @@ describe('[AC2][P0] listPlayersFn server function — src/routes/admin/index.tsx
 // AC4 / AC5 — deletePlayerFn server function: src/routes/admin/index.tsx
 // ---------------------------------------------------------------------------
 
-describe('[AC4][AC5][P0] deletePlayerFn server function — src/routes/admin/index.tsx', () => {
+describe('[AC4][AC5][P0] deletePlayerFn server function — src/server-fns/admin-players.ts', () => {
   it('[1.6-INT-012] deletePlayerFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/deletePlayerFn\s*=\s*createServerFn/)
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toMatch(/deletePlayerFn\s*=\s*createServerFn/)
   })
 
   it('[1.6-INT-013] deletePlayerFn uses .middleware([adminMiddleware]) — enforces admin-only access (coupled chain)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // deletePlayerFn and .middleware([adminMiddleware]) must be in the same call chain
-    expect(adminRoute).toMatch(/deletePlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    expect(adminPlayers).toMatch(/deletePlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[1.6-INT-014] deletePlayerFn uses POST method (mutation pattern — returns ServerResult)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // method: 'POST' must be coupled with deletePlayerFn declaration
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,200}method:\s*['"]POST['"]/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,200}method:\s*['"]POST['"]/)
   })
 
   it('[1.6-INT-015] deletePlayerFn has .inputValidator() with z.object (input validation — playerId required)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // .inputValidator and z.object must be coupled in the deletePlayerFn chain
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,600}\.inputValidator\(z\.object/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,600}\.inputValidator\(z\.object/)
   })
 
   it('[1.6-INT-016] deletePlayerFn self-delete guard returns FORBIDDEN error code (AC5 — server-side protection)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // FORBIDDEN must be coupled with deletePlayerFn handler — guard must be inside the function
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,800}FORBIDDEN/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,800}FORBIDDEN/)
   })
 
   it('[1.6-INT-017] deletePlayerFn self-delete guard compares playerId to session.playerId (coupled comparison)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // data.playerId and context.session.playerId must be compared in deletePlayerFn handler
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,800}data\.playerId[\s\S]{0,100}context\.session\.playerId/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,800}data\.playerId[\s\S]{0,100}context\.session\.playerId/)
   })
 })
 
@@ -164,8 +164,8 @@ describe('[AC2][AC3][P1] Player list UI — src/routes/admin/index.tsx', () => {
   })
 
   it('[1.6-INT-020] deletePlayerFn and listPlayersFn handlers use dynamic import for DB queries (import-protection)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // Dynamic import inside .handler() — prevents server-only code from leaking into client bundle
-    expect(adminRoute).toMatch(/import\(['"`][^'"]+db\/queries/)
+    expect(adminPlayers).toMatch(/import\(['"`][^'"]+db\/queries/)
   })
 })

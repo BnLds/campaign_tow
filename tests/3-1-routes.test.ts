@@ -25,10 +25,6 @@ function getCampaignRoute() {
   return readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
 }
 
-function getArmyRoute() {
-  return readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
-}
-
 function getArmiesListRoute() {
   return readFileSync(resolve(root, 'src/routes/armies/index.tsx'), 'utf-8')
 }

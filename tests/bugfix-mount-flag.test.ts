@@ -21,15 +21,15 @@ function readSrc(relPath: string) {
 
 describe('[MOUNT-STRUCT-001] toggleMountFn server function declaration', () => {
   it('toggleMountFn is declared with armyOwnerMiddleware', () => {
-    const code = readSrc('src/routes/armies/$armyId.tsx')
+    const code = readSrc('src/server-fns/unit-mutations.ts')
     // Coupled: declaration and middleware on the same server function block
     expect(code).toMatch(/const toggleMountFn\s*=\s*createServerFn[\s\S]{0,200}\.middleware\(\[armyOwnerMiddleware\]\)/)
   })
 
   it('toggleMountFn uses the correct z.object input schema', () => {
-    const code = readSrc('src/routes/armies/$armyId.tsx')
+    const code = readSrc('src/server-fns/unit-mutations.ts')
     // Coupled: inputValidator and schema on the same toggleMountFn block
-    expect(code).toMatch(/const toggleMountFn[\s\S]{0,300}z\.object\(\{ armyId: z\.string\(\), subProfileId: z\.string\(\), isMount: z\.boolean\(\) \}\)/)
+    expect(code).toMatch(/const toggleMountFn[\s\S]{0,300}z\.object\(\{ armyId: z\.string\(\)\.uuid\(\), subProfileId: z\.string\(\)\.uuid\(\), isMount: z\.boolean\(\) \}\)/)
   })
 })
 
@@ -38,12 +38,12 @@ describe('[MOUNT-STRUCT-001] toggleMountFn server function declaration', () => {
 // ---------------------------------------------------------------------------
 
 describe('[MOUNT-STRUCT-002] toggleMountFn ownership check pattern', () => {
-  it('handler fetches sub-profile then checks army ownership', () => {
-    const code = readSrc('src/routes/armies/$armyId.tsx')
-    // Coupled: getSubProfileById call followed by getUnitById on the returned sp.unitId
-    expect(code).toMatch(/getSubProfileById\(data\.subProfileId\)[\s\S]{0,200}getUnitById\(sp\.unitId\)/)
-    // Coupled: getUnitById followed by the armyId ownership check
-    expect(code).toMatch(/getUnitById\(sp\.unitId\)[\s\S]{0,100}unit\.armyId !== data\.armyId/)
+  it('handler fetches sub-profile then checks army ownership via guards', () => {
+    const guards = readSrc('src/server-fns/guards.ts')
+    // Coupled: getSubProfileById call followed by assertUnitBelongsToArmy on the returned subProfile.unitId
+    expect(guards).toMatch(/getSubProfileById\(subProfileId\)[\s\S]{0,400}assertUnitBelongsToArmy\(subProfile\.unitId/)
+    // Coupled: assertUnitBelongsToArmy + armyId check inside assertUnitBelongsToArmy
+    expect(guards).toMatch(/unit\.armyId !== armyId/)
   })
 })
 
