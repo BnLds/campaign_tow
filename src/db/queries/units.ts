@@ -1,6 +1,6 @@
 import { eq, and, inArray, sql, isNull } from 'drizzle-orm'
 import { db } from '../index'
-import { players, armies, units, subProfiles, statModifiers, unitGains, matchXpEntries, matchParticipants } from '../schema'
+import { players, armies, units, subProfiles, statModifiers, unitGains, matchXpEntries, matchParticipants, unitGainTypeEnum } from '../schema'
 
 export type StatFields = {
   m: string
@@ -218,14 +218,17 @@ export async function deleteStatModifier(modifierId: string): Promise<boolean> {
   return result.length > 0
 }
 
+export type UnitGainType = typeof unitGainTypeEnum.enumValues[number]
+
 export async function insertUnitGain(
   unitId: string,
   description: string,
+  type: UnitGainType,
   matchParticipantId?: string,
 ) {
   const rows = await db
     .insert(unitGains)
-    .values({ unitId, description, matchParticipantId: matchParticipantId ?? null })
+    .values({ unitId, description, type, matchParticipantId: matchParticipantId ?? null })
     .returning()
   if (rows.length === 0) throw new Error('Insert returned no rows')
   return rows[0]
@@ -351,4 +354,34 @@ export async function hasInProgressPostMatch(unitId: string): Promise<boolean> {
     .where(and(eq(matchXpEntries.unitId, unitId), isNull(matchParticipants.evolutionsEnteredAt)))
     .limit(1)
   return rows.length > 0
+}
+
+export async function getArmyXpAndPointsTotalsBatch(armyIds: string[]): Promise<Map<string, { totalXp: number; totalPoints: number }>> {
+  if (armyIds.length === 0) return new Map()
+
+  const filteredIds = armyIds.filter((id) => id != null)
+
+  const rows = await db
+    .select({
+      armyId: units.armyId,
+      totalXp: sql<string>`COALESCE(SUM(${units.xp}), 0)`,
+      totalPoints: sql<string>`COALESCE(SUM(${units.points}), 0)`,
+    })
+    .from(units)
+    .where(and(inArray(units.armyId, filteredIds), eq(units.status, 'active')))
+    .groupBy(units.armyId)
+
+  const result = new Map<string, { totalXp: number; totalPoints: number }>()
+
+  for (const row of rows) {
+    result.set(row.armyId, { totalXp: Number(row.totalXp), totalPoints: Number(row.totalPoints) })
+  }
+
+  for (const id of armyIds) {
+    if (!result.has(id)) {
+      result.set(id, { totalXp: 0, totalPoints: 0 })
+    }
+  }
+
+  return result
 }

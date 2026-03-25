@@ -2,10 +2,13 @@ import { eq, and, ne, desc, isNull, or, inArray, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../index'
 import { players, armies, units, matches, matchParticipants, matchXpEntries, statModifiers, unitGains } from '../schema'
+import type { UnitGainType } from './units'
 
 export type MatchType = 'standard' | 'initial_setup'
 
 export type TimelineStatChange = { stat: string; delta: number; temporary: boolean }
+
+export type TimelineGain = { description: string; type: UnitGainType }
 
 export type TimelineEntryData = {
   matchId: string
@@ -20,7 +23,15 @@ export type TimelineEntryData = {
     faction: string | null
     playerName: string
   } | null
-  unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>
+  unitXpEntries: Array<{ unitName: string; unitType: string; xpGained: number; gains: TimelineGain[]; statChanges: TimelineStatChange[] }>
+  armyTotals?: {
+    playerXp: number
+    playerPoints: number
+    opponentXp: number
+    opponentPoints: number
+    deltaXp: number
+    deltaPoints: number
+  }
 }
 
 export async function getLatestMatchIdForArmy(armyId: string): Promise<string | null> {
@@ -50,6 +61,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
       opponentName: oppArmy.name,
       opponentFaction: oppArmy.faction,
       opponentPlayerName: oppPlayer.username,
+      oppArmyId: oppArmy.id,
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
@@ -61,23 +73,42 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
 
   const latestMatchId = rows.length > 0 ? rows[0].matchId : null
 
-  const entries = rows.map((row) => ({
-    matchId: row.matchId,
-    matchParticipantId: row.matchParticipantId,
-    date: row.date.toISOString(),
-    matchType: (row.matchType ?? 'standard') as MatchType,
-    result: row.result,
-    hasEvolutions: row.evolutionsEnteredAt !== null,
-    isLatestMatch: row.matchId === latestMatchId,
-    opponent: row.opponentPlayerName != null
-      ? {
-          name: row.opponentName ?? null,
-          faction: row.opponentFaction ?? null,
-          playerName: row.opponentPlayerName,
-        }
-      : null,
-    unitXpEntries: [] as Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>,
-  }))
+  // Batch-fetch army XP & points totals for delta badges
+  const { getArmyXpAndPointsTotalsBatch } = await import('./units')
+  const allArmyIds = [armyId, ...rows.map((r) => r.oppArmyId).filter((id): id is string => id != null)]
+  const uniqueArmyIds = [...new Set(allArmyIds)]
+  const totalsMap = await getArmyXpAndPointsTotalsBatch(uniqueArmyIds)
+  const playerTotals = totalsMap.get(armyId) ?? { totalXp: 0, totalPoints: 0 }
+
+  const entries = rows.map((row) => {
+    const oppTotals = row.oppArmyId ? totalsMap.get(row.oppArmyId) : null
+    const armyTotals = (row.matchType !== 'initial_setup' && oppTotals) ? {
+      playerXp: playerTotals.totalXp,
+      playerPoints: playerTotals.totalPoints,
+      opponentXp: oppTotals.totalXp,
+      opponentPoints: oppTotals.totalPoints,
+      deltaXp: playerTotals.totalXp - oppTotals.totalXp,
+      deltaPoints: playerTotals.totalPoints - oppTotals.totalPoints,
+    } : undefined
+    return {
+      matchId: row.matchId,
+      matchParticipantId: row.matchParticipantId,
+      date: row.date.toISOString(),
+      matchType: (row.matchType ?? 'standard') as MatchType,
+      result: row.result,
+      hasEvolutions: row.evolutionsEnteredAt !== null,
+      isLatestMatch: row.matchId === latestMatchId,
+      opponent: row.opponentPlayerName != null
+        ? {
+            name: row.opponentName ?? null,
+            faction: row.opponentFaction ?? null,
+            playerName: row.opponentPlayerName,
+          }
+        : null,
+      unitXpEntries: [] as Array<{ unitName: string; unitType: string; xpGained: number; gains: TimelineGain[]; statChanges: TimelineStatChange[] }>,
+      armyTotals,
+    }
+  })
 
   // Secondary query: load XP entries for entries that have evolutions
   const participantIds = entries
@@ -102,6 +133,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
           matchParticipantId: unitGains.matchParticipantId,
           unitId: unitGains.unitId,
           description: unitGains.description,
+          type: unitGains.type,
         })
         .from(unitGains)
         .where(inArray(unitGains.matchParticipantId, participantIds)),
@@ -118,12 +150,12 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     ])
 
     // Group gains by matchParticipantId + unitId
-    const gainsMap = new Map<string, string[]>()
+    const gainsMap = new Map<string, TimelineGain[]>()
     for (const row of gainRows) {
       if (!row.matchParticipantId) continue
       const key = `${row.matchParticipantId}:${row.unitId}`
       const arr = gainsMap.get(key) ?? []
-      arr.push(row.description)
+      arr.push({ description: row.description, type: row.type })
       gainsMap.set(key, arr)
     }
 
@@ -139,7 +171,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
 
     // Group by matchParticipantId, sorted by unit type: personnage > base > spécial > rare
     const UNIT_TYPE_ORDER: Record<string, number> = { 'Personnages': 0, 'Unités de base': 1, 'Unités spéciales': 2, 'Unités rares': 3 }
-    const xpMap = new Map<string, Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges: TimelineStatChange[] }>>()
+    const xpMap = new Map<string, Array<{ unitName: string; unitType: string; xpGained: number; gains: TimelineGain[]; statChanges: TimelineStatChange[] }>>()
     for (const row of xpRows) {
       const arr = xpMap.get(row.matchParticipantId) ?? []
       const unitGainsForMatch = gainsMap.get(`${row.matchParticipantId}:${row.unitId}`) ?? []
@@ -154,6 +186,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     return entries.map((e) => ({
       ...e,
       unitXpEntries: xpMap.get(e.matchParticipantId) ?? [],
+      armyTotals: e.armyTotals,
     }))
   }
 

@@ -298,8 +298,8 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
         )
       })}
       {gains.map((g, idx) => {
-        const isTemp = isTemporaryConsequenceGain(g.description)
-        const isNeg = isNegativeConsequenceGain(g.description)
+        const isTemp = isTemporaryConsequenceGain(g.type)
+        const isNeg = isNegativeConsequenceGain(g.type)
         const chipColors = isTemp
           ? { bg: 'var(--color-temporary-bg)', fg: 'var(--color-temporary)', border: 'var(--color-temporary-border)' }
           : isNeg

@@ -1,3 +1,7 @@
+// Honour gain labels — used to classify gains inserted during post-match flow
+export const HONOUR_CHAMPION_LABEL = 'Champion gratuit'
+export const HONOUR_BANNER_LABEL = 'Bannière gratuite'
+
 const STAT_ABBREVIATIONS: Record<string, string> = {
   Mouvement: 'M',
   Commandement: 'Cd',
@@ -15,29 +19,17 @@ const STAT_ABBREV_RE = new RegExp(
 )
 
 // Negative consequence gains — displayed in red instead of green
-const NEGATIVE_CONSEQUENCE_PREFIXES = [
-  'Mort',
-  'Bannière perdue',
-  'Déroute Sanglante',
-  'Haine',
-  'Rancune', // legacy format for existing data
-]
+const NEGATIVE_GAIN_TYPES = new Set(['death', 'banner_lost', 'deroute_sanglante', 'haine'])
 
 // Temporary consequence gains — displayed in orange, auto-cleared next match
-const TEMPORARY_CONSEQUENCE_PREFIXES = [
-  'Pertes Catastrophiques',
-]
+const TEMPORARY_GAIN_TYPES = new Set(['pertes_catastrophiques'])
 
-export function isNegativeConsequenceGain(description: string): boolean {
-  return NEGATIVE_CONSEQUENCE_PREFIXES.some((prefix) =>
-    description.startsWith(prefix),
-  )
+export function isNegativeConsequenceGain(type: string): boolean {
+  return NEGATIVE_GAIN_TYPES.has(type)
 }
 
-export function isTemporaryConsequenceGain(description: string): boolean {
-  return TEMPORARY_CONSEQUENCE_PREFIXES.some((prefix) =>
-    description.startsWith(prefix),
-  )
+export function isTemporaryConsequenceGain(type: string): boolean {
+  return TEMPORARY_GAIN_TYPES.has(type)
 }
 
 /** Format an improvement label for compact display:

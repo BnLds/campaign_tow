@@ -495,7 +495,7 @@ describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
       {
         id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base',
         xp: 0, previousXpGained: null, hasMount: false,
-        existingGains: ['+1 Mouvement (unique)'],
+        existingGains: [{ description: '+1 Mouvement (unique)', type: 'tier_up' }],
         commandement: 8,
       },
     ]

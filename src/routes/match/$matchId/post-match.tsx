@@ -23,8 +23,10 @@ type PostMatchLoaderData = {
   matchParticipantId: string
   opponentPlayerName: string
   mode: 'post-match' | 'initial-xp'
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: Array<{description: string; type: string}>; commandement: number; effectiveStats: Record<string, number | null> }>
   campaignPlayers?: Array<{ playerId: string; playerUsername: string }>
+  catchupBonusXp: number
+  catchupDeltaXp: number
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +62,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       getPlayerArmy(context.session.playerId),
       getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId),
       db
-        .select({ playerName: oppPlayerAlias.username })
+        .select({ playerName: oppPlayerAlias.username, oppArmyId: oppParticipant.armyId })
         .from(oppParticipant)
         .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
         .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
@@ -97,11 +99,23 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
           opponentPlayerName,
           mode,
           units: [],
+          catchupBonusXp: 0,
+          catchupDeltaXp: 0,
         }
       }
     }
     // Returns all army units (no per-match composition tracking exists yet).
     // The player enters 0 XP for units that didn't participate.
+
+    // Compute catchup bonus XP from live army totals
+    const { getArmyXpAndPointsTotalsBatch } = await import('../../../db/queries')
+    const oppArmyId = oppRows[0]?.oppArmyId ?? null
+    const catchupArmyIds = [army.id, ...(oppArmyId ? [oppArmyId] : [])]
+    const totalsMap = await getArmyXpAndPointsTotalsBatch(catchupArmyIds)
+    const playerTotal = totalsMap.get(army.id) ?? { totalXp: 0, totalPoints: 0 }
+    const opponentTotal = oppArmyId ? (totalsMap.get(oppArmyId) ?? { totalXp: 0, totalPoints: 0 }) : { totalXp: 0, totalPoints: 0 }
+    const catchupDeltaXp = mode === 'initial-xp' ? 0 : Math.max(0, opponentTotal.totalXp - playerTotal.totalXp)
+    const catchupBonusXp = Math.floor(catchupDeltaXp / 10)
 
     // Round 2 (parallel): units + xp entries
     const [unitsRaw, existingEntries] = await Promise.all([
@@ -117,10 +131,10 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       ? await getUnitDeltas(unitIds)
       : { statModifiers: [], unitGains: [] }
     const historicalGains = allExistingGains.filter((g) => g.matchParticipantId !== participant.id)
-    const gainsByUnit = new Map<string, string[]>()
+    const gainsByUnit = new Map<string, Array<{description: string; type: string}>>()
     for (const g of historicalGains) {
       const arr = gainsByUnit.get(g.unitId) ?? []
-      arr.push(g.description)
+      arr.push({ description: g.description, type: g.type })
       gainsByUnit.set(g.unitId, arr)
     }
     // Group stat modifiers by unit
@@ -147,7 +161,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
         }
       }
       const baseCd = riderProfile.cd ? parseInt(riderProfile.cd, 10) : 0
-      const cdGains = unitGains.filter((g) => /^\+\d+ Commandement/i.test(g)).length
+      const cdGains = unitGains.filter((g) => /^\+\d+ Commandement/i.test(g.description)).length
 
       // Compute effectiveStats: base numeric stats + stat_modifiers + historical gains
       const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
@@ -171,8 +185,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       }
 
       // Apply historical gain deltas
-      for (const gainDesc of unitGains) {
-        const parsed = parseGainStat(gainDesc)
+      for (const gain of unitGains) {
+        const parsed = parseGainStat(gain.description)
         if (parsed && baseStats[parsed.stat] != null) {
           baseStats[parsed.stat] = (baseStats[parsed.stat] as number) + parsed.delta
         }
@@ -209,6 +223,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       mode,
       units,
       campaignPlayers,
+      catchupBonusXp,
+      catchupDeltaXp,
     }
   })
 
@@ -238,8 +254,8 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
       .where(dbEq(mpTable.id, data.matchParticipantId))
       .limit(1)
     const matchType = matchRows[0]?.matchType ?? 'standard'
-    if (matchType === 'standard' && data.xpGained > 99) {
-      return { success: false, error: { code: 'VALIDATION_ERROR', message: 'XP maximum 99 pour une partie standard' } }
+    if (matchType === 'standard' && data.xpGained > 200) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: 'XP maximum 200 pour une partie standard' } }
     }
 
     const army = await getPlayerArmy(context.session.playerId)
@@ -430,6 +446,8 @@ function PostMatchRoute() {
           mode={mode}
           units={units}
           campaignPlayers={campaignPlayers}
+          catchupBonusXp={loaderData.catchupBonusXp}
+          catchupDeltaXp={loaderData.catchupDeltaXp}
           onComplete={handleComplete}
           onCancel={handleComplete}
           onSubmitUnitXp={handleSubmitUnitXp}

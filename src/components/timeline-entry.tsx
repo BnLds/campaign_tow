@@ -23,7 +23,15 @@ export type TimelineEntryProps = {
   onPostMatchReentry?: (matchId: string) => void
   onDelete?: (matchId: string) => void
   onSkipInitialXp?: () => void
-  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }> // TODO: render unit XP entries
+  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: Array<{ description: string; type: string }>; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
+  armyTotals?: {
+    playerXp: number
+    playerPoints: number
+    opponentXp: number
+    opponentPoints: number
+    deltaXp: number
+    deltaPoints: number
+  }
 }
 
 const RESULT_CONFIG = {
@@ -88,6 +96,7 @@ export function TimelineEntry({
   onDelete,
   onSkipInitialXp,
   unitXpEntries,
+  armyTotals,
 }: TimelineEntryProps) {
   const isInitialSetup = matchType === 'initial_setup'
   const resultConfig = result && !isInitialSetup ? RESULT_CONFIG[result] : null
@@ -188,6 +197,27 @@ export function TimelineEntry({
             >
               {opponent.playerName?.trim() ? `${opponent.faction} · ${opponent.playerName.trim()}` : opponent.faction}
             </p>
+          )}
+          {!isInitialSetup && opponent && armyTotals && (
+            <div data-testid="army-totals-delta" style={{ display: 'flex', flexDirection: 'column', gap: '1px', margin: 0 }}>
+              <p style={{
+                fontFamily: 'var(--font-body)', fontSize: '0.75rem',
+                color: 'var(--color-text-secondary)', margin: 0,
+              }}>
+                Vous {armyTotals.playerXp} XP · {armyTotals.playerPoints} pts — Adv. {armyTotals.opponentXp} XP · {armyTotals.opponentPoints} pts
+              </p>
+              <p style={{
+                fontFamily: 'var(--font-body)', fontSize: '0.75rem', margin: 0,
+                display: 'flex', flexWrap: 'wrap', gap: '0.375rem',
+              }}>
+                <span style={{ color: armyTotals.deltaXp > 0 ? 'var(--color-bonus)' : armyTotals.deltaXp < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
+                  Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
+                </span>
+                <span style={{ color: armyTotals.deltaPoints > 0 ? 'var(--color-bonus)' : armyTotals.deltaPoints < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
+                  Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
+                </span>
+              </p>
+            </div>
           )}
         </div>
 
@@ -365,8 +395,8 @@ export function TimelineEntry({
                   </span>
                 )}
                 {e.gains.map((g, gi) => {
-                  const isTemp = isTemporaryConsequenceGain(g)
-                  const isNeg = isNegativeConsequenceGain(g)
+                  const isTemp = isTemporaryConsequenceGain(g.type)
+                  const isNeg = isNegativeConsequenceGain(g.type)
                   const chipColors = isTemp
                     ? { bg: 'var(--color-temporary-bg)', fg: 'var(--color-temporary)', border: 'var(--color-temporary-border)' }
                     : isNeg
@@ -385,7 +415,7 @@ export function TimelineEntry({
                         fontSize: '0.6875rem',
                       }}
                     >
-                      {stripConstraintHint(g)}
+                      {stripConstraintHint(g.description)}
                     </span>
                   )
                 })}

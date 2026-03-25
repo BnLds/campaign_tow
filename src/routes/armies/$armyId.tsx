@@ -192,7 +192,7 @@ const addUnitGainFn = createServerFn({ method: 'POST' })
         error: { code: 'BAD_REQUEST', message: "Cette unité n'appartient pas à cette armée" },
       }
     }
-    const row = await insertUnitGain(data.unitId, data.description)
+    const row = await insertUnitGain(data.unitId, data.description, 'tier_up')
     return { success: true as const, data: { id: row.id } }
   })
 

@@ -13,6 +13,20 @@ export const unitStatusEnum = pgEnum('unit_status', ['active', 'graveyard'])
 // Initial XP entry flow — match type enum
 export const matchTypeEnum = pgEnum('match_type', ['standard', 'initial_setup'])
 
+// Unit gain type — classifies gains by mechanic (replaces description string matching)
+// Migration: column uses default('tier_up') so drizzle-kit push assigns 'tier_up' to all existing rows.
+// Run scripts/backfill-unit-gain-type.sql AFTER push to correct rows that are not actually tier_up.
+export const unitGainTypeEnum = pgEnum('unit_gain_type', [
+  'tier_up',          // Stat/skill improvement at a tier threshold (most common)
+  'honour_champion',  // Free champion (honour de bataille at 3/9 XP)
+  'honour_banner',    // Free banner (honour de bataille at 3/9 XP)
+  'death',            // Character killed (MHC roll = 2)
+  'haine',            // Hatred gained (MHC roll = 11 / destruction roll = 11)
+  'pertes_catastrophiques', // Half strength next battle (destruction roll = 4-6)
+  'deroute_sanglante',      // XP loss (destruction roll = 2-3)
+  'banner_lost',      // Banner lost on unit destruction
+])
+
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
@@ -105,6 +119,7 @@ export const unitGains = pgTable('unit_gains', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
+  type: unitGainTypeEnum('type').notNull().default('tier_up'),
   cleared: boolean('cleared').notNull().default(false),
   matchParticipantId: text('match_participant_id').references(() => matchParticipants.id, { onDelete: 'set null' }),
   thresholdXp: integer('threshold_xp'),
@@ -132,6 +147,7 @@ export const matchParticipants = pgTable('match_participants', {
   // evolutionsEnteredAt: null means evolutions not yet entered (post-match flow in epic 4)
   // nullable timestamp — set when the post-match evolution flow is completed
   evolutionsEnteredAt: timestamp('evolutions_entered_at'),
+  bonusXp: integer('bonus_xp'),
   // createdAt tracks when the participant record was inserted (not the match date)
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [

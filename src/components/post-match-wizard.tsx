@@ -30,7 +30,7 @@ type TierUpQueueEntry = ThresholdEntry & {
   commandement: number  // current CD value for constraint checks
 }
 
-type FlaggedUnit = { id: string; name: string; type: string; existingGains: string[] }
+type FlaggedUnit = { id: string; name: string; type: string; existingGains: Array<{description: string; type: string}> }
 
 // ---------------------------------------------------------------------------
 // Helper — expand multi-selection entries into sequential single-pick steps
@@ -83,7 +83,7 @@ export type PostMatchWizardProps = {
   opponentPlayerName?: string
   /** 'post-match' (default): checkbox XP conditions. 'initial-xp': direct numeric input 0-999. */
   mode?: 'post-match' | 'initial-xp'
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; previousDerouteXpLost?: number | null; hasMount?: boolean; existingGains?: string[]; commandement?: number; effectiveStats?: Record<string, number | null> }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained?: number | null; previousDerouteXpLost?: number | null; hasMount?: boolean; existingGains?: Array<{description: string; type: string}>; commandement?: number; effectiveStats?: Record<string, number | null> }>
   onComplete: () => void
   onCancel: () => void
   /** Optional: inject custom submit function (for testing). Defaults to submitUnitXpFn. */
@@ -93,6 +93,8 @@ export type PostMatchWizardProps = {
   onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[], championKilledIds?: string[]) => Promise<ServerResult<{ matchId: string }>>
   /** Campaign players (excluding current player) — for Haine/Rancune picker in initial-xp mode */
   campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
+  catchupBonusXp?: number
+  catchupDeltaXp?: number
 }
 
 export function PostMatchWizard({
@@ -106,6 +108,8 @@ export function PostMatchWizard({
   onSubmitUnitXp,
   onCompleteEvolutions,
   campaignPlayers,
+  catchupBonusXp,
+  catchupDeltaXp,
 }: PostMatchWizardProps) {
   // Phase state: Phase 1 (xp) → Phase 1.5 (consequences) → Phase 2 (tierup)
   const [phase, setPhase] = useState<'xp' | 'consequences' | 'tierup'>('xp')
@@ -118,6 +122,7 @@ export function PostMatchWizard({
   const [error, setError] = useState<string | null>(null)
   // initial-xp mode: numeric input per unit
   const [numericXpValue, setNumericXpValue] = useState<number>(0)
+  const [bonusXp, setBonusXp] = useState(catchupBonusXp ?? 0)
   // initial-xp mode: accumulated past consequences (multi-select, flat array with _localId for removal)
   const [initialConsequences, setInitialConsequences] = useState<InitialConsequenceItem[]>([])
   const initialConsequencesRef = useRef<InitialConsequenceItem[]>([])
@@ -322,7 +327,7 @@ export function PostMatchWizard({
         const isHonour = crossing.tierLabel === 'Honneur de bataille'
         let filteredMinor = crossing.minorImprovements
         if (isHonour) {
-          filteredMinor = crossing.minorImprovements.filter((imp) => !existingGains.includes(imp.label))
+          filteredMinor = crossing.minorImprovements.filter((imp) => !existingGains.some((g) => g.description === imp.label))
         }
         if (isHonour && filteredMinor.length === 0) continue
         const baseEntry: TierUpQueueEntry = {
@@ -395,7 +400,7 @@ export function PostMatchWizard({
 
       if (!alreadySubmitted) {
         // initial-xp mode: use direct numeric value; post-match mode: use checkbox total
-        const xpToSubmit = mode === 'initial-xp' ? Math.max(0, Math.floor(numericXpValue)) : Math.floor(xpGained)
+        const xpToSubmit = mode === 'initial-xp' ? Math.max(0, Math.floor(numericXpValue)) : Math.floor(xpGained) + bonusXp
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
           submitResult = await onSubmitUnitXp(currentUnit.id, xpToSubmit, matchParticipantId)
@@ -702,7 +707,7 @@ export function PostMatchWizard({
     const unitData = units.find((u) => u.id === currentTierUp.unitId)
     const existingGains = unitData?.existingGains ?? []
     const sessionGains = cumulativeGainsRef.current.get(currentTierUp.unitId) ?? []
-    const allGains = [...existingGains, ...sessionGains]
+    const allGains = [...existingGains.map((g) => g.description), ...sessionGains]
 
     const disabledIds: string[] = []
     const isCharacter = currentTierUp.unitType === 'Personnages'
@@ -1026,7 +1031,7 @@ export function PostMatchWizard({
           <UnitDestructionStep
             key={consequenceIndex}
             unitName={currentFlaggedUnit.name}
-            hasBannerGain={currentFlaggedUnit.existingGains.includes('Bannière gratuite')}
+            hasBannerGain={currentFlaggedUnit.existingGains.some((g) => g.type === 'honour_banner')}
             onConfirm={(result) => void handleConsequenceConfirm(result)}
           />
         )}
@@ -1168,6 +1173,57 @@ export function PostMatchWizard({
           {currentUnit.type}
         </p>
       </div>
+
+      {/* Bonus rattrapage stepper — post-match mode only */}
+      {mode === 'post-match' && (
+        <div data-testid="bonus-xp-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text-primary)', margin: 0 }}>
+            Bonus rattrapage
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              type="button"
+              data-testid="bonus-xp-decrement"
+              disabled={bonusXp === 0}
+              onClick={() => setBonusXp((v) => Math.max(0, v - 1))}
+              style={{
+                width: 44, height: 44, minWidth: 44, borderRadius: 8,
+                background: bonusXp === 0 ? '#334155' : '#334155',
+                color: '#fff', border: 'none', fontSize: '1.25rem', fontWeight: 700,
+                cursor: bonusXp === 0 ? 'not-allowed' : 'pointer',
+                opacity: bonusXp === 0 ? 0.4 : 1,
+                display: 'grid', placeItems: 'center',
+              }}
+            >
+              −
+            </button>
+            <span
+              data-testid="bonus-xp-value"
+              style={{ fontWeight: 700, fontSize: '1rem', minWidth: '2rem', textAlign: 'center' }}
+            >
+              {bonusXp}
+            </span>
+            <button
+              type="button"
+              data-testid="bonus-xp-increment"
+              onClick={() => setBonusXp((v) => v + 1)}
+              style={{
+                width: 44, height: 44, minWidth: 44, borderRadius: 8,
+                background: '#334155', color: '#fff', border: 'none',
+                fontSize: '1.25rem', fontWeight: 700, cursor: 'pointer',
+                display: 'grid', placeItems: 'center',
+              }}
+            >
+              +
+            </button>
+          </div>
+          {(catchupBonusXp ?? 0) > 0 && (
+            <p data-testid="bonus-xp-hint" style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Suggestion : +{catchupBonusXp} (ecart de {catchupDeltaXp} XP)
+            </p>
+          )}
+        </div>
+      )}
 
       {/* XP section — numeric input (initial-xp mode) or checkboxes (post-match mode) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1388,7 +1444,7 @@ export function PostMatchWizard({
             margin: '0.25rem 0 0 0',
           }}
         >
-          Total : {xpGained} XP
+          {bonusXp > 0 ? `Total : ${xpGained} + ${bonusXp} bonus = ${xpGained + bonusXp} XP` : `Total : ${xpGained} XP`}
         </p>
           </>
         )}
@@ -1434,7 +1490,7 @@ export function PostMatchWizard({
       )}
 
       {/* Champion killed in challenge — only for non-Personnages units that have a champion — post-match only */}
-      {mode !== 'initial-xp' && currentUnit.type !== 'Personnages' && (currentUnit.existingGains ?? []).some((g) => g === 'Champion gratuit') && (
+      {mode !== 'initial-xp' && currentUnit.type !== 'Personnages' && (currentUnit.existingGains ?? []).some((g) => g.type === 'honour_champion') && (
         <label
           style={{
             display: 'flex',

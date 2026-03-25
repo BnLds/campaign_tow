@@ -1,6 +1,8 @@
 // Campaign TOW — Delta Composer
 // PURE FUNCTION MODULE: no DB imports, no side effects.
 
+import type { UnitGainType } from '../db/queries/units'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -18,6 +20,7 @@ export interface UnitGain {
   id: string
   unitId: string
   description: string
+  type: UnitGainType
 }
 
 export interface StatDelta {
@@ -219,12 +222,12 @@ export function composeUnitView(
 
 export function computeEffectiveStats(
   baseStats: Record<string, number | null>,
-  gains: string[],
+  gains: UnitGain[],
 ): Record<string, number | null> {
   const result: Record<string, number | null> = { ...baseStats }
 
   for (const gain of gains) {
-    const parsed = parseGainStat(gain)
+    const parsed = parseGainStat(gain.description)
     if (!parsed) continue
     const current = result[parsed.stat]
     if (current == null) continue
