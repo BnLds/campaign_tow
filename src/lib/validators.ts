@@ -155,6 +155,7 @@ export const submitInitialXpSchema = z.object({
   unitId: z.string().min(1),
   xpGained: z.number().int().min(0).max(200),
   derouteXpLost: z.number().int().nonnegative().default(0),
+  bonusXp: z.number().int().nonnegative().optional(),
 })
 export type SubmitInitialXpInput = z.infer<typeof submitInitialXpSchema>
 

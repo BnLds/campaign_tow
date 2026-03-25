@@ -2,7 +2,7 @@
 title: 'Timeline XP/Points Differential Badges + Editable Catchup XP Bonus'
 slug: 'timeline-diff-badges-catchup-xp'
 created: '2026-03-25'
-status: 'ready-for-dev'
+status: 'implementation-complete'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['TanStack Start', 'React', 'Drizzle ORM', 'PostgreSQL', 'Zod v4', 'Tailwind v4']
 files_to_modify: ['src/db/queries/matches.ts', 'src/db/queries/units.ts', 'src/components/timeline-entry.tsx', 'src/components/post-match-wizard.tsx', 'src/routes/index.tsx', 'src/routes/match/$matchId/post-match.tsx']
@@ -103,17 +103,17 @@ Players have no visibility on the XP and army points gap between opponents when 
 
 ### Tasks
 
-- [ ] Task 0: Raise server-side XP guard to 200 for standard matches
+- [x] Task 0: Raise server-side XP guard to 200 for standard matches
   - File: `src/routes/match/$matchId/post-match.tsx`
   - Action: In `submitUnitXpFn`, change the server-side guard from `data.xpGained > 99` to `data.xpGained > 200` (line ~241). The `submitInitialXpSchema` already allows 0-200; the server guard must match to allow bonus XP.
   - Notes: The schema Zod `max(200)` is the canonical limit. The server guard is a defence-in-depth check, not a separate business rule.
 
-- [ ] Task 1: Add `getArmyXpAndPointsTotalsBatch` aggregate query
+- [x] Task 1: Add `getArmyXpAndPointsTotalsBatch` aggregate query
   - File: `src/db/queries/units.ts`
   - Action: Add new exported async function `getArmyXpAndPointsTotalsBatch(armyIds: string[]): Promise<Map<string, { totalXp: number, totalPoints: number }>>`. Use a single Drizzle query: `SELECT army_id, COALESCE(SUM(xp), 0) as total_xp, COALESCE(SUM(points), 0) as total_points FROM units WHERE army_id IN (...) AND status = 'active' GROUP BY army_id`. Return a Map keyed by armyId. For armyIds not present in the result (army has no active units), default to `{ totalXp: 0, totalPoints: 0 }`.
   - Notes: Handle empty `armyIds` array (return empty Map). Filter out null/undefined armyIds before querying (opponent without army). Use `sql` template from drizzle-orm for the aggregate with `inArray`.
 
-- [ ] Task 2: Enrich `getTimelineForArmy` to return armyTotals
+- [x] Task 2: Enrich `getTimelineForArmy` to return armyTotals
   - File: `src/db/queries/matches.ts`
   - Action:
     1. Add `oppArmyId: oppArmy.id` to the main timeline query's select clause (currently not returned).
@@ -123,12 +123,12 @@ Players have no visibility on the XP and army points gap between opponents when 
     5. For each standard match entry, compute and populate `armyTotals` from the batch results. For `initial_setup` matches or matches where `oppArmyId` is null, leave `armyTotals` undefined.
   - Notes: The player's totals are the same for all entries — compute once. Opponent totals vary by opponent armyId but are cached in the batch Map.
 
-- [ ] Task 3: Pass armyTotals from loader to TimelineEntry
+- [x] Task 3: Pass armyTotals from loader to TimelineEntry
   - File: `src/routes/index.tsx`
   - Action: In the `timeline.map(...)` render block (~lines 512-548), pass the new `armyTotals` prop from `TimelineEntryData` to `<TimelineEntry>`.
   - Notes: No transformation needed — pass through as-is.
 
-- [ ] Task 4: Display totals + delta line on TimelineEntry
+- [x] Task 4: Display totals + delta line on TimelineEntry
   - File: `src/components/timeline-entry.tsx`
   - Action:
     1. Add optional `armyTotals` prop to `TimelineEntryProps` with shape `{ playerXp: number, playerPoints: number, opponentXp: number, opponentPoints: number, deltaXp: number, deltaPoints: number }`.
@@ -146,7 +146,7 @@ Players have no visibility on the XP and army points gap between opponents when 
     4. When opponent has no army (`armyTotals` undefined because `oppArmyId` is null), do not render this line.
   - Notes: The two-line layout adds ~36px height to the card. Acceptable trade-off for readability on mobile.
 
-- [ ] Task 5: Compute and pass catchupBonusXp to post-match wizard
+- [x] Task 5: Compute and pass catchupBonusXp to post-match wizard
   - File: `src/routes/match/$matchId/post-match.tsx`
   - Action:
     1. In `loadPostMatchDataFn`, after loading the player's army and identifying the opponent, extend the opponent query to also select `oppParticipant.armyId` (alias: `oppArmyId`).
@@ -160,7 +160,7 @@ Players have no visibility on the XP and army points gap between opponents when 
     6. For `initial-xp` mode, set `catchupBonusXp: 0` and `catchupDeltaXp: 0`.
   - Notes: Reuses the same batch function from Task 1.
 
-- [ ] Task 6: Add editable bonus XP stepper to PostMatchWizard
+- [x] Task 6: Add editable bonus XP stepper to PostMatchWizard
   - File: `src/components/post-match-wizard.tsx`
   - Action:
     1. Add `catchupBonusXp?: number` and `catchupDeltaXp?: number` to `PostMatchWizardProps`.
@@ -189,12 +189,12 @@ Players have no visibility on the XP and army points gap between opponents when 
        **Recommended approach (simplest):** Add a nullable `bonus_xp integer` column to `match_participants` table (Task 7). Write it on the first unit XP submission (condition: `WHERE bonus_xp IS NULL`), read it back on reentry and pass as `catchupBonusXp` to the wizard. This is a minor schema addition but avoids fragile reverse-calculation.
   - Notes: `bonusXp` state is shared across all units — set once, applied to each unit's submission. Min value 0, no upper bound. The hint uses the exact `catchupDeltaXp` from the loader.
 
-- [ ] Task 7: Add `bonusXp` column to `match_participants` for reentry persistence
+- [x] Task 7: Add `bonusXp` column to `match_participants` for reentry persistence
   - File: `src/db/schema.ts`
   - Action: Add `bonusXp: integer('bonus_xp')` (nullable) to `matchParticipants` table.
   - Notes: Nullable — existing rows get NULL (no bonus recorded). Only set for post-match mode. Run `drizzle-kit push` to apply migration.
 
-- [ ] Task 8: Store and retrieve bonusXp on submit/reentry
+- [x] Task 8: Store and retrieve bonusXp on submit/reentry
   - File: `src/routes/match/$matchId/post-match.tsx`
   - Action:
     1. In `submitUnitXpFn`, accept an optional `bonusXp` field in the input. Extend `submitInitialXpSchema` with `bonusXp: z.number().int().nonnegative().optional()`. On each unit submission, if `data.bonusXp` is provided and `match_participants.bonus_xp IS NULL`, write it: `UPDATE match_participants SET bonus_xp = data.bonusXp WHERE id = data.matchParticipantId AND bonus_xp IS NULL`. The `WHERE bonus_xp IS NULL` guard ensures idempotency — only the first submission writes, concurrent calls don't race.
@@ -203,22 +203,22 @@ Players have no visibility on the XP and army points gap between opponents when 
 
 ### Acceptance Criteria
 
-- [ ] AC1: Given a standard match in the timeline with two armies having different XP totals, when the campaign view loads, then the TimelineEntry displays absolute XP totals for both players and a colored "Δ XP: +/-N" indicator.
-- [ ] AC2: Given a standard match in the timeline with two armies having different points totals, when the campaign view loads, then the TimelineEntry displays absolute points totals for both players and a colored "Δ Pts: +/-N" indicator.
-- [ ] AC3: Given an initial_setup match in the timeline, when the campaign view loads, then no totals/delta line is displayed on that entry.
-- [ ] AC4: Given an army whose units' XP or points change after match creation, when the campaign timeline reloads, then the totals and deltas reflect the updated live values.
-- [ ] AC5: Given a post-match wizard for a standard match where the opponent has 36 more total XP, when the wizard opens, then the bonus XP stepper is pre-filled with 3 (floor(36/10)) and labeled "Bonus rattrapage".
-- [ ] AC6: Given the bonus XP stepper showing value 3, when the player taps "+", then the value becomes 4.
-- [ ] AC7: Given the bonus XP stepper showing value 0, when the player taps "-", then the value stays at 0 (cannot go negative).
-- [ ] AC8: Given a unit with 5 XP from checkboxes and bonus XP set to 3, when the player submits that unit, then `submitUnitXpFn` receives `xpGained: 8` (5 checkbox + 3 bonus).
-- [ ] AC9: Given a post-match wizard in `initial-xp` mode, when the wizard loads, then the bonus XP stepper is not displayed.
-- [ ] AC10: Given the player's army has MORE total XP than the opponent, when the wizard loads, then the bonus XP stepper is pre-filled with 0.
-- [ ] AC11: Given the bonus XP stepper is set to a value, when the player navigates between units in the wizard, then the bonus value persists (not reset per unit).
-- [ ] AC12: Given a match against a player with no army (armyId null), when the campaign view loads, then no totals/delta line is displayed for that TimelineEntry.
-- [ ] AC13: Given an army where all units have `points: null`, when the timeline loads, then points totals display as 0 (COALESCE).
-- [ ] AC14: Given a player who already submitted post-match XP with bonusXp = 3, when they re-enter the wizard via "Modifier le dernier rapport", then the bonus stepper shows 3 (persisted value, not recalculated).
-- [ ] AC15: Given two armies with exactly the same total XP, when the wizard loads, then the bonus XP stepper is pre-filled with 0.
-- [ ] AC16: Given a unit with 5 XP from checkboxes and bonus XP set to 3, when the combined total (8) causes a tier crossing, then the tier-up Phase 2 correctly detects and presents the improvement choices.
+- [x] AC1: Given a standard match in the timeline with two armies having different XP totals, when the campaign view loads, then the TimelineEntry displays absolute XP totals for both players and a colored "Δ XP: +/-N" indicator.
+- [x] AC2: Given a standard match in the timeline with two armies having different points totals, when the campaign view loads, then the TimelineEntry displays absolute points totals for both players and a colored "Δ Pts: +/-N" indicator.
+- [x] AC3: Given an initial_setup match in the timeline, when the campaign view loads, then no totals/delta line is displayed on that entry.
+- [x] AC4: Given an army whose units' XP or points change after match creation, when the campaign timeline reloads, then the totals and deltas reflect the updated live values.
+- [x] AC5: Given a post-match wizard for a standard match where the opponent has 36 more total XP, when the wizard opens, then the bonus XP stepper is pre-filled with 3 (floor(36/10)) and labeled "Bonus rattrapage".
+- [x] AC6: Given the bonus XP stepper showing value 3, when the player taps "+", then the value becomes 4.
+- [x] AC7: Given the bonus XP stepper showing value 0, when the player taps "-", then the value stays at 0 (cannot go negative).
+- [x] AC8: Given a unit with 5 XP from checkboxes and bonus XP set to 3, when the player submits that unit, then `submitUnitXpFn` receives `xpGained: 8` (5 checkbox + 3 bonus).
+- [x] AC9: Given a post-match wizard in `initial-xp` mode, when the wizard loads, then the bonus XP stepper is not displayed.
+- [x] AC10: Given the player's army has MORE total XP than the opponent, when the wizard loads, then the bonus XP stepper is pre-filled with 0.
+- [x] AC11: Given the bonus XP stepper is set to a value, when the player navigates between units in the wizard, then the bonus value persists (not reset per unit).
+- [x] AC12: Given a match against a player with no army (armyId null), when the campaign view loads, then no totals/delta line is displayed for that TimelineEntry.
+- [x] AC13: Given an army where all units have `points: null`, when the timeline loads, then points totals display as 0 (COALESCE).
+- [x] AC14: Given a player who already submitted post-match XP with bonusXp = 3, when they re-enter the wizard via "Modifier le dernier rapport", then the bonus stepper shows 3 (persisted value, not recalculated).
+- [x] AC15: Given two armies with exactly the same total XP, when the wizard loads, then the bonus XP stepper is pre-filled with 0.
+- [x] AC16: Given a unit with 5 XP from checkboxes and bonus XP set to 3, when the combined total (8) causes a tier crossing, then the tier-up Phase 2 correctly detects and presents the improvement choices.
 
 ## Additional Context
 

@@ -131,9 +131,9 @@ describe('[INIT-SFN] Server functions — post-match.tsx', () => {
     expect(getPostMatchRoute()).toMatch(/submitUnitXpFn[\s\S]{0,600}inputValidator[\s\S]{0,200}submitInitialXpSchema/)
   })
 
-  it('[INIT-SFN-007] submitUnitXpFn enforces max 99 for standard matches server-side', () => {
+  it('[INIT-SFN-007] submitUnitXpFn enforces max 200 for standard matches server-side', () => {
     const route = getPostMatchRoute()
-    expect(route).toMatch(/standard.*xpGained.*99|xpGained.*99.*standard/)
+    expect(route).toMatch(/standard.*xpGained.*200|xpGained.*200.*standard/)
   })
 
   it('[INIT-SFN-008] completeEvolutionsWithGainsFn reads matchType server-side', () => {

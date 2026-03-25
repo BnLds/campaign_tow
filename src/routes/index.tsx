@@ -544,6 +544,7 @@ function CampaignView() {
                         setDeleteConfirmMatch({ matchId, opponentName, date: formattedDate })
                       } : undefined}
                       unitXpEntries={entry.unitXpEntries}
+                      armyTotals={entry.armyTotals}
                     />
                   ))}
                 </div>

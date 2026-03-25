@@ -3,6 +3,7 @@ import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../index'
 import { players, armies, units, matches, matchParticipants, matchXpEntries, statModifiers, unitGains } from '../schema'
 import type { UnitGainType } from './units'
+import { getArmyXpAndPointsTotalsBatch } from './units'
 
 export type MatchType = 'standard' | 'initial_setup'
 
@@ -74,7 +75,6 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
   const latestMatchId = rows.length > 0 ? rows[0].matchId : null
 
   // Batch-fetch army XP & points totals for delta badges
-  const { getArmyXpAndPointsTotalsBatch } = await import('./units')
   const allArmyIds = [armyId, ...rows.map((r) => r.oppArmyId).filter((id): id is string => id != null)]
   const uniqueArmyIds = [...new Set(allArmyIds)]
   const totalsMap = await getArmyXpAndPointsTotalsBatch(uniqueArmyIds)
@@ -186,7 +186,6 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     return entries.map((e) => ({
       ...e,
       unitXpEntries: xpMap.get(e.matchParticipantId) ?? [],
-      armyTotals: e.armyTotals,
     }))
   }
 

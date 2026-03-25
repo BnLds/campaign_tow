@@ -87,7 +87,7 @@ export type PostMatchWizardProps = {
   onComplete: () => void
   onCancel: () => void
   /** Optional: inject custom submit function (for testing). Defaults to submitUnitXpFn. */
-  onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string, derouteXpLost?: number) => Promise<ServerResult<{ unitId: string; newXp: number }>>
+  onSubmitUnitXp?: (unitId: string, xpGained: number, matchParticipantId: string, derouteXpLost?: number, bonusXp?: number) => Promise<ServerResult<{ unitId: string; newXp: number }>>
   /** Batch commit: completes evolutions with all accumulated gains and consequences. Called once at the end.
    *  gains=[] and consequences=[] for the no-tierup, no-consequence path. */
   onCompleteEvolutions?: (matchId: string, matchParticipantId: string, gains: Array<{ unitId: string; descriptions: string[] }>, consequences?: ConsequenceEntry[], championKilledIds?: string[]) => Promise<ServerResult<{ matchId: string }>>
@@ -403,11 +403,11 @@ export function PostMatchWizard({
         const xpToSubmit = mode === 'initial-xp' ? Math.max(0, Math.floor(numericXpValue)) : Math.floor(xpGained) + bonusXp
         let submitResult: ServerResult<{ unitId: string; newXp: number }>
         if (onSubmitUnitXp) {
-          submitResult = await onSubmitUnitXp(currentUnit.id, xpToSubmit, matchParticipantId)
+          submitResult = await onSubmitUnitXp(currentUnit.id, xpToSubmit, matchParticipantId, undefined, bonusXp > 0 ? bonusXp : undefined)
         } else {
           // Dynamic import to avoid bundling server fn into client
           const { submitUnitXpFn } = await import('../routes/match/$matchId/post-match')
-          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentUnit.id, xpGained: xpToSubmit } })
+          submitResult = await submitUnitXpFn({ data: { matchParticipantId, unitId: currentUnit.id, xpGained: xpToSubmit, bonusXp: bonusXp > 0 ? bonusXp : undefined } })
         }
 
         if (!submitResult.success) {
@@ -1188,7 +1188,7 @@ export function PostMatchWizard({
               onClick={() => setBonusXp((v) => Math.max(0, v - 1))}
               style={{
                 width: 44, height: 44, minWidth: 44, borderRadius: 8,
-                background: bonusXp === 0 ? '#334155' : '#334155',
+                background: '#334155',
                 color: '#fff', border: 'none', fontSize: '1.25rem', fontWeight: 700,
                 cursor: bonusXp === 0 ? 'not-allowed' : 'pointer',
                 opacity: bonusXp === 0 ? 0.4 : 1,
@@ -1206,7 +1206,7 @@ export function PostMatchWizard({
             <button
               type="button"
               data-testid="bonus-xp-increment"
-              onClick={() => setBonusXp((v) => v + 1)}
+              onClick={() => setBonusXp((v) => Math.min(50, v + 1))}
               style={{
                 width: 44, height: 44, minWidth: 44, borderRadius: 8,
                 background: '#334155', color: '#fff', border: 'none',
@@ -1219,7 +1219,7 @@ export function PostMatchWizard({
           </div>
           {(catchupBonusXp ?? 0) > 0 && (
             <p data-testid="bonus-xp-hint" style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-              Suggestion : +{catchupBonusXp} (ecart de {catchupDeltaXp} XP)
+              Suggestion : +{catchupBonusXp} (écart de {catchupDeltaXp} XP)
             </p>
           )}
         </div>
