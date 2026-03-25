@@ -52,5 +52,5 @@ export function isTemporaryConsequenceGain(description: string): boolean {
  */
 export function stripConstraintHint(label: string): string {
   const stripped = label.replace(/\s*\([^)]+\)\s*$/, '').trim()
-  return stripped.replace(STAT_ABBREV_RE, (match) => STAT_ABBREVIATIONS[match]!)
+  return stripped.replace(STAT_ABBREV_RE, (match) => STAT_ABBREVIATIONS[match] ?? match)
 }

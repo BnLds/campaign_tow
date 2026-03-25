@@ -84,12 +84,27 @@ describe('[AC4][P0] completeEvolutionsWithGainsSchema — consequences field (Ta
       'rancune',
       'fureur_vengeresse',
     ]
+    // Each type needs its required fields to pass validation
+    const typeData: Record<string, Record<string, unknown>> = {
+      death: {},
+      permanent_injury: { stat: 'cc', delta: -1 },
+      grave_injury: { stat: 'e', delta: -1 },
+      no_effect: {},
+      haine: {},
+      miracule: {},
+      deroute_sanglante: { xpLostAmount: 5 },
+      pertes_catastrophiques: {},
+      moral_brise: {},
+      survivants_endurcis: {},
+      rancune: {},
+      fureur_vengeresse: {},
+    }
     for (const type of validTypes) {
       const input = {
         matchId: 'match-1',
         matchParticipantId: 'mp-1',
         gains: [],
-        consequences: [{ unitId: 'unit-1', type }],
+        consequences: [{ unitId: 'unit-1', type, ...typeData[type] }],
       }
       const result = completeEvolutionsWithGainsSchema.safeParse(input)
       expect(result.success).toBe(true)
@@ -115,7 +130,7 @@ describe('[AC4][P0] completeEvolutionsWithGainsSchema — consequences field (Ta
       matchParticipantId: 'mp-1',
       gains: [],
       consequences: [
-        { unitId: 'unit-1', type: 'deroute_sanglante', bannerLost: true },
+        { unitId: 'unit-1', type: 'deroute_sanglante', bannerLost: true, xpLostAmount: 5 },
       ],
     }
     const result = completeEvolutionsWithGainsSchema.safeParse(input)

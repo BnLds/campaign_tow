@@ -6,7 +6,7 @@ import { useHydrated } from '../lib/useHydrated'
 import { TimelineEntry } from '../components/timeline-entry'
 import { ArmyImportForm } from '../components/army-import-form'
 import { authMiddleware } from '../lib/middleware'
-import type { ServerResult } from '../lib/types'
+import type { ServerResult, MatchType } from '../lib/types'
 import type { TimelineEntryData } from '../db/queries'
 import { submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
 
@@ -181,11 +181,13 @@ function CampaignView() {
     if (initialMatchCreatedRef.current) return
     if (!army?.needsInitialXp || initialSetupMatch) return
     initialMatchCreatedRef.current = true
-    void createInitialSetupMatchFn().then(async (result) => {
-      if (result.success) {
-        await router.invalidate({ filter: (d) => d.routeId === '/' })
-      }
-    })
+    createInitialSetupMatchFn()
+      .then(async (result) => {
+        if (result.success) {
+          await router.invalidate({ filter: (d) => d.routeId === '/' })
+        }
+      })
+      .catch((err) => console.error('[initial-setup] failed:', err))
   }, [army, initialSetupMatch, router])
 
   useEffect(() => {
@@ -511,7 +513,7 @@ function CampaignView() {
                     <TimelineEntry
                       key={entry.matchId}
                       matchId={entry.matchId}
-                      matchType={entry.matchType as 'standard' | 'initial_setup' | undefined}
+                      matchType={entry.matchType as MatchType | undefined}
                       opponent={entry.opponent
                         ? {
                             name: entry.opponent.name ?? entry.opponent.playerName,

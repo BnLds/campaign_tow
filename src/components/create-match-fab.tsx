@@ -4,6 +4,7 @@
 // Player-first: select an opponent player, not an army.
 
 import { useState, useEffect, useRef } from 'react'
+import { FAB_BOTTOM } from '../lib/layout-constants'
 import { useRouter } from '@tanstack/react-router'
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
@@ -252,7 +253,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
         style={{
           position: 'absolute',
           right: 16,
-          bottom: 62,
+          bottom: FAB_BOTTOM,
           zIndex: 2,
           width: 56,
           height: 56,
@@ -410,16 +411,16 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
           {/* Confirm button — disabled until opponent is selected */}
           <button
             onClick={handleConfirm}
-            disabled={!selectedOpponent || isSubmitting} // disabled when no opponent selected
+            disabled={!selectedOpponent || isSubmitting || isLoading} // disabled when no opponent selected, loading, or submitting
             style={{
-              background: !selectedOpponent || isSubmitting ? '#94a3b8' : '#334155',
+              background: !selectedOpponent || isSubmitting || isLoading ? '#94a3b8' : '#334155',
               color: '#fff',
               border: 'none',
               borderRadius: 12,
               minHeight: 44,
               fontSize: 15,
               fontWeight: 700,
-              cursor: !selectedOpponent || isSubmitting ? 'not-allowed' : 'pointer',
+              cursor: !selectedOpponent || isSubmitting || isLoading ? 'not-allowed' : 'pointer',
               width: '100%',
             }}
           >

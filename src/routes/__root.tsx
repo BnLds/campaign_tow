@@ -165,6 +165,7 @@ function AppHeader({
       await router.navigate({ to: '/login' })
     } catch {
       setLoggingOut(false)
+      alert('La déconnexion a échoué. Veuillez réessayer.')
     }
   }
 

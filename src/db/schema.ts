@@ -72,6 +72,7 @@ export const subProfiles = pgTable('sub_profiles', {
     .references(() => units.id, { onDelete: 'cascade' }),
   sortOrder: integer('sort_order').notNull().default(0),
   label: text('label').notNull(),
+  // Stats are text representations (e.g., "3+", "2d6", "-"). Format validated at insert time via Zod (addUnitsSubProfileSchema).
   m: text('m'),
   cc: text('cc'),
   ct: text('ct'),
@@ -96,6 +97,7 @@ export const statModifiers = pgTable('stat_modifiers', {
   source: text('source').notNull(),
   temporary: boolean('temporary').notNull().default(false),
   cleared: boolean('cleared').notNull().default(false),
+  // Invariant: always non-null in practice — set null is a safety net for cascade cleanup only
   matchParticipantId: text('match_participant_id')
     .references(() => matchParticipants.id, { onDelete: 'set null' }),
 })

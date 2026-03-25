@@ -239,8 +239,26 @@ export async function completeEvolutionsWithGainsTransaction(
           .where(and(
             inArray(unitGains.unitId, armyUnitIds),
             eq(unitGains.cleared, false),
+            // TODO: Replace string matching with a 'type' column on unitGains for robust categorization
             sql`${unitGains.description} LIKE 'Pertes Catastrophiques%'`,
           ))
+      }
+    }
+
+    // Security: verify all submitted unitIds belong to the declared army
+    if (armyId) {
+      const ownedRows = await tx
+        .select({ id: units.id })
+        .from(units)
+        .where(eq(units.armyId, armyId))
+      const ownedIds = new Set(ownedRows.map((u) => u.id))
+      const allSubmittedIds = [
+        ...gains.map((g) => g.unitId),
+        ...consequences.map((c) => c.unitId),
+        ...(championKilledIds ?? []),
+      ]
+      if (allSubmittedIds.some((id) => !ownedIds.has(id))) {
+        throw new Error('FORBIDDEN')
       }
     }
 
@@ -397,6 +415,7 @@ export async function completeEvolutionsWithGainsTransaction(
         await tx.delete(unitGains)
           .where(and(
             eq(unitGains.unitId, unitId),
+            // TODO: Replace string matching with a 'type' column on unitGains for robust categorization
             sql`${unitGains.description} LIKE '%Champion%'`,
           ))
       }

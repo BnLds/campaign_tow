@@ -75,6 +75,7 @@ export async function ensureGhostPlayer(): Promise<string> {
     .where(eq(players.username, '__guest__'))
     .limit(1)
 
+  if (result.length === 0) throw new Error('[DB] Ghost player lookup failed')
   return result[0].id
 }
 

@@ -23,7 +23,7 @@ export type TimelineEntryProps = {
   onPostMatchReentry?: (matchId: string) => void
   onDelete?: (matchId: string) => void
   onSkipInitialXp?: () => void
-  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
+  unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: string[]; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }> // TODO: render unit XP entries
 }
 
 const RESULT_CONFIG = {

@@ -151,8 +151,8 @@ describe('[INIT-VAL] Validators — submitInitialXpSchema', () => {
     expect(getValidators()).toContain('export const submitInitialXpSchema')
   })
 
-  it('[INIT-VAL-002] submitInitialXpSchema allows xpGained up to 999', () => {
-    expect(getValidators()).toMatch(/submitInitialXpSchema[\s\S]{0,200}max\(999\)/)
+  it('[INIT-VAL-002] submitInitialXpSchema allows xpGained up to 200', () => {
+    expect(getValidators()).toMatch(/submitInitialXpSchema[\s\S]{0,200}max\(200\)/)
   })
 
   it('[INIT-VAL-003] submitUnitXpSchema still enforces max 99 (unchanged)', () => {

@@ -59,7 +59,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     .where(eq(matchParticipants.armyId, armyId))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
-  const latestMatchId = await getLatestMatchIdForArmy(armyId)
+  const latestMatchId = rows.length > 0 ? rows[0].matchId : null
 
   const entries = rows.map((row) => ({
     matchId: row.matchId,
@@ -347,6 +347,7 @@ export async function createInitialSetupMatch(playerId: string, armyId: string):
 
     const [inserted] = await tx
       .insert(matches)
+      // Historical placeholder date — initial setup matches are always filtered by matchType, not date
       .values({ date: new Date('1993-08-19'), matchType: 'initial_setup', createdByPlayerId: playerId })
       .returning({ id: matches.id })
 

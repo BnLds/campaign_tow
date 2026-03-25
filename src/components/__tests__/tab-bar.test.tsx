@@ -167,9 +167,9 @@ describe('[AC1][P0] TabBar — container styling (Task 1.4)', () => {
     expect(code).toContain('data-testid="tab-bar"')
   })
 
-  it('[3.1b-TAB-025] TabBar container height 58px', () => {
+  it('[3.1b-TAB-025] TabBar container height uses TAB_BAR_HEIGHT constant', () => {
     const code = getTabBar()
-    expect(code).toMatch(/58/)
+    expect(code).toMatch(/TAB_BAR_HEIGHT/)
   })
 
   it('[3.1b-TAB-026] TabBar container uses backdrop-filter blur', () => {

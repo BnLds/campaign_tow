@@ -93,6 +93,26 @@ export const createMatchSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
   time: z.string().regex(/^\d{2}:\d{2}$/, "Format d'heure invalide (HH:MM)"),
   evolutionsEntered: z.boolean(),
+}).superRefine((d, ctx) => {
+  const r1 = d.result1
+  const r2 = d.result2
+  if ((r1 === null) !== (r2 === null)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Les deux résultats doivent être renseignés ou tous les deux absents',
+      path: ['result2'],
+    })
+    return
+  }
+  if (r1 !== null && r2 !== null) {
+    if (r1 === 'victory' && r2 !== 'defeat') {
+      ctx.addIssue({ code: 'custom', message: 'Une victoire implique une défaite pour l\'adversaire', path: ['result2'] })
+    } else if (r1 === 'defeat' && r2 !== 'victory') {
+      ctx.addIssue({ code: 'custom', message: 'Une défaite implique une victoire pour l\'adversaire', path: ['result2'] })
+    } else if (r1 === 'draw' && r2 !== 'draw') {
+      ctx.addIssue({ code: 'custom', message: 'Un match nul doit être nul pour les deux armées', path: ['result2'] })
+    }
+  }
 })
 export type CreateMatchInput = z.infer<typeof createMatchSchema>
 
@@ -134,7 +154,7 @@ export type SubmitUnitXpInput = z.infer<typeof submitUnitXpSchema>
 export const submitInitialXpSchema = z.object({
   matchParticipantId: z.string().min(1),
   unitId: z.string().min(1),
-  xpGained: z.number().int().min(0).max(999),
+  xpGained: z.number().int().min(0).max(200),
   derouteXpLost: z.number().int().nonnegative().default(0),
 })
 export type SubmitInitialXpInput = z.infer<typeof submitInitialXpSchema>
@@ -174,7 +194,7 @@ export const completeEvolutionsWithGainsSchema = z.object({
   matchParticipantId: z.string().min(1),
   gains: z.array(z.object({
     unitId: z.string().min(1),
-    descriptions: z.array(z.string().min(1)),
+    descriptions: z.array(z.string().min(1)).max(10),
     thresholdXp: z.number().int().nullable().optional(),
   })),
   // Story 4.3: optional consequences array (injuries + destruction results)
@@ -189,6 +209,30 @@ export const completeEvolutionsWithGainsSchema = z.object({
     opponentPlayerName: z.string().optional(),
     // xpLostAmount: passed for deroute_sanglante to record in unit_gain description
     xpLostAmount: z.number().optional(),
+  }).superRefine((entry, ctx) => {
+    const requiresStatDelta: Array<typeof entry.type> = ['permanent_injury', 'grave_injury']
+    const forbidsStatDelta: Array<typeof entry.type> = ['death', 'no_effect', 'miracule', 'haine', 'rancune', 'fureur_vengeresse', 'survivants_endurcis']
+    if (requiresStatDelta.includes(entry.type)) {
+      if (!entry.stat || entry.stat.trim() === '') {
+        ctx.addIssue({ code: 'custom', message: 'Le champ stat est requis pour ce type de conséquence', path: ['stat'] })
+      }
+      if (entry.delta === undefined || entry.delta === null) {
+        ctx.addIssue({ code: 'custom', message: 'Le champ delta est requis pour ce type de conséquence', path: ['delta'] })
+      }
+    }
+    if (forbidsStatDelta.includes(entry.type)) {
+      if (entry.stat !== undefined) {
+        ctx.addIssue({ code: 'custom', message: 'Le champ stat ne doit pas être présent pour ce type de conséquence', path: ['stat'] })
+      }
+      if (entry.delta !== undefined) {
+        ctx.addIssue({ code: 'custom', message: 'Le champ delta ne doit pas être présent pour ce type de conséquence', path: ['delta'] })
+      }
+    }
+    if (entry.type === 'deroute_sanglante') {
+      if (entry.xpLostAmount === undefined || entry.xpLostAmount === null || entry.xpLostAmount <= 0) {
+        ctx.addIssue({ code: 'custom', message: 'Le champ xpLostAmount (> 0) est requis pour deroute_sanglante', path: ['xpLostAmount'] })
+      }
+    }
   })).optional(),
   // championKilledIds: unit IDs where champion was killed in challenge (Phase 1 checkbox)
   championKilledIds: z.array(z.string().min(1)).optional(),

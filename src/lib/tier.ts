@@ -24,7 +24,7 @@ export function calculateTier(xp: number, unitType: string): TierLevel {
     if (xp >= 6) return 1   // Aguerri
     return 0                 // (no label for characters at tier 0)
   } else {
-    // Unit tiers (all non-character unit types)
+    // All non-Personnages types use standard unit thresholds
     if (xp >= 80) return 4  // Légendaire
     if (xp >= 50) return 3  // Vétéran
     if (xp >= 25) return 2  // Expérimenté

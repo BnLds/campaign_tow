@@ -11,7 +11,6 @@ export type Improvement = {
   id: string
   label: string
   category: 'minor' | 'major' | 'honour'
-  slotCost?: number  // Reserved for future use (currently unused).
 }
 
 export type ThresholdEntry = {
@@ -64,7 +63,6 @@ export function isMajorSkillImprovement(id: string): boolean {
 // Exported canonical improvement arrays (for reference / import by tests)
 // ---------------------------------------------------------------------------
 
-// Note: slotCost is not currently used — Character Endurance is excluded at 20 XP tier instead.
 export const UNIT_MINOR_IMPROVEMENTS: Improvement[] = [
   { id: 'u-min-init', label: '+1 Initiative', category: 'minor' },
   { id: 'u-min-cc', label: '+1 CC', category: 'minor' },

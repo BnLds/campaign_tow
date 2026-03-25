@@ -30,6 +30,7 @@ export const UNIT_XP_CONDITIONS: XpCondition[] = [
 ]
 
 export function getXpConditionsForType(unitType: string): XpCondition[] {
+  // All non-Personnages types use standard unit XP conditions
   return unitType === 'Personnages' ? CHARACTER_XP_CONDITIONS : UNIT_XP_CONDITIONS
 }
 

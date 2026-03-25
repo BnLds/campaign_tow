@@ -4,7 +4,7 @@
 
 import { createFileRoute, useRouter, Link, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
 import { submitInitialXpSchema, loadPostMatchDataSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
@@ -330,10 +330,23 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
       if (err instanceof Error && err.message === 'NOT_LATEST_MATCH') {
         return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la dernière partie peut être modifiée' } }
       }
-      throw err
+      return { success: false, error: { code: 'SERVER_ERROR', message: 'Une erreur inattendue est survenue. Veuillez réessayer.' } }
     }
     return { success: true, data: { matchId: data.matchId } }
   })
+
+// ---------------------------------------------------------------------------
+// Error boundary for PostMatchWizard
+// ---------------------------------------------------------------------------
+
+class PostMatchErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  render() {
+    if (this.state.error) return <div style={{ padding: '2rem', textAlign: 'center' }}><h2>Une erreur est survenue</h2><p>{this.state.error.message}</p><button onClick={() => this.setState({ error: null })}>Réessayer</button></div>
+    return this.props.children
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Route definition
@@ -409,18 +422,20 @@ function PostMatchRoute() {
 
   return (
     <main style={{ padding: '1rem', maxWidth: '480px', margin: '0 auto' }}>
-      <PostMatchWizard
-        matchId={matchId}
-        matchParticipantId={matchParticipantId}
-        opponentPlayerName={opponentPlayerName}
-        mode={mode}
-        units={units}
-        campaignPlayers={campaignPlayers}
-        onComplete={handleComplete}
-        onCancel={handleComplete}
-        onSubmitUnitXp={handleSubmitUnitXp}
-        onCompleteEvolutions={handleCompleteEvolutions}
-      />
+      <PostMatchErrorBoundary>
+        <PostMatchWizard
+          matchId={matchId}
+          matchParticipantId={matchParticipantId}
+          opponentPlayerName={opponentPlayerName}
+          mode={mode}
+          units={units}
+          campaignPlayers={campaignPlayers}
+          onComplete={handleComplete}
+          onCancel={handleComplete}
+          onSubmitUnitXp={handleSubmitUnitXp}
+          onCompleteEvolutions={handleCompleteEvolutions}
+        />
+      </PostMatchErrorBoundary>
     </main>
   )
 }
