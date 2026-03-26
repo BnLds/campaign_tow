@@ -3,9 +3,9 @@
 // Allows recording past destruction/injury consequences per unit.
 
 import { useState } from 'react'
-import { DESTRUCTION_OPTIONS } from './unit-destruction-step'
-import { INJURY_OPTIONS, PERMANENT_INJURY_SUBTABLE } from './injury-bonus-step'
-import type { ConsequenceEntry } from '../lib/validators'
+import { DESTRUCTION_OPTIONS } from '../unit-destruction-step'
+import { INJURY_OPTIONS, PERMANENT_INJURY_SUBTABLE } from '../injury-bonus-step'
+import type { ConsequenceEntry } from '../../lib/validators'
 
 // ---------------------------------------------------------------------------
 // Types
