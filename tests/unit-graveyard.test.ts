@@ -129,22 +129,22 @@ describe('[P0] Server functions — graveyard and deletion', () => {
 
 describe('[P1] UnitEditPanel — graveyard and delete buttons', () => {
   it('renders graveyard button with test id', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     expect(code).toContain('data-testid="graveyard-button"')
   })
 
   it('renders graveyard reason input with test id', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     expect(code).toContain('data-testid="graveyard-reason-input"')
   })
 
   it('renders permanent delete button with test id', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     expect(code).toContain('data-testid="delete-unit-button"')
   })
 
   it('uses AlertDialog with AlertDialogAction for deletion confirmation containing cascade warning', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     // delete-unit-button is inside an AlertDialogTrigger
     expect(code).toMatch(/AlertDialogTrigger[\s\S]{0,300}delete-unit-button/)
     // delete-unit-confirm testid is on an AlertDialogAction

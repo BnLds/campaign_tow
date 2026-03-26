@@ -19,19 +19,9 @@ import {
 } from './ui/alert-dialog'
 import { Button } from './ui/button'
 import {
-  addStatModifierFn,
-  removeStatModifierFn,
-  addUnitGainFn,
-  removeUnitGainFn,
-  toggleMountFn,
-  updateXpFn,
-  updatePointsFn,
-  updateNicknameFn,
-  sendToGraveyardFn,
   deleteUnitFn,
   restoreUnitFn,
 } from '../server-fns/unit-mutations'
-import { fetchUnitDeltasFn } from '../server-fns/unit-queries'
 import type { LoadArmyResult } from '../server-fns/unit-queries'
 import { groupUnitsByType } from '../lib/army-utils'
 
@@ -261,17 +251,6 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                   isAdmin={isAdmin}
                   onClose={() => setEditingUnitId(null)}
                   onMutationSuccess={handleMutationSuccess}
-                  addStatModifierFn={addStatModifierFn}
-                  removeStatModifierFn={removeStatModifierFn}
-                  addUnitGainFn={addUnitGainFn}
-                  removeUnitGainFn={removeUnitGainFn}
-                  updateXpFn={updateXpFn}
-                  updatePointsFn={updatePointsFn}
-                  updateNicknameFn={updateNicknameFn}
-                  fetchUnitDeltasFn={fetchUnitDeltasFn}
-                  toggleMountFn={toggleMountFn}
-                  sendToGraveyardFn={sendToGraveyardFn}
-                  deleteUnitFn={deleteUnitFn}
                 />
               )}
             </div>

@@ -65,9 +65,9 @@ describe('[MOUNT-STRUCT-003] queries.ts new exports', () => {
 
 describe('[MOUNT-STRUCT-004] UnitEditPanel mount toggle presence', () => {
   it('contains section-sub-profiles testid and Switch import', () => {
-    const code = readSrc('src/components/unit-edit-panel.tsx')
+    const code = readSrc('src/components/unit-edit-panel/sub-profiles-section.tsx')
     expect(code).toContain('data-testid="section-sub-profiles"')
-    expect(code).toMatch(/import\s*\{[^}]*Switch[^}]*\}\s*from\s*['"]\.\/ui\/switch['"]/)
+    expect(code).toMatch(/import\s*\{[^}]*Switch[^}]*\}\s*from\s*['"]\.\.\/ui\/switch['"]/)
   })
 })
 
@@ -77,7 +77,7 @@ describe('[MOUNT-STRUCT-004] UnitEditPanel mount toggle presence', () => {
 
 describe('[MOUNT-STRUCT-005] UnitEditPanel conditional render guard', () => {
   it('sub-profiles section is guarded by subProfiles.length >= 2', () => {
-    const code = readSrc('src/components/unit-edit-panel.tsx')
+    const code = readSrc('src/components/unit-edit-panel/sub-profiles-section.tsx')
     expect(code).toContain('subProfiles.length >= 2')
   })
 })
