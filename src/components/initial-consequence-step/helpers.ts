@@ -10,9 +10,17 @@ import type { ConsequenceEntry } from '../../lib/validators'
 
 export const CHARACTER_UNIT_TYPE = 'Personnages'
 
+export type InitialConsequenceType =
+  | 'permanent_injury'
+  | 'grave_injury'
+  | 'haine'
+  | 'pertes_catastrophiques'
+  | 'moral_brise'
+  | 'rancune'
+
 export type CampaignPlayer = { playerId: string; playerDisplayName: string }
 
-export type ConsequenceOption = { type: string; label: string; ruleText: string }
+export type ConsequenceOption = { type: InitialConsequenceType; label: string; ruleText: string }
 
 export type InitialConsequenceItem = ConsequenceEntry & { _localId: number }
 
@@ -20,17 +28,17 @@ export type InitialConsequenceItem = ConsequenceEntry & { _localId: number }
 // Filtered option sets by unit type
 // ---------------------------------------------------------------------------
 
-const CHARACTER_ALLOWED = ['permanent_injury', 'grave_injury', 'haine'] as const
-const UNIT_ALLOWED = ['pertes_catastrophiques', 'moral_brise', 'rancune'] as const
+const CHARACTER_ALLOWED: readonly InitialConsequenceType[] = ['permanent_injury', 'grave_injury', 'haine']
+const UNIT_ALLOWED: readonly InitialConsequenceType[] = ['pertes_catastrophiques', 'moral_brise', 'rancune']
 
 export function getFilteredOptions(unitType: string): ConsequenceOption[] {
   if (unitType === CHARACTER_UNIT_TYPE) {
     return (INJURY_OPTIONS as readonly ConsequenceOption[]).filter((o) =>
-      (CHARACTER_ALLOWED as readonly string[]).includes(o.type)
+      CHARACTER_ALLOWED.includes(o.type)
     )
   }
   return (DESTRUCTION_OPTIONS as readonly ConsequenceOption[]).filter((o) =>
-    (UNIT_ALLOWED as readonly string[]).includes(o.type)
+    UNIT_ALLOWED.includes(o.type)
   )
 }
 
@@ -83,7 +91,7 @@ export function buildConsequenceEntry({
     return null
   }
   if (type === 'grave_injury') {
-    return { unitId, type: 'grave_injury' }
+    return { unitId, type: 'grave_injury', stat: 'pv', delta: -1 }
   }
   if ((type === 'haine' || type === 'rancune') && player) {
     return { unitId, type: type as 'haine' | 'rancune', opponentPlayerName: player.playerDisplayName }

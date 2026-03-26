@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// src/components/__tests__/initial-consequence-step.test.tsx
+// src/components/initial-consequence-step/__tests__/initial-consequence-step.test.tsx
 // Tests for InitialConsequenceStep — past consequences multi-select (initial-xp mode)
 
 import { describe, it, expect, vi } from 'vitest'
@@ -199,17 +199,14 @@ describe('[IC-007] permanent_injury confirm shape', () => {
 // ---------------------------------------------------------------------------
 
 describe('[IC-008] grave_injury confirm shape', () => {
-  it('calls onAdd with { unitId, type } only (no stat, no delta, no bannerLost)', () => {
+  it('calls onAdd with { unitId, type, stat: "pv", delta: -1 } (no bannerLost)', () => {
     const onAdd = vi.fn()
     renderCharacter({ onAdd })
     fireEvent.click(screen.getByTestId('initial-consequence-add-btn'))
     fireEvent.click(screen.getByTestId('initial-consequence-type-grave_injury'))
     fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
-    expect(onAdd).toHaveBeenCalledWith({ unitId: UNIT_ID, type: 'grave_injury' })
-    const entry = onAdd.mock.calls[0][0] as Record<string, unknown>
-    expect(entry).not.toHaveProperty('stat')
-    expect(entry).not.toHaveProperty('delta')
-    expect(entry).not.toHaveProperty('bannerLost')
+    expect(onAdd).toHaveBeenCalledWith({ unitId: UNIT_ID, type: 'grave_injury', stat: 'pv', delta: -1 })
+    expect(onAdd.mock.calls[0][0]).not.toHaveProperty('bannerLost')
   })
 })
 

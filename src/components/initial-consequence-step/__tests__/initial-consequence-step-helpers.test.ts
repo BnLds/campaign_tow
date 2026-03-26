@@ -49,14 +49,14 @@ describe('buildConsequenceEntry — valid cases', () => {
     expect(result).toEqual({ unitId: 'unit-1', type: 'permanent_injury', stat: 'cc', delta: -1 })
   })
 
-  it('builds grave_injury entry (no stat, no delta)', () => {
+  it('builds grave_injury entry with stat: "pv" and delta: -1', () => {
     const result = buildConsequenceEntry({
       type: 'grave_injury',
       unitId: 'unit-1',
       stat: null,
       player: null,
     })
-    expect(result).toEqual({ unitId: 'unit-1', type: 'grave_injury' })
+    expect(result).toEqual({ unitId: 'unit-1', type: 'grave_injury', stat: 'pv', delta: -1 })
   })
 
   it('builds haine entry with opponentPlayerName', () => {
