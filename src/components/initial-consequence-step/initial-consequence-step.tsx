@@ -3,17 +3,20 @@
 // Allows recording past destruction/injury consequences per unit.
 
 import { useState } from 'react'
-import { DESTRUCTION_OPTIONS } from '../unit-destruction-step'
-import { INJURY_OPTIONS, PERMANENT_INJURY_SUBTABLE } from '../injury-bonus-step'
+import { PERMANENT_INJURY_SUBTABLE } from '../injury-bonus-step'
 import type { ConsequenceEntry } from '../../lib/validators'
+import {
+  getChipLabel,
+  getFilteredOptions,
+  buildConsequenceEntry,
+} from './helpers'
+import type { CampaignPlayer } from './helpers'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export type InitialConsequenceItem = ConsequenceEntry & { _localId: number }
-
-type CampaignPlayer = { playerId: string; playerDisplayName: string }
 
 export type InitialConsequenceStepProps = {
   unitId: string
@@ -23,39 +26,6 @@ export type InitialConsequenceStepProps = {
   consequences: InitialConsequenceItem[]
   onAdd: (entry: ConsequenceEntry) => void
   onRemove: (localId: number) => void
-}
-
-// ---------------------------------------------------------------------------
-// Filtered option sets by unit type
-// ---------------------------------------------------------------------------
-
-const CHARACTER_ALLOWED = ['permanent_injury', 'grave_injury', 'haine'] as const
-const UNIT_ALLOWED = ['pertes_catastrophiques', 'moral_brise', 'rancune'] as const
-
-// ---------------------------------------------------------------------------
-// Helper — short chip label
-// ---------------------------------------------------------------------------
-
-function getChipLabel(entry: ConsequenceEntry): string {
-  switch (entry.type) {
-    case 'permanent_injury': {
-      const sub = PERMANENT_INJURY_SUBTABLE.find((s) => s.stat === entry.stat)
-      const statDesc = sub ? sub.label.split(' — ')[1] : entry.stat
-      return `Blessure Permanente — ${statDesc}`
-    }
-    case 'grave_injury':
-      return 'Blessure Grave'
-    case 'haine':
-      return `Haine — ${entry.opponentPlayerName ?? ''}`
-    case 'rancune':
-      return `Rancune — ${entry.opponentPlayerName ?? ''}`
-    case 'pertes_catastrophiques':
-      return 'Pertes Catastrophiques'
-    case 'moral_brise':
-      return 'Moral Brisé'
-    default:
-      return entry.type
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -75,11 +45,7 @@ export function InitialConsequenceStep({
   const [selectedStat, setSelectedStat] = useState<string | null>(null)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
 
-  const isCharacter = unitType === 'Personnages'
-
-  const filteredOptions = isCharacter
-    ? INJURY_OPTIONS.filter((o) => CHARACTER_ALLOWED.includes(o.type as typeof CHARACTER_ALLOWED[number]))
-    : DESTRUCTION_OPTIONS.filter((o) => UNIT_ALLOWED.includes(o.type as typeof UNIT_ALLOWED[number]))
+  const filteredOptions = getFilteredOptions(unitType)
 
   const needsStat = selectedType === 'permanent_injury'
   const needsPlayer = selectedType === 'haine' || selectedType === 'rancune'
@@ -105,24 +71,18 @@ export function InitialConsequenceStep({
   const handleConfirm = () => {
     if (!selectedType || !isConfirmEnabled) return
 
-    let entry: ConsequenceEntry
+    const resolvedPlayer = selectedPlayerId
+      ? campaignPlayers.find((p) => p.playerId === selectedPlayerId) ?? null
+      : null
 
-    if (selectedType === 'permanent_injury' && selectedStat) {
-      entry = { unitId, type: 'permanent_injury', stat: selectedStat, delta: -1 }
-    } else if (selectedType === 'grave_injury') {
-      entry = { unitId, type: 'grave_injury' }
-    } else if ((selectedType === 'haine' || selectedType === 'rancune') && selectedPlayerId) {
-      const player = campaignPlayers.find((p) => p.playerId === selectedPlayerId)
-      if (!player) return
-      entry = { unitId, type: selectedType, opponentPlayerName: player.playerDisplayName }
-    } else if (selectedType === 'pertes_catastrophiques') {
-      entry = { unitId, type: 'pertes_catastrophiques' }
-    } else if (selectedType === 'moral_brise') {
-      entry = { unitId, type: 'moral_brise' }
-    } else {
-      console.warn(`[InitialConsequenceStep] handleConfirm: type non géré "${selectedType}" — ajouter un case`)
-      return
-    }
+    const entry = buildConsequenceEntry({
+      type: selectedType,
+      unitId,
+      stat: selectedStat,
+      player: resolvedPlayer,
+    })
+
+    if (!entry) return
 
     onAdd(entry)
     resetForm()
