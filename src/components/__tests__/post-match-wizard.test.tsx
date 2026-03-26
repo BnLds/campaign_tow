@@ -397,6 +397,34 @@ describe('[AC6][P0] PostMatchWizard — empty units state (Task 6.7)', () => {
     expect(screen.queryByTestId('wizard-progress')).toBeNull()
     expect(screen.queryByTestId('wizard-xp-checkboxes')).toBeNull()
   })
+
+  // Bug fix: handleEmptyRetour must not call onComplete when server returns { success: false }
+  it('[4.1-WIZ-018] displays error message and does not complete when onCompleteEvolutions returns { success: false }', async () => {
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({
+      success: false,
+      error: { message: 'Server error' },
+    })
+    const onComplete = vi.fn()
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={[]}
+        onComplete={onComplete}
+        onCancel={vi.fn()}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />
+    )
+
+    const retourBtn = screen.getByText(/Retour/i)
+    fireEvent.click(retourBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Server error/i)).not.toBeNull()
+    })
+    expect(onComplete).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------
