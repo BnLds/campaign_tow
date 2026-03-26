@@ -2,15 +2,11 @@
 // Past consequences multi-select for initial-xp mode (campaign setup).
 // Allows recording past destruction/injury consequences per unit.
 
-import { useState } from 'react'
 import { PERMANENT_INJURY_SUBTABLE } from '../injury-bonus-step'
 import type { ConsequenceEntry } from '../../lib/validators'
-import {
-  getChipLabel,
-  getFilteredOptions,
-  buildConsequenceEntry,
-} from './helpers'
+import { getChipLabel, buildConsequenceEntry } from './helpers'
 import type { CampaignPlayer } from './helpers'
+import { useConsequenceForm } from './use-consequence-form'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,46 +36,19 @@ export function InitialConsequenceStep({
   onAdd,
   onRemove,
 }: InitialConsequenceStepProps) {
-  const [isAdding, setIsAdding] = useState(false)
-  const [selectedType, setSelectedType] = useState<string | null>(null)
-  const [selectedStat, setSelectedStat] = useState<string | null>(null)
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
-
-  const filteredOptions = getFilteredOptions(unitType)
-
-  const needsStat = selectedType === 'permanent_injury'
-  const needsPlayer = selectedType === 'haine' || selectedType === 'rancune'
-
-  const isConfirmEnabled =
-    selectedType !== null &&
-    !(needsStat && selectedStat === null) &&
-    !(needsPlayer && (campaignPlayers.length === 0 || selectedPlayerId === null))
-
-  const resetForm = () => {
-    setIsAdding(false)
-    setSelectedType(null)
-    setSelectedStat(null)
-    setSelectedPlayerId(null)
-  }
-
-  const handleTypeSelect = (type: string) => {
-    setSelectedType(type)
-    if (type !== 'permanent_injury') setSelectedStat(null)
-    if (type !== 'haine' && type !== 'rancune') setSelectedPlayerId(null)
-  }
+  const form = useConsequenceForm(unitType, campaignPlayers)
+  const { isAdding, selectedType, selectedStat, selectedPlayerId } = form.state
+  const { filteredOptions, needsStat, needsPlayer, isConfirmEnabled } = form.derived
+  const { setIsAdding, handleTypeSelect, setSelectedStat, setSelectedPlayerId, resetForm } = form.actions
 
   const handleConfirm = () => {
     if (!selectedType || !isConfirmEnabled) return
-
-    const resolvedPlayer = selectedPlayerId
-      ? campaignPlayers.find((p) => p.playerId === selectedPlayerId) ?? null
-      : null
 
     const entry = buildConsequenceEntry({
       type: selectedType,
       unitId,
       stat: selectedStat,
-      player: resolvedPlayer,
+      player: form.derived.resolvedPlayer,
     })
 
     if (!entry) return
