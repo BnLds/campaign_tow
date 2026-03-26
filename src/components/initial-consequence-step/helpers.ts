@@ -78,7 +78,7 @@ export function buildConsequenceEntry({
   stat,
   player,
 }: {
-  type: string
+  type: InitialConsequenceType
   unitId: string
   stat: string | null
   player: CampaignPlayer | null

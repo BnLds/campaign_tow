@@ -26,7 +26,7 @@ export function ConsequenceChips({ consequences, onRemove }: ConsequenceChipsPro
         <div
           key={item._localId}
           data-testid={`initial-consequence-chip-${item._localId}`}
-          className="flex items-center gap-[0.3rem] py-[0.2rem] px-[0.5rem] rounded-full border border-[var(--color-malus,#b82c2c)] bg-[rgba(184,44,44,0.06)] font-[family-name:var(--font-body)] text-xs text-[var(--color-malus,#b82c2c)]"
+          className="flex items-center gap-[0.3rem] py-[0.2rem] px-[0.5rem] rounded-full border border-[var(--color-malus,#b82c2c)] bg-[color-mix(in_srgb,var(--color-malus)_6%,transparent)] font-[family-name:var(--font-body)] text-xs text-[var(--color-malus,#b82c2c)]"
         >
           <span>{getChipLabel(item)}</span>
           <button

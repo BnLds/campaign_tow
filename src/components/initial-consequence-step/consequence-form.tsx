@@ -36,22 +36,22 @@ export function ConsequenceForm({ form, campaignPlayers, unitId, onAdd }: Conseq
       <div className="flex flex-col gap-[0.35rem]">
         {filteredOptions.map((option) => (
           <div key={option.type}>
-            <label className={cn(RADIO_CLS, selectedType === option.type ? 'bg-[rgba(184,44,44,0.08)]' : 'bg-transparent')}>
+            <label className={cn(RADIO_CLS, selectedType === option.type ? 'bg-[color-mix(in_srgb,var(--color-malus)_8%,transparent)]' : 'bg-transparent')}>
               <input data-testid={`initial-consequence-type-${option.type}`} type="radio" name={`initial-consequence-type-${unitId}`} value={option.type} checked={selectedType === option.type} onChange={() => handleTypeSelect(option.type)} className="accent-[var(--color-malus,#b82c2c)]" />
               {option.label}
             </label>
             {selectedType === option.type && (
-              <p className="font-[family-name:var(--font-body)] text-xs italic text-[var(--color-text-secondary)] mt-0 mb-[0.2rem] py-[0.3rem] px-3 bg-[rgba(184,44,44,0.05)] rounded border-l-2 border-l-[rgba(184,44,44,0.3)]">{option.ruleText}</p>
+              <p className="font-[family-name:var(--font-body)] text-xs italic text-[var(--color-text-secondary)] mt-0 mb-[0.2rem] py-[0.3rem] px-3 bg-[color-mix(in_srgb,var(--color-malus)_5%,transparent)] rounded border-l-2 border-l-[color-mix(in_srgb,var(--color-malus)_30%,transparent)]">{option.ruleText}</p>
             )}
           </div>
         ))}
       </div>
 
       {needsStat && (
-        <div className="ml-4 flex flex-col gap-[0.3rem] p-2 bg-[rgba(184,44,44,0.05)] rounded border-l-2 border-l-[var(--color-malus,#b82c2c)]">
+        <div className="ml-4 flex flex-col gap-[0.3rem] p-2 bg-[color-mix(in_srgb,var(--color-malus)_5%,transparent)] rounded border-l-2 border-l-[var(--color-malus,#b82c2c)]">
           <p className="font-[family-name:var(--font-body)] text-xs text-[var(--color-text-secondary)] mb-[0.2rem] mt-0">Sous-table 1D6 — Blessure Permanente</p>
           {PERMANENT_INJURY_SUBTABLE.map((sub) => (
-            <label key={sub.stat} className={cn(RADIO_CLS, 'py-1 px-[0.4rem]', selectedStat === sub.stat ? 'bg-[rgba(184,44,44,0.08)]' : 'bg-transparent')}>
+            <label key={sub.stat} className={cn(RADIO_CLS, 'py-1 px-[0.4rem]', selectedStat === sub.stat ? 'bg-[color-mix(in_srgb,var(--color-malus)_8%,transparent)]' : 'bg-transparent')}>
               <input data-testid={`initial-consequence-stat-${sub.stat}`} type="radio" name={`initial-consequence-stat-${unitId}`} value={sub.stat} checked={selectedStat === sub.stat} onChange={() => setSelectedStat(sub.stat)} className="accent-[var(--color-malus,#b82c2c)]" />
               {sub.label}
             </label>

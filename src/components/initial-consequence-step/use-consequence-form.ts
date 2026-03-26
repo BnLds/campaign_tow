@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react'
 import { getFilteredOptions } from './helpers'
-import type { CampaignPlayer, ConsequenceOption } from './helpers'
+import type { CampaignPlayer, ConsequenceOption, InitialConsequenceType } from './helpers'
 
 // ---------------------------------------------------------------------------
 // API interface
@@ -11,7 +11,7 @@ import type { CampaignPlayer, ConsequenceOption } from './helpers'
 
 export interface ConsequenceFormState {
   isAdding: boolean
-  selectedType: string | null
+  selectedType: InitialConsequenceType | null
   selectedStat: string | null
   selectedPlayerId: string | null
 }
@@ -26,7 +26,7 @@ export interface ConsequenceFormDerived {
 
 export interface ConsequenceFormActions {
   setIsAdding: (v: boolean) => void
-  handleTypeSelect: (type: string) => void
+  handleTypeSelect: (type: InitialConsequenceType) => void
   setSelectedStat: (stat: string | null) => void
   setSelectedPlayerId: (id: string | null) => void
   resetForm: () => void
@@ -47,7 +47,7 @@ export function useConsequenceForm(
   campaignPlayers: CampaignPlayer[]
 ): ConsequenceFormApi {
   const [isAdding, setIsAdding] = useState(false)
-  const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [selectedType, setSelectedType] = useState<InitialConsequenceType | null>(null)
   const [selectedStat, setSelectedStat] = useState<string | null>(null)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
 
@@ -72,7 +72,7 @@ export function useConsequenceForm(
     setSelectedPlayerId(null)
   }
 
-  const handleTypeSelect = (type: string) => {
+  const handleTypeSelect = (type: InitialConsequenceType) => {
     setSelectedType(type)
     if (type !== 'permanent_injury') setSelectedStat(null)
     if (type !== 'haine' && type !== 'rancune') setSelectedPlayerId(null)
