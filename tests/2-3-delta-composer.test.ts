@@ -49,6 +49,7 @@ function makeGain(overrides: Partial<UnitGain> & { description: string }): UnitG
   return {
     id: 'gain-1',
     unitId: 'unit-1',
+    type: 'tier_up',
     ...overrides,
   }
 }

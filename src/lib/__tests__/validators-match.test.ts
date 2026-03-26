@@ -8,14 +8,14 @@
 // Covers Task 2.1, 2.2 and story task 7.18.
 // All tests will fail until the implementation is complete.
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(__dirname, '../../..')
 
 function getValidators() {
-  return readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  return readFileSync(resolve(root, 'src/lib/validators/match.ts'), 'utf-8')
 }
 
 // ---------------------------------------------------------------------------
@@ -136,5 +136,59 @@ describe('[AC1][P0] submitMatchResultSchema — runtime validation (Task 7.18)',
       expect(result.data.matchId).toBe('match-xyz')
       expect(result.data.result).toBe('draw')
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// validateMatchResultPair — tested through createMatchSchema
+// ---------------------------------------------------------------------------
+
+describe('validateMatchResultPair — via createMatchSchema', () => {
+  let createMatchSchema: typeof import('../validators').createMatchSchema
+
+  beforeAll(async () => {
+    const mod = await import('../validators')
+    createMatchSchema = mod.createMatchSchema
+  })
+
+  const validMatchBase = {
+    army1Id: 'a1', army2Id: 'a2',
+    date: '2026-01-01', time: '14:00',
+    evolutionsEntered: false,
+  }
+
+  it('both null results → valid', () => {
+    const result = createMatchSchema.safeParse({ ...validMatchBase, result1: null, result2: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('victory/defeat → valid', () => {
+    const result = createMatchSchema.safeParse({ ...validMatchBase, result1: 'victory', result2: 'defeat' })
+    expect(result.success).toBe(true)
+  })
+
+  it('defeat/victory → valid', () => {
+    const result = createMatchSchema.safeParse({ ...validMatchBase, result1: 'defeat', result2: 'victory' })
+    expect(result.success).toBe(true)
+  })
+
+  it('draw/draw → valid', () => {
+    const result = createMatchSchema.safeParse({ ...validMatchBase, result1: 'draw', result2: 'draw' })
+    expect(result.success).toBe(true)
+  })
+
+  it('victory/victory → invalid', () => {
+    const result = createMatchSchema.safeParse({ ...validMatchBase, result1: 'victory', result2: 'victory' })
+    expect(result.success).toBe(false)
+  })
+
+  it('one null, one set → invalid', () => {
+    const result = createMatchSchema.safeParse({ ...validMatchBase, result1: 'victory', result2: null })
+    expect(result.success).toBe(false)
+  })
+
+  it('draw/defeat → invalid', () => {
+    const result = createMatchSchema.safeParse({ ...validMatchBase, result1: 'draw', result2: 'defeat' })
+    expect(result.success).toBe(false)
   })
 })

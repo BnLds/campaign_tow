@@ -80,43 +80,43 @@ describe('[P0] Queries — getUnitsForArmy filters by active status', () => {
 
 describe('[P0] Server functions — graveyard and deletion', () => {
   it('sendToGraveyardFn validates unit is active before graveyard', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
-    expect(code).toMatch(/sendToGraveyardFn[\s\S]{0,1200}unit\.status\s*!==\s*'active'/)
+    const code = getFile('src/server-fns/unit-mutations.ts')
+    expect(code).toMatch(/sendToGraveyardFn[\s\S]{0,1200}\.status\s*!==\s*'active'/)
   })
 
   it('sendToGraveyardFn checks for in-progress post-match', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/server-fns/unit-mutations.ts')
     expect(code).toMatch(/sendToGraveyardFn[\s\S]{0,1500}hasInProgressPostMatch/)
   })
 
   it('sendToGraveyardFn requires reason with min 1 and max 200 chars', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/server-fns/unit-mutations.ts')
     expect(code).toMatch(/sendToGraveyardFn[\s\S]{0,600}reason:\s*z\.string\(\)\.trim\(\)\.min\(1/)
     expect(code).toMatch(/sendToGraveyardFn[\s\S]{0,600}\.max\(200\)/)
   })
 
-  it('deleteUnitFn validates unit ownership via getUnitById', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
-    expect(code).toMatch(/deleteUnitFn[\s\S]{0,800}getUnitById[\s\S]{0,400}unit\.armyId\s*!==\s*data\.armyId/)
+  it('deleteUnitFn validates unit ownership via assertUnitBelongsToArmy', () => {
+    const code = getFile('src/server-fns/unit-mutations.ts')
+    expect(code).toMatch(/deleteUnitFn[\s\S]{0,800}assertUnitBelongsToArmy/)
   })
 
   it('deleteUnitFn checks for in-progress post-match before deletion', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/server-fns/unit-mutations.ts')
     expect(code).toMatch(/deleteUnitFn[\s\S]{0,1500}hasInProgressPostMatch/)
   })
 
   it('deleteUnitFn uses deleteUnitPermanently with returning to check rows', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/server-fns/unit-mutations.ts')
     expect(code).toMatch(/deleteUnitFn[\s\S]{0,2000}deleteUnitPermanently[\s\S]{0,200}deleted\.length\s*===\s*0/)
   })
 
   it('restoreUnitFn validates unit is in graveyard before restore', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
-    expect(code).toMatch(/restoreUnitFn[\s\S]{0,1200}unit\.status\s*!==\s*'graveyard'/)
+    const code = getFile('src/server-fns/unit-mutations.ts')
+    expect(code).toMatch(/restoreUnitFn[\s\S]{0,1200}\.status\s*!==\s*'graveyard'/)
   })
 
   it('all three server functions use armyOwnerMiddleware', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/server-fns/unit-mutations.ts')
     expect(code).toMatch(/sendToGraveyardFn[\s\S]{0,200}armyOwnerMiddleware/)
     expect(code).toMatch(/deleteUnitFn[\s\S]{0,200}armyOwnerMiddleware/)
     expect(code).toMatch(/restoreUnitFn[\s\S]{0,200}armyOwnerMiddleware/)
@@ -129,22 +129,22 @@ describe('[P0] Server functions — graveyard and deletion', () => {
 
 describe('[P1] UnitEditPanel — graveyard and delete buttons', () => {
   it('renders graveyard button with test id', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     expect(code).toContain('data-testid="graveyard-button"')
   })
 
   it('renders graveyard reason input with test id', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     expect(code).toContain('data-testid="graveyard-reason-input"')
   })
 
   it('renders permanent delete button with test id', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     expect(code).toContain('data-testid="delete-unit-button"')
   })
 
   it('uses AlertDialog with AlertDialogAction for deletion confirmation containing cascade warning', () => {
-    const code = getFile('src/components/unit-edit-panel.tsx')
+    const code = getFile('src/components/unit-edit-panel/danger-zone.tsx')
     // delete-unit-button is inside an AlertDialogTrigger
     expect(code).toMatch(/AlertDialogTrigger[\s\S]{0,300}delete-unit-button/)
     // delete-unit-confirm testid is on an AlertDialogAction
@@ -156,27 +156,27 @@ describe('[P1] UnitEditPanel — graveyard and delete buttons', () => {
 
 describe('[P1] Army view — graveyard section', () => {
   it('renders graveyard section with test id', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/components/army-view.tsx')
     expect(code).toContain('data-testid="graveyard-section"')
   })
 
   it('graveyard section only shown to owners', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/components/army-view.tsx')
     expect(code).toMatch(/isOwner\s*&&\s*graveyardUnits\.length\s*>\s*0/)
   })
 
   it('graveyard section has restore button per unit', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/components/army-view.tsx')
     expect(code).toMatch(/data-testid=\{`restore-unit-\$\{gu\.id\}`\}/)
   })
 
   it('graveyard section has delete button per unit', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+    const code = getFile('src/components/army-view.tsx')
     expect(code).toMatch(/data-testid=\{`delete-graveyard-unit-\$\{gu\.id\}`\}/)
   })
 
-  it('loader fetches graveyard units alongside active units', () => {
-    const code = getFile('src/routes/armies/$armyId.tsx')
+  it('loadArmyFn fetches graveyard units alongside active units', () => {
+    const code = getFile('src/server-fns/unit-queries.ts')
     expect(code).toMatch(/getGraveyardUnits[\s\S]{0,500}graveyardUnits/)
   })
 })

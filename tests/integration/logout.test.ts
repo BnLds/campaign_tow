@@ -1,13 +1,13 @@
 // tests/integration/logout.test.ts
 // Story 1.5: Player Logout
 // Tests:
-//   [1.5-INT-001] logoutFn = createServerFn({ method: 'POST' }) in __root.tsx
+//   [1.5-INT-001] logoutFn = createServerFn({ method: 'POST' }) in server-fns/logout.ts
 //   [1.5-INT-002] logoutFn uses dynamic import-protection for deleteSession from auth.ts
 //   [1.5-INT-003] Route assigns component: RootLayout
 //   [1.5-INT-004] RootLayout function component defined in __root.tsx
 //   [1.5-INT-005] Outlet imported from @tanstack/react-router
-//   [1.5-INT-006] data-testid="logout-button" in root layout
-//   [1.5-INT-007] "Se déconnecter" text in root layout
+//   [1.5-INT-006] data-testid="logout-button" in app-header.tsx
+//   [1.5-INT-007] "Se déconnecter" text in app-header.tsx
 //   [1.5-INT-008] Session guard (session &&) renders header conditionally
 //   [1.5-INT-010] SessionData.isGuest?: boolean (forward-compat, deferred to 1.7)
 //
@@ -24,17 +24,17 @@ const root = resolve(__dirname, '../..')
 // AC2 — logoutFn server function in __root.tsx
 // ---------------------------------------------------------------------------
 
-describe('[AC2][P0] logoutFn server function — src/routes/__root.tsx', () => {
-  it('[1.5-INT-001] __root.tsx defines logoutFn as a POST createServerFn', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+describe('[AC2][P0] logoutFn server function — src/server-fns/logout.ts', () => {
+  it('[1.5-INT-001] logout.ts defines logoutFn as a POST createServerFn', () => {
+    const logoutTs = readFileSync(resolve(root, 'src/server-fns/logout.ts'), 'utf-8')
     // logoutFn must be assigned to createServerFn with POST method — not two independent tokens
-    expect(rootTsx).toMatch(/logoutFn\s*=\s*createServerFn\(\s*\{[^}]*method:\s*['"]POST['"]/)
+    expect(logoutTs).toMatch(/logoutFn\s*=\s*createServerFn\(\s*\{[^}]*method:\s*['"]POST['"]/)
   })
 
   it('[1.5-INT-002] logoutFn uses dynamic import-protection for deleteSession from auth.ts', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const logoutTs = readFileSync(resolve(root, 'src/server-fns/logout.ts'), 'utf-8')
     // deleteSession must be destructured from a dynamic import of auth — not a top-level import
-    expect(rootTsx).toMatch(/\{\s*deleteSession\s*\}\s*=\s*await import\(['"]\.\.\/lib\/auth['"]\)/)
+    expect(logoutTs).toMatch(/\{\s*deleteSession\s*\}\s*=\s*await import\(['"]\.\.\/lib\/auth['"]\)/)
   })
 
   it('[1.5-INT-003] Route object assigns component: RootLayout', () => {
@@ -60,14 +60,14 @@ describe('[AC1][P0] RootLayout component — src/routes/__root.tsx', () => {
     expect(rootTsx).toMatch(/import\s*\{[^}]*Outlet[^}]*\}\s*from\s*['"]@tanstack\/react-router['"]/)
   })
 
-  it('[1.5-INT-006] root layout has logout button with data-testid="logout-button"', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootTsx).toContain('data-testid="logout-button"')
+  it('[1.5-INT-006] app-header has logout button with data-testid="logout-button"', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('data-testid="logout-button"')
   })
 
   it('[1.5-INT-007] logout button text is "Se déconnecter"', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootTsx).toContain('Se déconnecter')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('Se déconnecter')
   })
 
   it('[1.5-INT-008] RootLayout renders header conditionally — only when session exists', () => {

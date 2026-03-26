@@ -5,14 +5,12 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readMatchesQueries } from './helpers/read-queries'
 
 const root = resolve(__dirname, '..')
 
 function getSchema() {
   return readFileSync(resolve(root, 'src/db/schema.ts'), 'utf-8')
-}
-function getMatchesQuery() {
-  return readFileSync(resolve(root, 'src/db/queries/matches.ts'), 'utf-8')
 }
 function getEvolutionsQuery() {
   return readFileSync(resolve(root, 'src/db/queries/evolutions.ts'), 'utf-8')
@@ -24,7 +22,7 @@ function getPostMatchRoute() {
   return readFileSync(resolve(root, 'src/routes/match/$matchId/post-match.tsx'), 'utf-8')
 }
 function getValidators() {
-  return readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  return readFileSync(resolve(root, 'src/lib/validators/post-match.ts'), 'utf-8')
 }
 
 // ---------------------------------------------------------------------------
@@ -52,36 +50,36 @@ describe('[INIT-SCH] Schema — matchType and needsInitialXp', () => {
 // ---------------------------------------------------------------------------
 
 describe('[INIT-QRY] Queries — createInitialSetupMatch', () => {
-  it('[INIT-QRY-001] createInitialSetupMatch is exported from matches.ts', () => {
-    expect(getMatchesQuery()).toContain('export async function createInitialSetupMatch')
+  it('[INIT-QRY-001] createInitialSetupMatch is exported from matches queries', () => {
+    expect(readMatchesQueries()).toContain('export async function createInitialSetupMatch')
   })
 
   it('[INIT-QRY-002] createInitialSetupMatch inserts matchType initial_setup', () => {
-    expect(getMatchesQuery()).toMatch(/createInitialSetupMatch[\s\S]{0,500}initial_setup/)
+    expect(readMatchesQueries()).toMatch(/createInitialSetupMatch[\s\S]{0,500}initial_setup/)
   })
 
   it('[INIT-QRY-003] createInitialSetupMatch is idempotent (returns existing if found)', () => {
-    const query = getMatchesQuery()
+    const query = readMatchesQueries()
     expect(query).toMatch(/createInitialSetupMatch[\s\S]{0,600}(existing|already|found|return)/)
   })
 
-  it('[INIT-QRY-004] getInitialSetupMatchForArmy is exported from matches.ts', () => {
-    expect(getMatchesQuery()).toContain('export async function getInitialSetupMatchForArmy')
+  it('[INIT-QRY-004] getInitialSetupMatchForArmy is exported from matches queries', () => {
+    expect(readMatchesQueries()).toContain('export async function getInitialSetupMatchForArmy')
   })
 
   it('[INIT-QRY-005] getPendingMatches excludes initial_setup matches', () => {
-    const query = getMatchesQuery()
+    const query = readMatchesQueries()
     expect(query).toMatch(/getPendingMatches[\s\S]{0,1500}ne\(matches\.matchType,\s*['"]initial_setup['"]/)
   })
 
   it('[INIT-QRY-006] getTimelineForArmy uses leftJoin for opponent participant (supports initial_setup with no opponent)', () => {
-    const query = getMatchesQuery()
+    const query = readMatchesQueries()
     // Must have leftJoin on oppParticipant after the getTimelineForArmy function definition
     expect(query).toMatch(/getTimelineForArmy[\s\S]{0,1000}\.leftJoin\(oppParticipant/)
   })
 
   it('[INIT-QRY-007] TimelineEntryData type includes matchType field', () => {
-    expect(getMatchesQuery()).toMatch(/matchType.*MatchType|MatchType.*matchType/)
+    expect(readMatchesQueries()).toMatch(/matchType.*MatchType|MatchType.*matchType/)
   })
 })
 
@@ -131,9 +129,9 @@ describe('[INIT-SFN] Server functions — post-match.tsx', () => {
     expect(getPostMatchRoute()).toMatch(/submitUnitXpFn[\s\S]{0,600}inputValidator[\s\S]{0,200}submitInitialXpSchema/)
   })
 
-  it('[INIT-SFN-007] submitUnitXpFn enforces max 99 for standard matches server-side', () => {
+  it('[INIT-SFN-007] submitUnitXpFn enforces max 200 for standard matches server-side', () => {
     const route = getPostMatchRoute()
-    expect(route).toMatch(/standard.*xpGained.*99|xpGained.*99.*standard/)
+    expect(route).toMatch(/standard.*xpGained.*200|xpGained.*200.*standard/)
   })
 
   it('[INIT-SFN-008] completeEvolutionsWithGainsFn reads matchType server-side', () => {
@@ -147,7 +145,7 @@ describe('[INIT-SFN] Server functions — post-match.tsx', () => {
 // ---------------------------------------------------------------------------
 
 describe('[INIT-VAL] Validators — submitInitialXpSchema', () => {
-  it('[INIT-VAL-001] submitInitialXpSchema is exported from validators.ts', () => {
+  it('[INIT-VAL-001] submitInitialXpSchema is exported from validators/post-match.ts', () => {
     expect(getValidators()).toContain('export const submitInitialXpSchema')
   })
 

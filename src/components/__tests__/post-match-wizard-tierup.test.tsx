@@ -447,39 +447,40 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
 // ---------------------------------------------------------------------------
 
 describe('[AC1][P0] PostMatchWizard — source contract for Phase 2 (story 4.2)', () => {
+  // After refactor: post-match-wizard is a directory — read all source files.
+  function readWizardSource(): string {
+    const { readFileSync, readdirSync } = require('node:fs')
+    const { resolve: resolvePath, join } = require('node:path')
+    const dir = resolvePath(__dirname, '..', 'post-match-wizard')
+    return readdirSync(dir)
+      .filter((f: string) => /\.(tsx?|ts)$/.test(f))
+      .map((f: string) => readFileSync(join(dir, f), 'utf-8'))
+      .join('\n')
+  }
+
   it('[4.2-WIZ-012] post-match-wizard.tsx has pendingGainsRef for batch commit', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/pendingGainsRef/)
   })
 
   it('[4.2-WIZ-013] post-match-wizard.tsx contains phase state (xp/tierup)', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/['"]xp['"][\s\S]{0,200}['"]tierup['"]|['"]tierup['"][\s\S]{0,200}['"]xp['"]/)
   })
 
   it('[4.2-WIZ-014] post-match-wizard.tsx imports TierUpStep component', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/import[\s\S]{0,200}TierUpStep[\s\S]{0,100}tier-up-step/)
   })
 
   it('[4.2-WIZ-015] post-match-wizard.tsx calls detectTierCrossings', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/detectTierCrossings/)
   })
 
   it('[4.2-WIZ-016] post-match-wizard.tsx unit type includes hasMount field', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toMatch(/hasMount\s*[:\?]/)
+    const code = readWizardSource()
+    expect(code).toMatch(/hasMount\s*[?:]/)
   })
 })
 

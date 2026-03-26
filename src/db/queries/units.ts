@@ -377,7 +377,7 @@ export async function getArmyXpAndPointsTotalsBatch(armyIds: string[]): Promise<
     result.set(row.armyId, { totalXp: Number(row.totalXp), totalPoints: Number(row.totalPoints) })
   }
 
-  for (const id of armyIds) {
+  for (const id of filteredIds) {
     if (!result.has(id)) {
       result.set(id, { totalXp: 0, totalPoints: 0 })
     }

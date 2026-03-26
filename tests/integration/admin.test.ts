@@ -44,18 +44,18 @@ describe('[AC4][P0] adminMiddleware — src/lib/middleware.ts', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC2][AC5][P0] Validator — createPlayerSchema', () => {
-  it('[1.4-INT-004] validators.ts exports createPlayerSchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[1.4-INT-004] validators/auth.ts exports createPlayerSchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/auth.ts'), 'utf-8')
     expect(validators).toContain('export const createPlayerSchema')
   })
 
-  it('[1.4-INT-005] validators.ts exports CreatePlayerInput type', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[1.4-INT-005] validators/auth.ts exports CreatePlayerInput type', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/auth.ts'), 'utf-8')
     expect(validators).toContain('export type CreatePlayerInput')
   })
 
-  it('[1.4-INT-007] username in createPlayerSchema applies .trim() before .min(2) — whitespace handling coupled', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[1.4-INT-007] username in createPlayerSchema (validators/auth.ts) applies .trim() before .min(2) — whitespace handling coupled', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/auth.ts'), 'utf-8')
     // .trim() must precede .min(2) in the chain — prevents single whitespace username
     expect(validators).toMatch(/\.trim\(\)\.min\(2/)
   })
@@ -105,15 +105,15 @@ describe('[AC1][AC2][AC4][AC5][P0] Admin route — src/routes/admin/index.tsx', 
   })
 
   it('[1.4-INT-015] createPlayerFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // Function name and createServerFn must be coupled on the same assignment
-    expect(adminRoute).toMatch(/createPlayerFn\s*=\s*createServerFn/)
+    expect(adminPlayers).toMatch(/createPlayerFn\s*=\s*createServerFn/)
   })
 
   it('[1.4-INT-016] createPlayerFn uses .middleware([adminMiddleware]) — no inline session check in handler', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // createPlayerFn and .middleware([adminMiddleware]) must be in the same call chain
-    expect(adminRoute).toMatch(/createPlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    expect(adminPlayers).toMatch(/createPlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[1.4-INT-017] admin route has beforeLoad hook that checks isAdmin (route-level protection)', () => {
@@ -128,10 +128,10 @@ describe('[AC1][AC2][AC4][AC5][P0] Admin route — src/routes/admin/index.tsx', 
     expect(adminRoute).toMatch(/redirect[\s\S]{0,100}to:\s*['"]\/['"]/)
   })
 
-  it('[1.4-INT-019] adminMiddleware is imported from lib/middleware in admin route (import-protection pattern)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+  it('[1.4-INT-019] adminMiddleware is imported from lib/middleware in admin-players server fn (import-protection pattern)', () => {
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // Import source must be lib/middleware — not defined locally, not from auth.ts
-    expect(adminRoute).toMatch(/import\s*\{[^}]*adminMiddleware[^}]*\}\s*from\s*['"][^'"]*lib\/middleware['"]/)
+    expect(adminPlayers).toMatch(/import\s*\{[^}]*adminMiddleware[^}]*\}\s*from\s*['"][^'"]*lib\/middleware['"]/)
   })
 
 })
@@ -140,16 +140,27 @@ describe('[AC1][AC2][AC4][AC5][P0] Admin route — src/routes/admin/index.tsx', 
 // AC1 — Admin navigation link: moved to src/routes/__root.tsx (AppHeader) by story 1.6
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P1] Admin navigation link — src/routes/__root.tsx (AppHeader, updated by story 1.6)', () => {
+describe('[AC1][P1] Admin navigation link — src/components/app-header.tsx (extracted from __root.tsx)', () => {
   it('[1.4-INT-021] AppHeader shows admin link only when isAdmin is true (conditional rendering — moved from index.tsx to AppHeader in story 1.6)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // isAdmin condition and /admin link must be coupled — link gated behind admin check
-    expect(rootTsx).toMatch(/isAdmin[\s\S]{0,300}\/admin/)
+    expect(appHeader).toMatch(/isAdmin[\s\S]{0,300}\/admin/)
   })
 
-  it('[1.4-INT-022] admin link navigates to /admin route (now in AppHeader — story 1.6)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    // /admin target must appear as a navigation destination in __root.tsx
-    expect(rootTsx).toMatch(/\/admin/)
+  it('[1.4-INT-022] admin link navigates to /admin route via router.navigate (now in AppHeader)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    // navigate call and /admin target must be coupled — not just any occurrence of /admin
+    expect(appHeader).toMatch(/onSelect[\s\S]{0,100}navigate[\s\S]{0,50}\/admin/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AC11 — Orchestrator contract: admin-page.tsx must NOT import server fns
+// ---------------------------------------------------------------------------
+
+describe('[AC11][P0] Orchestrator contract — src/routes/admin/admin-page.tsx', () => {
+  it('admin-page.tsx does not import server functions directly (AC11)', () => {
+    const orchestrator = readFileSync(resolve(root, 'src/routes/admin/admin-page.tsx'), 'utf-8')
+    expect(orchestrator).not.toMatch(/server-fns\/admin/)
   })
 })

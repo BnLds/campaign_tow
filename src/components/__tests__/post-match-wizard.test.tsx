@@ -397,6 +397,34 @@ describe('[AC6][P0] PostMatchWizard — empty units state (Task 6.7)', () => {
     expect(screen.queryByTestId('wizard-progress')).toBeNull()
     expect(screen.queryByTestId('wizard-xp-checkboxes')).toBeNull()
   })
+
+  // Bug fix: handleEmptyRetour must not call onComplete when server returns { success: false }
+  it('[4.1-WIZ-018] displays error message and does not complete when onCompleteEvolutions returns { success: false }', async () => {
+    const onCompleteEvolutions = vi.fn().mockResolvedValue({
+      success: false,
+      error: { message: 'Server error' },
+    })
+    const onComplete = vi.fn()
+
+    render(
+      <PostMatchWizard
+        matchId={MATCH_ID}
+        matchParticipantId={PARTICIPANT_ID}
+        units={[]}
+        onComplete={onComplete}
+        onCancel={vi.fn()}
+        onCompleteEvolutions={onCompleteEvolutions}
+      />
+    )
+
+    const retourBtn = screen.getByText(/Retour/i)
+    fireEvent.click(retourBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Server error/i)).not.toBeNull()
+    })
+    expect(onComplete).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -460,65 +488,61 @@ describe('[AC6][P0] PostMatchWizard — Phase 1 always shows "Suivant" (Story 4-
 // ---------------------------------------------------------------------------
 
 describe('[AC6][P0] PostMatchWizard — source file contract (data-testid attributes)', () => {
+  // After refactor: post-match-wizard is a directory (index.tsx + phase files).
+  // Source contract tests read all .tsx/.ts files in the directory.
+  function readWizardSource(): string {
+    const { readFileSync, readdirSync } = require('node:fs')
+    const { resolve: resolvePath, join } = require('node:path')
+    const dir = resolvePath(__dirname, '..', 'post-match-wizard')
+    return readdirSync(dir)
+      .filter((f: string) => /\.(tsx?|ts)$/.test(f))
+      .map((f: string) => readFileSync(join(dir, f), 'utf-8'))
+      .join('\n')
+  }
+
   it('[4.1-WIZ-020] post-match-wizard.tsx file exists at src/components/post-match-wizard.tsx', () => {
     const { existsSync } = require('node:fs')
     const { resolve: resolvePath } = require('node:path')
-    expect(existsSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'))).toBe(true)
+    expect(existsSync(resolvePath(__dirname, '..', 'post-match-wizard', 'index.tsx'))).toBe(true)
   })
 
   it('[4.1-WIZ-021] post-match-wizard.tsx exports PostMatchWizard component', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/export function PostMatchWizard/)
   })
 
   it('[4.1-WIZ-022] post-match-wizard.tsx contains data-testid="wizard-progress"', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toContain('data-testid="wizard-progress"')
   })
 
   it('[4.1-WIZ-023] post-match-wizard.tsx contains data-testid="wizard-unit-name"', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toContain('data-testid="wizard-unit-name"')
   })
 
   it('[4.1-WIZ-024] post-match-wizard.tsx contains data-testid="wizard-xp-checkboxes"', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toContain('data-testid="wizard-xp-checkboxes"')
   })
 
   it('[4.1-WIZ-025] post-match-wizard.tsx contains data-testid="wizard-next-button"', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toContain('data-testid="wizard-next-button"')
   })
 
   it('[4.1-WIZ-026] post-match-wizard.tsx contains data-testid="wizard-error"', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toContain('data-testid="wizard-error"')
   })
 
   it('[4.1-WIZ-027] post-match-wizard.tsx contains data-testid="wizard-complete"', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toContain('data-testid="wizard-complete"')
   })
 
   it('[4.1-WIZ-028] post-match-wizard.tsx wizard-next-button has minHeight 44px for tap target (AC6)', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/wizard-next-button[\s\S]{0,800}minHeight.*44|44.*minHeight[\s\S]{0,400}wizard-next-button/)
   })
 })
@@ -634,15 +658,16 @@ describe('[AC2][P0] PostMatchWizard — pre-fill XP from previousXpGained (Story
     })
   })
 
-  it('[4.1b-WIZ-017] useEffect dep array includes `units` (source contract)', () => {
-    // Structural guard: ensures the useEffect that pre-fills XP depends on `units`.
-    // If someone removes `units` from the dep array, this test catches it.
+  it('[4.1b-WIZ-017] showPreviousXpHint is derived from unit.previousXpGained (source contract)', () => {
+    // After refactor: showPreviousXpHint is a derived value (not useState) so it
+    // recalculates when the unit prop changes. This replaces the old useEffect guard.
     const { readFileSync } = require('node:fs')
     const { resolve: resolvePath } = require('node:path')
-    const filePath = resolvePath(__dirname, '..', 'post-match-wizard.tsx')
+    const filePath = resolvePath(__dirname, '..', 'post-match-wizard', 'phase-xp.tsx')
     const code = readFileSync(filePath, 'utf-8')
-    // The useEffect that sets xpGained from previousXpGained must have `units` in its dep array
-    expect(code).toMatch(/\}, \[currentStep, units\]\)/)
+    // Must NOT be useState — derived value reacts to prop changes without remount
+    expect(code).toMatch(/const showPreviousXpHint\s*=/)
+    expect(code).not.toMatch(/useState.*showPreviousXpHint|showPreviousXpHint.*useState/)
   })
 })
 
@@ -713,17 +738,23 @@ describe('[AC6][P1] PostMatchWizard — clear UX labels for XP context (Story 4-
 // ---------------------------------------------------------------------------
 
 describe('[AC2][P0] PostMatchWizard — source contract for previousXpGained (Story 4-1b)', () => {
+  function readWizardSource(): string {
+    const { readFileSync, readdirSync } = require('node:fs')
+    const { resolve: resolvePath, join } = require('node:path')
+    const dir = resolvePath(__dirname, '..', 'post-match-wizard')
+    return readdirSync(dir)
+      .filter((f: string) => /\.(tsx?|ts)$/.test(f))
+      .map((f: string) => readFileSync(join(dir, f), 'utf-8'))
+      .join('\n')
+  }
+
   it('[4.1b-WIZ-008] post-match-wizard.tsx unit type includes previousXpGained', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toMatch(/previousXpGained\s*[:\?]/)
+    const code = readWizardSource()
+    expect(code).toMatch(/previousXpGained\s*[?:]/)
   })
 
   it('[4.1b-WIZ-009] post-match-wizard.tsx does NOT contain removed XP labels', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).not.toContain('XP avant cette partie')
     expect(code).not.toMatch(/XP gagn[eé] lors de cette partie/)
   })
@@ -1602,7 +1633,7 @@ describe('[INIT-CSQ] PostMatchWizard — initial-xp consequence flow', () => {
   // [INIT-CSQ-003] champion-killed-toggle NOT rendered in initial-xp mode
   it('[INIT-CSQ-003] champion-killed-toggle NOT rendered in initial-xp mode', () => {
     const unitWithChampion = [
-      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 0, previousXpGained: null, previousDerouteXpLost: 0, existingGains: ['Champion gratuit'] },
+      { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 0, previousXpGained: null, previousDerouteXpLost: 0, existingGains: [{ description: 'Champion gratuit', type: 'honour_champion' }] },
     ]
     render(
       <PostMatchWizard

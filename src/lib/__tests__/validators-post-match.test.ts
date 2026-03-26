@@ -11,14 +11,14 @@
 // Covers Tasks 10.8–10.9 (AC: 3, 4, 5)
 // All tests will fail until the implementation is complete.
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(__dirname, '../../..')
 
 function getValidators() {
-  return readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  return readFileSync(resolve(root, 'src/lib/validators/post-match.ts'), 'utf-8')
 }
 
 // ---------------------------------------------------------------------------
@@ -255,4 +255,82 @@ describe('[AC1][AC3][P0] submitUnitXpSchema — matchParticipantId runtime valid
       expect(result.data.xpGained).toBe(5)
     }
   })
+})
+
+// ---------------------------------------------------------------------------
+// validateConsequenceEntry — tested through completeEvolutionsWithGainsSchema
+// ---------------------------------------------------------------------------
+
+describe('validateConsequenceEntry — via completeEvolutionsWithGainsSchema', () => {
+  let completeEvolutionsWithGainsSchema: typeof import('../validators').completeEvolutionsWithGainsSchema
+
+  beforeAll(async () => {
+    const mod = await import('../validators')
+    completeEvolutionsWithGainsSchema = mod.completeEvolutionsWithGainsSchema
+  })
+
+  const wrap = (consequence: Record<string, unknown>) => ({
+    matchId: 'm1',
+    matchParticipantId: 'mp1',
+    gains: [],
+    consequences: [{ unitId: 'u1', ...consequence }],
+  })
+
+  it('permanent_injury with stat+delta → valid', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'permanent_injury', stat: 'pv', delta: -1 }))
+    expect(result.success).toBe(true)
+  })
+
+  it('permanent_injury without stat → invalid', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'permanent_injury', delta: -1 }))
+    expect(result.success).toBe(false)
+  })
+
+  it('permanent_injury without delta → invalid', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'permanent_injury', stat: 'pv' }))
+    expect(result.success).toBe(false)
+  })
+
+  it('grave_injury without stat → invalid', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'grave_injury', delta: -1 }))
+    expect(result.success).toBe(false)
+  })
+
+  it('death with no stat/delta → valid', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'death' }))
+    expect(result.success).toBe(true)
+  })
+
+  it('death with stat → invalid (forbidden)', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'death', stat: 'pv' }))
+    expect(result.success).toBe(false)
+  })
+
+  it('deroute_sanglante with xpLostAmount > 0 → valid', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'deroute_sanglante', xpLostAmount: 5 }))
+    expect(result.success).toBe(true)
+  })
+
+  it('deroute_sanglante with xpLostAmount = 0 → invalid', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'deroute_sanglante', xpLostAmount: 0 }))
+    expect(result.success).toBe(false)
+  })
+
+  it('no_effect → valid (no fields required)', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'no_effect' }))
+    expect(result.success).toBe(true)
+  })
+
+  it('haine with delta → invalid (forbidden)', () => {
+    const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type: 'haine', delta: -1 }))
+    expect(result.success).toBe(false)
+  })
+
+  it.each(['miracule', 'rancune', 'fureur_vengeresse', 'survivants_endurcis'] as const)(
+    '%s with stat → invalid (forbidsStatDelta)',
+    (type) => {
+      const result = completeEvolutionsWithGainsSchema.safeParse(wrap({ type, stat: 'pv' }))
+      expect(result.success).toBe(false)
+    }
+  )
 })

@@ -134,25 +134,25 @@ describe('[AC1][P0] DB queries — src/db/queries.ts', () => {
 // AC1 / AC3 — Validators: importArmySchema + assignArmySchema (Task 4)
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC3][P0] Validators — src/lib/validators.ts', () => {
-  it('[2.1-INT-018] validators.ts exports importArmySchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+describe('[AC1][AC3][P0] Validators — src/lib/validators/army.ts', () => {
+  it('[2.1-INT-018] validators/army.ts exports importArmySchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toContain('export const importArmySchema')
   })
 
   it('[2.1-INT-019] importArmySchema has rawText field with .min(1) — empty text rejected at validator level', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     // rawText and .min(1) must be coupled inside importArmySchema
     expect(validators).toMatch(/importArmySchema[\s\S]{0,300}rawText[\s\S]{0,100}\.min\(1\)/)
   })
 
-  it('[2.1-INT-020] validators.ts exports assignArmySchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[2.1-INT-020] validators/army.ts exports assignArmySchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toContain('export const assignArmySchema')
   })
 
   it('[2.1-INT-021] assignArmySchema has armyId and playerId string fields (coupled in same schema definition)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     // armyId and playerId must be inside the assignArmySchema definition
     expect(validators).toMatch(/assignArmySchema[\s\S]{0,400}armyId/)
     expect(validators).toMatch(/assignArmySchema[\s\S]{0,400}playerId/)
@@ -191,35 +191,35 @@ describe('[AC3][P0] armyOwnerMiddleware — src/lib/middleware.ts', () => {
 // AC1 — Admin route: importArmyFn server function (Task 5.1)
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P0] Admin route server functions — src/routes/admin/index.tsx', () => {
+describe('[AC1][P0] Admin route server functions — src/server-fns/admin-armies.ts', () => {
   it('[2.1-INT-026] importArmyFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/importArmyFn\s*=\s*createServerFn/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/importArmyFn\s*=\s*createServerFn/)
   })
 
   it('[2.1-INT-027] importArmyFn uses .middleware([adminMiddleware]) — admin-only action', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/importArmyFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/importArmyFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[2.1-INT-028] importArmyFn uses importArmySchema as validator (coupled in same call chain)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/importArmyFn[\s\S]{0,600}importArmySchema/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/importArmyFn[\s\S]{0,600}importArmySchema/)
   })
 
   it('[2.1-INT-029] listArmiesFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/listArmiesFn\s*=\s*createServerFn/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/listArmiesFn\s*=\s*createServerFn/)
   })
 
   it('[2.1-INT-030] assignArmyFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/assignArmyFn\s*=\s*createServerFn/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/assignArmyFn\s*=\s*createServerFn/)
   })
 
   it('[2.1-INT-031] assignArmyFn uses .middleware([adminMiddleware]) — admin-only action', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/assignArmyFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/assignArmyFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 })
 
@@ -227,19 +227,19 @@ describe('[AC1][P0] Admin route server functions — src/routes/admin/index.tsx'
 // AC1 — Admin route: import-protection (dynamic imports in handlers)
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P1] Admin route dynamic imports — src/routes/admin/index.tsx', () => {
+describe('[AC1][P1] Admin route dynamic imports — src/server-fns/admin-armies.ts', () => {
   it('[2.1-INT-032] owb-parser is imported dynamically inside the handler — not at module top level', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
     // Dynamic import must appear inside a function body (handler), not as a top-level import
-    expect(adminRoute).toMatch(/import\(['"][\s\S]{0,50}owb-parser['"]/)
+    expect(adminArmies).toMatch(/import\(['"][\s\S]{0,50}owb-parser['"]/)
     // Must NOT be a top-level static import of owb-parser
-    expect(adminRoute).not.toMatch(/^import\s+\{[^}]*parseOwbExport[^}]*\}\s*from/m)
+    expect(adminArmies).not.toMatch(/^import\s+\{[^}]*parseOwbExport[^}]*\}\s*from/m)
   })
 
   it('[2.1-INT-033] createArmyWithUnits is imported dynamically inside the handler (DB import-protection)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
     // Destructuring comes before the import call: const { createArmyWithUnits } = await import('../db/queries')
-    expect(adminRoute).toMatch(/createArmyWithUnits[\s\S]{0,300}import\(['"][\s\S]{0,50}queries['"]/)
+    expect(adminArmies).toMatch(/createArmyWithUnits[\s\S]{0,300}import\(['"][\s\S]{0,50}queries['"]/)
   })
 })
 

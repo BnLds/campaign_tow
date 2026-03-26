@@ -105,9 +105,9 @@ describe('[AC2][AC3][P0] Login route — src/routes/login.tsx', () => {
     expect(auth).toMatch(/import\s*\{[^}]*compare[^}]*\}\s*from\s*['"]bcryptjs['"]/)
   })
 
-  it('[1.2-INT-015] src/lib/validators.ts exports loginSchema', () => {
-    expect(existsSync(resolve(root, 'src/lib/validators.ts'))).toBe(true)
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[1.2-INT-015] src/lib/validators/auth.ts exports loginSchema', () => {
+    expect(existsSync(resolve(root, 'src/lib/validators/auth.ts'))).toBe(true)
+    const validators = readFileSync(resolve(root, 'src/lib/validators/auth.ts'), 'utf-8')
     expect(validators).toContain('export const loginSchema')
   })
 })

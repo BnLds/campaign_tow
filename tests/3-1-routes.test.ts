@@ -25,10 +25,6 @@ function getCampaignRoute() {
   return readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
 }
 
-function getArmyRoute() {
-  return readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
-}
-
 function getArmiesListRoute() {
   return readFileSync(resolve(root, 'src/routes/armies/index.tsx'), 'utf-8')
 }
@@ -81,14 +77,14 @@ describe('[AC1][AC2][P0] Campaign view — header with army name and army detail
     expect(route).toMatch(/import[\s\S]{0,200}Link[\s\S]{0,100}@tanstack\/react-router/)
   })
 
-  it('[3.1-CMP-008] __root.tsx AppHeader renders army name (Cinzel font via var(--font-display))', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toMatch(/(font-display|fontFamily[\s\S]{0,100}display)/)
+  it('[3.1-CMP-008] app-header.tsx AppHeader renders army name (Cinzel font via var(--font-display))', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toMatch(/(font-display|fontFamily[\s\S]{0,100}display)/)
   })
 
-  it('[3.1-CMP-009] __root.tsx AppHeader navigates to /armies/$armyId via hamburger menu (army detail navigation — AC2)', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toMatch(/router\.navigate\(\{[\s\S]{0,80}\/armies\/\$armyId/)
+  it('[3.1-CMP-009] app-header.tsx AppHeader navigates to /armies/$armyId via hamburger menu (army detail navigation — AC2)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toMatch(/router\.navigate\(\{[\s\S]{0,80}\/armies\/\$armyId/)
   })
 })
 
@@ -184,8 +180,8 @@ describe('[AC4][AC7][P0] Armies list route — list rendering', () => {
   it('[3.1-LST-009] armies/index.tsx renders army name, faction, and player display name per item (Task 6.5)', () => {
     const route = getArmiesListRoute()
     // All three fields must be referenced in the component rendering
-    expect(route).toMatch(/(army\.name|\.name)/)
-    expect(route).toMatch(/(army\.faction|\.faction)/)
+    expect(route).toMatch(/army\.name/)
+    expect(route).toMatch(/army\.faction/)
     expect(route).toMatch(/playerUsername/)
   })
 

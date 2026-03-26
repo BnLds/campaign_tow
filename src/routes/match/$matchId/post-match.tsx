@@ -24,7 +24,7 @@ type PostMatchLoaderData = {
   opponentPlayerName: string
   mode: 'post-match' | 'initial-xp'
   units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: Array<{description: string; type: string}>; commandement: number; effectiveStats: Record<string, number | null> }>
-  campaignPlayers?: Array<{ playerId: string; playerUsername: string }>
+  campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
   catchupBonusXp: number
   catchupDeltaXp: number
 }
@@ -40,7 +40,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo, getArmyXpAndPointsTotalsBatch } = await import('../../../db/queries')
 
     // Load drizzle deps before round 1 (needed for match type + opponent query)
     const [
@@ -108,7 +108,6 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     // The player enters 0 XP for units that didn't participate.
 
     // Compute catchup bonus XP from live army totals
-    const { getArmyXpAndPointsTotalsBatch } = await import('../../../db/queries')
     const oppArmyId = oppRows[0]?.oppArmyId ?? null
     const catchupArmyIds = [army.id, ...(oppArmyId ? [oppArmyId] : [])]
     const totalsMap = await getArmyXpAndPointsTotalsBatch(catchupArmyIds)
@@ -116,6 +115,22 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     const opponentTotal = oppArmyId ? (totalsMap.get(oppArmyId) ?? { totalXp: 0, totalPoints: 0 }) : { totalXp: 0, totalPoints: 0 }
     const catchupDeltaXp = mode === 'initial-xp' ? 0 : Math.max(0, opponentTotal.totalXp - playerTotal.totalXp)
     const catchupBonusXp = Math.floor(catchupDeltaXp / 10)
+
+    // Reentry: restore persisted bonusXp instead of live-computed value
+    let finalCatchupBonusXp = catchupBonusXp
+    let finalCatchupDeltaXp = catchupDeltaXp
+    if (isReentry) {
+      const participantRows = await db
+        .select({ bonusXp: mpTable.bonusXp })
+        .from(mpTable)
+        .where(dbEq(mpTable.id, participant.id))
+        .limit(1)
+      const persistedBonus = participantRows[0]?.bonusXp
+      if (persistedBonus != null) {
+        finalCatchupBonusXp = persistedBonus
+        finalCatchupDeltaXp = 0
+      }
+    }
 
     // Round 2 (parallel): units + xp entries
     const [unitsRaw, existingEntries] = await Promise.all([
@@ -206,12 +221,12 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       }
     })
     // Load campaign players for initial-xp mode (Haine/Rancune picker)
-    let campaignPlayers: Array<{ playerId: string; playerUsername: string }> | undefined
+    let campaignPlayers: Array<{ playerId: string; playerDisplayName: string }> | undefined
     if (mode === 'initial-xp') {
       const allPlayers = await getAllPlayersWithArmyInfo()
       campaignPlayers = allPlayers
         .filter((p) => p.playerId !== context.session.playerId)
-        .map((p) => ({ playerId: p.playerId, playerUsername: p.username }))
+        .map((p) => ({ playerId: p.playerId, playerDisplayName: p.username }))
     }
 
     return {
@@ -223,8 +238,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       mode,
       units,
       campaignPlayers,
-      catchupBonusXp,
-      catchupDeltaXp,
+      catchupBonusXp: finalCatchupBonusXp,
+      catchupDeltaXp: finalCatchupDeltaXp,
     }
   })
 
@@ -242,7 +257,7 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
     const { getPlayerArmy, getUnitById, getMatchParticipantArmyId, upsertMatchXpEntryWithIncrement } = await import('../../../db/queries')
 
     // Server-side gate: look up matchType to enforce max 99 XP for standard matches
-    const [{ db }, { matches: matchesTable, matchParticipants: mpTable }, { eq: dbEq }] = await Promise.all([
+    const [{ db }, { matches: matchesTable, matchParticipants: mpTable }, { eq: dbEq, and: dbAnd, isNull: dbIsNull }] = await Promise.all([
       import('../../../db/index'),
       import('../../../db/schema'),
       import('drizzle-orm'),
@@ -271,6 +286,10 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
       return { success: false, error: { code: 'FORBIDDEN', message: "Cette unité n'appartient pas à votre armée" } }
     }
     const { newUnitXp } = await upsertMatchXpEntryWithIncrement(data.matchParticipantId, data.unitId, data.xpGained, data.derouteXpLost)
+    // Persist bonusXp on first unit submission (idempotent: WHERE bonus_xp IS NULL)
+    if (data.bonusXp != null) {
+      await db.update(mpTable).set({ bonusXp: data.bonusXp }).where(dbAnd(dbEq(mpTable.id, data.matchParticipantId), dbIsNull(mpTable.bonusXp)))
+    }
     return { success: true, data: { unitId: data.unitId, newXp: newUnitXp } }
   })
 
@@ -422,8 +441,8 @@ function PostMatchRoute() {
     await router.navigate({ to: '/' })
   }
 
-  const handleSubmitUnitXp = async (unitId: string, xpGained: number, mParticipantId: string, derouteXpLost?: number) => {
-    return submitUnitXpFn({ data: { matchParticipantId: mParticipantId, unitId, xpGained, derouteXpLost: derouteXpLost ?? 0 } })
+  const handleSubmitUnitXp = async (unitId: string, xpGained: number, mParticipantId: string, derouteXpLost?: number, bonusXpParam?: number) => {
+    return submitUnitXpFn({ data: { matchParticipantId: mParticipantId, unitId, xpGained, derouteXpLost: derouteXpLost ?? 0, bonusXp: bonusXpParam } })
   }
 
   const handleCompleteEvolutions = async (

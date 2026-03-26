@@ -31,10 +31,6 @@ function getCampaignRoute() {
   return readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
 }
 
-function getArmyRoute() {
-  return readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
-}
-
 // ---------------------------------------------------------------------------
 // AC1, AC4 — submitMatchResultFn declaration and middleware (Task 7.9–7.12)
 // ---------------------------------------------------------------------------

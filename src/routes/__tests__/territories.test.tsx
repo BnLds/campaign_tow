@@ -163,20 +163,20 @@ describe('[AC7][P0] Root layout — flex column structure (Tasks 4.2, 4.3)', () 
 // ---------------------------------------------------------------------------
 
 describe('[AC8][P0] Army detail view — back navigation (Tasks 7.1, 7.2)', () => {
-  it('[3.1b-TER-019] $armyId.tsx has a back link to /armies', () => {
-    const armyRoute = readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
-    expect(armyRoute).toMatch(/Link[\s\S]{0,200}(to=["']\/armies["']|\/armies)/)
+  it('[3.1b-TER-019] army-view.tsx has a back link to /armies', () => {
+    const armyView = readFileSync(resolve(root, 'src/components/army-view.tsx'), 'utf-8')
+    expect(armyView).toMatch(/Link[\s\S]{0,200}(to=["']\/armies["']|\/armies)/)
   })
 
-  it('[3.1b-TER-020] $armyId.tsx back link uses ghost button style (border, borderRadius 999px)', () => {
-    const armyRoute = readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
+  it('[3.1b-TER-020] army-view.tsx back link uses ghost button style (border, borderRadius 999px)', () => {
+    const armyView = readFileSync(resolve(root, 'src/components/army-view.tsx'), 'utf-8')
     // ghost button style: 30x30px, borderRadius 999px
-    expect(armyRoute).toMatch(/999/)
+    expect(armyView).toMatch(/999/)
   })
 
-  it('[3.1b-TER-021] $armyId.tsx back button contains a left-arrow character', () => {
-    const armyRoute = readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
+  it('[3.1b-TER-021] army-view.tsx back button contains a left-arrow character', () => {
+    const armyView = readFileSync(resolve(root, 'src/components/army-view.tsx'), 'utf-8')
     // Left-arrow or back indicator: < or ‹ (\u2039) or similar
-    expect(armyRoute).toMatch(/[<‹←]|\\u2039/)
+    expect(armyView).toMatch(/[<‹←]|\\u2039/)
   })
 })

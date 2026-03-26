@@ -139,22 +139,22 @@ describe('[AC3][AC5][P0] Route /invite/$token', () => {
 
 describe('[AC2][AC6][P0] Admin route — invite link server functions', () => {
   it('[invite-INT-020] admin route exports getInviteLinkFn using createServerFn (coupled)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/getInviteLinkFn\s*=\s*createServerFn/)
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toMatch(/getInviteLinkFn\s*=\s*createServerFn/)
   })
 
   it('[invite-INT-021] admin route exports regenerateInviteTokenFn using createServerFn (coupled)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/regenerateInviteTokenFn\s*=\s*createServerFn/)
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toMatch(/regenerateInviteTokenFn\s*=\s*createServerFn/)
   })
 
-  it('[invite-INT-022] regenerateInviteTokenFn guards admin self-regen (CANNOT_REGENERATE_OWN)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/regenerateInviteTokenFn[\s\S]{0,600}CANNOT_REGENERATE_OWN/)
+  it('[invite-INT-022] regenerateInviteTokenFn guards admin self-regen (FORBIDDEN)', () => {
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toMatch(/regenerateInviteTokenFn[\s\S]{0,600}FORBIDDEN/)
   })
 
   it('[invite-INT-023] admin route has generateAllMissingTokensFn server function', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toContain('generateAllMissingTokensFn')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toContain('generateAllMissingTokensFn')
   })
 })

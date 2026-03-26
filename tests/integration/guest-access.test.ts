@@ -134,27 +134,27 @@ describe('[AC1][P0] Guest link UI — src/routes/login.tsx', () => {
 // Root layout — AppHeader identity indicator + session action button
 // ---------------------------------------------------------------------------
 
-describe('[AC5][P0] Identity indicator for guest — src/routes/__root.tsx', () => {
+describe('[AC5][P0] Identity indicator for guest — src/components/app-header.tsx', () => {
   it("[1.7-INT-014] AppHeader identity indicator shows 'Invité' when session.isGuest is true (coupled with isGuest condition)", () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // isGuest condition and 'Invité' text must be coupled — same ternary/conditional block
-    expect(rootTsx).toMatch(/session\.isGuest[\s\S]{0,300}Invité/)
+    expect(appHeader).toMatch(/session\.isGuest[\s\S]{0,300}Invité/)
   })
 })
 
-describe('[AC6][P0] Session action button for guest — src/routes/__root.tsx', () => {
+describe('[AC6][P0] Session action button for guest — src/components/app-header.tsx', () => {
   it('[1.7-INT-015] AppHeader renders login-button (Se connecter) for guests — data-testid="login-button" coupled with isGuest condition', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // login-button testid must be inside the isGuest branch
-    expect(rootTsx).toMatch(/session\.isGuest[\s\S]{0,400}login-button/)
+    expect(appHeader).toMatch(/session\.isGuest[\s\S]{0,400}login-button/)
   })
 
   it('[1.7-INT-016] AppHeader login-button is in the isGuest branch, logout-button is in the Options modal', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // login-button is rendered for guests via isGuest ternary
-    expect(rootTsx).toMatch(/session\.isGuest[\s\S]{0,300}login-button/)
+    expect(appHeader).toMatch(/session\.isGuest[\s\S]{0,300}login-button/)
     // logout-button is in the Options Dialog modal (not in isGuest branch)
-    expect(rootTsx).toMatch(/DialogTitle[\s\S]{0,500}logout-button/)
+    expect(appHeader).toMatch(/DialogTitle[\s\S]{0,500}logout-button/)
   })
 })
 
