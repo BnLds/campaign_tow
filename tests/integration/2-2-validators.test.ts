@@ -20,35 +20,35 @@ const root = resolve(__dirname, '../..')
 // Static contract tests — validators.ts structure
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC2][P0] Validators structure — src/lib/validators.ts', () => {
-  it('[2.2-VAL-001] validators.ts exports addUnitSchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+describe('[AC1][AC2][P0] Validators structure — src/lib/validators/army.ts', () => {
+  it('[2.2-VAL-001] validators/army.ts exports addUnitSchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toContain('export const addUnitSchema')
   })
 
   it('[2.2-VAL-002] addUnitSchema has name field with .trim().min(1) (whitespace-only names rejected)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     // name, trim and min(1) must be coupled inside addUnitSchema
     expect(validators).toMatch(/addUnitSchema[\s\S]{0,400}name[\s\S]{0,100}\.trim\(\)\.min\(1/)
   })
 
   it('[2.2-VAL-003] addUnitSchema name field has .max(200) (abuse prevention)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/addUnitSchema[\s\S]{0,500}name[\s\S]{0,150}\.max\(200/)
   })
 
   it('[2.2-VAL-004] addUnitSchema has armyId field with .min(1)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/addUnitSchema[\s\S]{0,600}armyId[\s\S]{0,100}\.min\(1/)
   })
 
   it('[2.2-VAL-005] addUnitSchema has type field with .min(1)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/addUnitSchema[\s\S]{0,600}type[\s\S]{0,100}\.min\(1/)
   })
 
   it('[2.2-VAL-006] addUnitSchema has all 9 stat fields (m, cc, ct, f, e, pv, i, a, cd) without .min(1) (empty strings valid)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     // All 9 stat fields must appear in addUnitSchema
     expect(validators).toMatch(/addUnitSchema[\s\S]{0,1200}[^a-z]m:[\s\S]{0,50}z\.string\(\)/)
     expect(validators).toMatch(/addUnitSchema[\s\S]{0,1200}cc:[\s\S]{0,50}z\.string\(\)/)
@@ -62,40 +62,40 @@ describe('[AC1][AC2][P0] Validators structure — src/lib/validators.ts', () => 
   })
 
   it('[2.2-VAL-007] addUnitSchema stat fields have .max(20) (prevents accidental large text paste)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     // At least one stat field with .max(20) inside addUnitSchema
     expect(validators).toMatch(/addUnitSchema[\s\S]{0,1500}z\.string\(\)\.max\(20\)/)
   })
 
-  it('[2.2-VAL-008] validators.ts exports AddUnitInput type via z.infer', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[2.2-VAL-008] validators/army.ts exports AddUnitInput type via z.infer', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/export type AddUnitInput\s*=\s*z\.infer/)
   })
 
-  it('[2.2-VAL-009] validators.ts exports updateSubProfileSchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[2.2-VAL-009] validators/army.ts exports updateSubProfileSchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toContain('export const updateSubProfileSchema')
   })
 
   it('[2.2-VAL-010] updateSubProfileSchema has subProfileId field with .min(1)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/updateSubProfileSchema[\s\S]{0,400}subProfileId[\s\S]{0,100}\.min\(1/)
   })
 
   it('[2.2-VAL-011] updateSubProfileSchema has all 9 stat fields (m, cc, ct, f, e, pv, i, a, cd)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/updateSubProfileSchema[\s\S]{0,1200}[^a-z]m:[\s\S]{0,50}z\.string\(\)/)
     expect(validators).toMatch(/updateSubProfileSchema[\s\S]{0,1200}cc:[\s\S]{0,50}z\.string\(\)/)
     expect(validators).toMatch(/updateSubProfileSchema[\s\S]{0,1200}cd:[\s\S]{0,50}z\.string\(\)/)
   })
 
   it('[2.2-VAL-012] updateSubProfileSchema stat fields have .max(20)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/updateSubProfileSchema[\s\S]{0,1500}z\.string\(\)\.max\(20\)/)
   })
 
-  it('[2.2-VAL-013] validators.ts exports UpdateSubProfileInput type via z.infer', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[2.2-VAL-013] validators/army.ts exports UpdateSubProfileInput type via z.infer', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toMatch(/export type UpdateSubProfileInput\s*=\s*z\.infer/)
   })
 })

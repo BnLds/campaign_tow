@@ -134,25 +134,25 @@ describe('[AC1][P0] DB queries — src/db/queries.ts', () => {
 // AC1 / AC3 — Validators: importArmySchema + assignArmySchema (Task 4)
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC3][P0] Validators — src/lib/validators.ts', () => {
-  it('[2.1-INT-018] validators.ts exports importArmySchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+describe('[AC1][AC3][P0] Validators — src/lib/validators/army.ts', () => {
+  it('[2.1-INT-018] validators/army.ts exports importArmySchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toContain('export const importArmySchema')
   })
 
   it('[2.1-INT-019] importArmySchema has rawText field with .min(1) — empty text rejected at validator level', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     // rawText and .min(1) must be coupled inside importArmySchema
     expect(validators).toMatch(/importArmySchema[\s\S]{0,300}rawText[\s\S]{0,100}\.min\(1\)/)
   })
 
-  it('[2.1-INT-020] validators.ts exports assignArmySchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[2.1-INT-020] validators/army.ts exports assignArmySchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     expect(validators).toContain('export const assignArmySchema')
   })
 
   it('[2.1-INT-021] assignArmySchema has armyId and playerId string fields (coupled in same schema definition)', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+    const validators = readFileSync(resolve(root, 'src/lib/validators/army.ts'), 'utf-8')
     // armyId and playerId must be inside the assignArmySchema definition
     expect(validators).toMatch(/assignArmySchema[\s\S]{0,400}armyId/)
     expect(validators).toMatch(/assignArmySchema[\s\S]{0,400}playerId/)

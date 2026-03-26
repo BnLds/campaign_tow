@@ -17,15 +17,15 @@ const root = resolve(__dirname, '../..')
 // AC1 — Validator: deleteMatchSchema
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P0] Validator — deleteMatchSchema — src/lib/validators.ts', () => {
-  const validators = () => readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+describe('[AC1][P0] Validator — deleteMatchSchema — src/lib/validators/match.ts', () => {
+  const validators = () => readFileSync(resolve(root, 'src/lib/validators/match.ts'), 'utf-8')
 
-  it('[DEL-001] validators.ts exports deleteMatchSchema with matchId z.string().min(1)', () => {
+  it('[DEL-001] validators/match.ts exports deleteMatchSchema with matchId z.string().min(1)', () => {
     const code = validators()
     expect(code).toMatch(/export const deleteMatchSchema\s*=\s*z\.object\(\{\s*matchId:\s*z\.string\(\)\.min\(1\)/)
   })
 
-  it('[DEL-002] validators.ts exports DeleteMatchInput type from deleteMatchSchema', () => {
+  it('[DEL-002] validators/match.ts exports DeleteMatchInput type from deleteMatchSchema', () => {
     const code = validators()
     expect(code).toMatch(/export type DeleteMatchInput\s*=\s*z\.infer<typeof deleteMatchSchema>/)
   })

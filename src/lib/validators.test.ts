@@ -6,7 +6,7 @@
 // Will fail with "Cannot find module './validators'" until validators.ts is implemented.
 
 import { describe, it, expect } from 'vitest'
-import { loginSchema, updateUsernameSchema, createPlayerSchema, changePasswordSchema } from './validators'
+import { loginSchema, updateUsernameSchema, createPlayerSchema, changePasswordSchema, inviteFormSchema } from './validators'
 
 // ---------------------------------------------------------------------------
 // AC2 — loginSchema accepts valid credentials
@@ -164,6 +164,67 @@ describe('[AC7][P0] changePasswordSchema — invalid inputs', () => {
     if (!result.success) {
       const paths = result.error.issues.map((i) => i.path.join('.'))
       expect(paths).toContain('confirmNewPassword')
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// passwordConfirmRefinement — tested through inviteFormSchema + changePasswordSchema
+// ---------------------------------------------------------------------------
+
+describe('passwordConfirmRefinement — via inviteFormSchema', () => {
+  it('inviteFormSchema accepts matching passwords', () => {
+    const result = inviteFormSchema.safeParse({ username: 'thomas', password: 'secret123', confirmPassword: 'secret123' })
+    expect(result.success).toBe(true)
+  })
+
+  it('inviteFormSchema rejects mismatched passwords — error on confirmPassword path', () => {
+    const result = inviteFormSchema.safeParse({ username: 'thomas', password: 'secret123', confirmPassword: 'different' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'))
+      expect(paths).toContain('confirmPassword')
+    }
+  })
+
+  it('changePasswordSchema accepts matching passwords', () => {
+    const result = changePasswordSchema.safeParse({ newPassword: 'newsecret', confirmNewPassword: 'newsecret' })
+    expect(result.success).toBe(true)
+  })
+
+  it('changePasswordSchema rejects mismatched passwords — error on confirmNewPassword path', () => {
+    const result = changePasswordSchema.safeParse({ newPassword: 'newsecret', confirmNewPassword: 'different' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'))
+      expect(paths).toContain('confirmNewPassword')
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Barrel contract — validators/index.ts re-exports all public symbols
+// ---------------------------------------------------------------------------
+
+describe('validators barrel — re-exports all public symbols', () => {
+  it('barrel exports all expected schemas and types', async () => {
+    const barrel = await import('./validators')
+    const exportedKeys = Object.keys(barrel)
+
+    const expectedExports = [
+      // auth
+      'loginSchema', 'updateUsernameSchema', 'createPlayerSchema', 'inviteFormSchema', 'changePasswordSchema',
+      // army
+      'importArmySchema', 'assignArmySchema', 'addUnitSchema', 'addUnitsToArmySchema', 'updateSubProfileSchema',
+      // match
+      'createMatchSchema', 'submitMatchResultSchema', 'deleteMatchSchema', 'toValidResult',
+      // post-match
+      'loadPostMatchDataSchema', 'submitUnitXpSchema', 'submitInitialXpSchema', 'completeEvolutionsSchema',
+      'submitTierUpSchema', 'consequenceTypeEnum', 'completeEvolutionsWithGainsSchema',
+    ]
+
+    for (const name of expectedExports) {
+      expect(exportedKeys, `missing export: ${name}`).toContain(name)
     }
   })
 })

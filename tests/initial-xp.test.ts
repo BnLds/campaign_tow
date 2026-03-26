@@ -22,7 +22,7 @@ function getPostMatchRoute() {
   return readFileSync(resolve(root, 'src/routes/match/$matchId/post-match.tsx'), 'utf-8')
 }
 function getValidators() {
-  return readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  return readFileSync(resolve(root, 'src/lib/validators/post-match.ts'), 'utf-8')
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ describe('[INIT-SFN] Server functions — post-match.tsx', () => {
 // ---------------------------------------------------------------------------
 
 describe('[INIT-VAL] Validators — submitInitialXpSchema', () => {
-  it('[INIT-VAL-001] submitInitialXpSchema is exported from validators.ts', () => {
+  it('[INIT-VAL-001] submitInitialXpSchema is exported from validators/post-match.ts', () => {
     expect(getValidators()).toContain('export const submitInitialXpSchema')
   })
 

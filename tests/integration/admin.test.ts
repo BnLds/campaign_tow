@@ -44,18 +44,18 @@ describe('[AC4][P0] adminMiddleware — src/lib/middleware.ts', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC2][AC5][P0] Validator — createPlayerSchema', () => {
-  it('[1.4-INT-004] validators.ts exports createPlayerSchema', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[1.4-INT-004] validators/auth.ts exports createPlayerSchema', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/auth.ts'), 'utf-8')
     expect(validators).toContain('export const createPlayerSchema')
   })
 
-  it('[1.4-INT-005] validators.ts exports CreatePlayerInput type', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[1.4-INT-005] validators/auth.ts exports CreatePlayerInput type', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/auth.ts'), 'utf-8')
     expect(validators).toContain('export type CreatePlayerInput')
   })
 
-  it('[1.4-INT-007] username in createPlayerSchema applies .trim() before .min(2) — whitespace handling coupled', () => {
-    const validators = readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  it('[1.4-INT-007] username in createPlayerSchema (validators/auth.ts) applies .trim() before .min(2) — whitespace handling coupled', () => {
+    const validators = readFileSync(resolve(root, 'src/lib/validators/auth.ts'), 'utf-8')
     // .trim() must precede .min(2) in the chain — prevents single whitespace username
     expect(validators).toMatch(/\.trim\(\)\.min\(2/)
   })

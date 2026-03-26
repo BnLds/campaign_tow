@@ -24,7 +24,7 @@ function getPostMatchRoute() {
 }
 
 function getValidators() {
-  return readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+  return readFileSync(resolve(root, 'src/lib/validators/post-match.ts'), 'utf-8')
 }
 
 // ---------------------------------------------------------------------------
@@ -32,8 +32,8 @@ function getValidators() {
 // AC: 3
 // ---------------------------------------------------------------------------
 
-describe('[AC3][P0] submitTierUpSchema — validators.ts (Task 13.4)', () => {
-  it('[4.2-SFN-001] validators.ts exports submitTierUpSchema', () => {
+describe('[AC3][P0] submitTierUpSchema — validators/post-match.ts (Task 13.4)', () => {
+  it('[4.2-SFN-001] validators/post-match.ts exports submitTierUpSchema', () => {
     const code = getValidators()
     expect(code).toMatch(/export const submitTierUpSchema/)
   })
@@ -58,7 +58,7 @@ describe('[AC3][P0] submitTierUpSchema — validators.ts (Task 13.4)', () => {
     expect(code).toMatch(/submitTierUpSchema[\s\S]{0,600}improvements[\s\S]{0,400}description[\s\S]{0,200}z\.string/)
   })
 
-  it('[4.2-SFN-006] validators.ts exports SubmitTierUpInput type', () => {
+  it('[4.2-SFN-006] validators/post-match.ts exports SubmitTierUpInput type', () => {
     const code = getValidators()
     expect(code).toMatch(/export type SubmitTierUpInput/)
   })
