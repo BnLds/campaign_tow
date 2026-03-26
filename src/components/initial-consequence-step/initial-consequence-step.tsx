@@ -2,7 +2,7 @@
 // Orchestrator: past consequences multi-select for initial-xp mode (campaign setup).
 
 import type { ConsequenceEntry } from '../../lib/validators'
-import type { CampaignPlayer } from './helpers'
+import type { CampaignPlayer, InitialConsequenceItem } from './helpers'
 import { useConsequenceForm } from './use-consequence-form'
 import { ConsequenceChips } from './consequence-chips'
 import { ConsequenceForm } from './consequence-form'
@@ -11,7 +11,7 @@ import { ConsequenceForm } from './consequence-form'
 // Types
 // ---------------------------------------------------------------------------
 
-export type InitialConsequenceItem = ConsequenceEntry & { _localId: number }
+export type { InitialConsequenceItem }
 
 export type InitialConsequenceStepProps = {
   unitId: string
@@ -52,7 +52,7 @@ export function InitialConsequenceStep({
           data-testid="initial-consequence-add-btn"
           type="button"
           onClick={() => form.actions.setIsAdding(true)}
-          className="font-[family-name:var(--font-body)] text-sm font-semibold text-[var(--color-malus,#b82c2c)] bg-none border border-dashed border-[var(--color-malus,#b82c2c)] rounded-md py-[0.4rem] px-3 cursor-pointer self-start"
+          className="font-[family-name:var(--font-body)] text-sm font-semibold text-[var(--color-malus,#b82c2c)] bg-transparent border border-dashed border-[var(--color-malus,#b82c2c)] rounded-md py-[0.4rem] px-3 cursor-pointer self-start"
         >
           + Ajouter une conséquence
         </button>

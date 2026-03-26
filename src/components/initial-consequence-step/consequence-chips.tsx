@@ -2,7 +2,7 @@
 // Renders the list of already-added consequence chips with remove buttons.
 
 import { getChipLabel } from './helpers'
-import type { InitialConsequenceItem } from './initial-consequence-step'
+import type { InitialConsequenceItem } from './helpers'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -34,7 +34,7 @@ export function ConsequenceChips({ consequences, onRemove }: ConsequenceChipsPro
             type="button"
             onClick={() => onRemove(item._localId)}
             aria-label="Supprimer"
-            className="bg-none border-none cursor-pointer text-[var(--color-malus,#b82c2c)] text-base leading-none p-0"
+            className="bg-transparent border-none cursor-pointer text-[var(--color-malus,#b82c2c)] text-base leading-none p-0"
           >
             ×
           </button>

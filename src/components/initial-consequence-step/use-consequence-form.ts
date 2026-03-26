@@ -1,7 +1,7 @@
 // Campaign TOW — useConsequenceForm hook
 // Encapsulates form state for consequence type selection
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { getFilteredOptions } from './helpers'
 import type { CampaignPlayer, ConsequenceOption } from './helpers'
 
@@ -51,7 +51,7 @@ export function useConsequenceForm(
   const [selectedStat, setSelectedStat] = useState<string | null>(null)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
 
-  const filteredOptions = getFilteredOptions(unitType)
+  const filteredOptions = useMemo(() => getFilteredOptions(unitType), [unitType])
 
   const needsStat = selectedType === 'permanent_injury'
   const needsPlayer = selectedType === 'haine' || selectedType === 'rancune'

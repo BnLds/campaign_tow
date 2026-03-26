@@ -14,6 +14,8 @@ export type CampaignPlayer = { playerId: string; playerDisplayName: string }
 
 export type ConsequenceOption = { type: string; label: string; ruleText: string }
 
+export type InitialConsequenceItem = ConsequenceEntry & { _localId: number }
+
 // ---------------------------------------------------------------------------
 // Filtered option sets by unit type
 // ---------------------------------------------------------------------------
@@ -24,11 +26,11 @@ const UNIT_ALLOWED = ['pertes_catastrophiques', 'moral_brise', 'rancune'] as con
 export function getFilteredOptions(unitType: string): ConsequenceOption[] {
   if (unitType === CHARACTER_UNIT_TYPE) {
     return (INJURY_OPTIONS as readonly ConsequenceOption[]).filter((o) =>
-      CHARACTER_ALLOWED.includes(o.type as typeof CHARACTER_ALLOWED[number])
+      (CHARACTER_ALLOWED as readonly string[]).includes(o.type)
     )
   }
   return (DESTRUCTION_OPTIONS as readonly ConsequenceOption[]).filter((o) =>
-    UNIT_ALLOWED.includes(o.type as typeof UNIT_ALLOWED[number])
+    (UNIT_ALLOWED as readonly string[]).includes(o.type)
   )
 }
 
@@ -46,15 +48,15 @@ export function getChipLabel(entry: ConsequenceEntry): string {
     case 'grave_injury':
       return 'Blessure Grave'
     case 'haine':
-      return `Haine — ${entry.opponentPlayerName ?? ''}`
+      return `Haine — ${entry.opponentPlayerName ?? '(inconnu)'}`
     case 'rancune':
-      return `Rancune — ${entry.opponentPlayerName ?? ''}`
+      return `Rancune — ${entry.opponentPlayerName ?? '(inconnu)'}`
     case 'pertes_catastrophiques':
       return 'Pertes Catastrophiques'
     case 'moral_brise':
       return 'Moral Brisé'
     default:
-      return (entry as ConsequenceEntry).type
+      return entry.type
   }
 }
 

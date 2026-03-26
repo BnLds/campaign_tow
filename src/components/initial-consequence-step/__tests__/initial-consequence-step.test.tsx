@@ -4,8 +4,10 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { InitialConsequenceStep } from '../initial-consequence-step'
 import type { InitialConsequenceItem } from '../initial-consequence-step'
+import { useConsequenceForm } from '../use-consequence-form'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -414,5 +416,34 @@ describe('[IC-019] empty campaignPlayers — disabled message', () => {
     expect(screen.queryByTestId('initial-consequence-player-select')).toBeNull()
     expect(screen.getByText(/Aucun autre joueur/)).not.toBeNull()
     expect(screen.getByTestId('initial-consequence-confirm-btn').getAttribute('disabled')).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// [IC-020] haine → rancune switch: player selection is preserved
+// Tests useConsequenceForm hook directly since haine and rancune belong to
+// different unit type filter sets and cannot appear in the same UI instance.
+// ---------------------------------------------------------------------------
+
+describe('[IC-020] haine → rancune switch preserves player selection', () => {
+  it('keeps selectedPlayerId when switching from haine to rancune', () => {
+    const players = [{ playerId: 'player-1', playerDisplayName: 'Alice' }]
+    const { result } = renderHook(() => useConsequenceForm('Personnages', players))
+
+    // Select haine
+    act(() => { result.current.actions.handleTypeSelect('haine') })
+    expect(result.current.state.selectedType).toBe('haine')
+
+    // Pick a player
+    act(() => { result.current.actions.setSelectedPlayerId('player-1') })
+    expect(result.current.state.selectedPlayerId).toBe('player-1')
+
+    // Switch to rancune — player should be preserved (both need a player)
+    act(() => { result.current.actions.handleTypeSelect('rancune') })
+    expect(result.current.state.selectedType).toBe('rancune')
+    expect(result.current.state.selectedPlayerId).toBe('player-1')
+
+    // Confirm should be enabled
+    expect(result.current.derived.isConfirmEnabled).toBe(true)
   })
 })

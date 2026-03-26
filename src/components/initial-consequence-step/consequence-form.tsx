@@ -16,7 +16,7 @@ type ConsequenceFormProps = {
 }
 
 const RADIO_CLS = 'flex items-center gap-2 cursor-pointer font-[family-name:var(--font-body)] text-sm text-[var(--color-text-primary)] py-[0.35rem] px-2 rounded'
-const BTN_BASE = 'font-[family-name:var(--font-body)] font-semibold text-sm py-2 px-4 rounded-lg border-none'
+const BTN_BASE = 'font-[family-name:var(--font-body)] font-semibold text-sm py-2 px-4 rounded-lg'
 
 export function ConsequenceForm({ form, campaignPlayers, unitId, onAdd }: ConsequenceFormProps) {
   const { selectedType, selectedStat, selectedPlayerId } = form.state
@@ -41,7 +41,7 @@ export function ConsequenceForm({ form, campaignPlayers, unitId, onAdd }: Conseq
               {option.label}
             </label>
             {selectedType === option.type && (
-              <p className="font-[family-name:var(--font-body)] text-xs italic text-[var(--color-text-secondary)] my-[0.2rem] mt-0 py-[0.3rem] px-3 bg-[rgba(184,44,44,0.05)] rounded border-l-2 border-l-[rgba(184,44,44,0.3)]">{option.ruleText}</p>
+              <p className="font-[family-name:var(--font-body)] text-xs italic text-[var(--color-text-secondary)] mt-0 mb-[0.2rem] py-[0.3rem] px-3 bg-[rgba(184,44,44,0.05)] rounded border-l-2 border-l-[rgba(184,44,44,0.3)]">{option.ruleText}</p>
             )}
           </div>
         ))}
@@ -73,7 +73,7 @@ export function ConsequenceForm({ form, campaignPlayers, unitId, onAdd }: Conseq
       )}
 
       <div className="flex gap-2 mt-1">
-        <button data-testid="initial-consequence-confirm-btn" type="button" onClick={handleConfirm} disabled={!isConfirmEnabled} className={cn(BTN_BASE, 'flex-1 text-white', isConfirmEnabled ? 'bg-[var(--color-malus,#b82c2c)] cursor-pointer opacity-100' : 'bg-[#9aa0a6] cursor-not-allowed opacity-70')}>
+        <button data-testid="initial-consequence-confirm-btn" type="button" onClick={handleConfirm} disabled={!isConfirmEnabled} className={cn(BTN_BASE, 'flex-1 text-white border-none', isConfirmEnabled ? 'bg-[var(--color-malus,#b82c2c)] cursor-pointer opacity-100' : 'bg-[#9aa0a6] cursor-not-allowed opacity-70')}>
           Ajouter
         </button>
         <button data-testid="initial-consequence-cancel-btn" type="button" onClick={resetForm} className={cn(BTN_BASE, 'bg-transparent text-[var(--color-text-secondary)] border border-[var(--color-separator)] cursor-pointer')}>

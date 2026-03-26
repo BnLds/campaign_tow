@@ -194,4 +194,20 @@ describe('getChipLabel', () => {
     const entry = { unitId: 'u', type: 'moral_brise' } as ConsequenceEntry
     expect(getChipLabel(entry)).toBe('Moral Brisé')
   })
+
+  it('returns the type string for an unhandled type (default branch — e.g. death)', () => {
+    // 'death' is a valid ConsequenceEntry type but has no explicit switch case
+    const entry = { unitId: 'u', type: 'death' } as ConsequenceEntry
+    expect(getChipLabel(entry)).toBe('death')
+  })
+
+  it('returns "Haine — (inconnu)" when haine has no opponentPlayerName', () => {
+    const entry = { unitId: 'u', type: 'haine' } as ConsequenceEntry
+    expect(getChipLabel(entry)).toBe('Haine — (inconnu)')
+  })
+
+  it('returns "Rancune — (inconnu)" when rancune has no opponentPlayerName', () => {
+    const entry = { unitId: 'u', type: 'rancune' } as ConsequenceEntry
+    expect(getChipLabel(entry)).toBe('Rancune — (inconnu)')
+  })
 })
