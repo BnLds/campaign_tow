@@ -24,22 +24,22 @@ const root = resolve(__dirname, '../..')
 // AC1 — Admin link in AppHeader: src/routes/__root.tsx
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P0] Admin link in AppHeader — src/routes/__root.tsx', () => {
-  it('[1.6-INT-001] __root.tsx renders "Administration" link gated behind session.isAdmin (absent from DOM for non-admin)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+describe('[AC1][P0] Admin link in AppHeader — src/components/app-header.tsx', () => {
+  it('[1.6-INT-001] app-header.tsx renders "Administration" link gated behind session.isAdmin (absent from DOM for non-admin)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // session.isAdmin condition and admin-link testid must be coupled — absent from DOM for non-admin
-    expect(rootTsx).toMatch(/session\.isAdmin[\s\S]{0,100}data-testid="admin-link"/)
+    expect(appHeader).toMatch(/session\.isAdmin[\s\S]{0,100}data-testid="admin-link"/)
   })
 
   it('[1.6-INT-002] Administration link has data-testid="admin-link" (E2E selector contract)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootTsx).toContain('data-testid="admin-link"')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('data-testid="admin-link"')
   })
 
   it('[1.6-INT-003] data-testid="admin-link" and /admin navigation are in the same element (coupled)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // admin-link testid and /admin route must be on the same element — not two independent occurrences
-    expect(rootTsx).toMatch(/admin-link[\s\S]{0,200}\/admin/)
+    expect(appHeader).toMatch(/admin-link[\s\S]{0,200}\/admin/)
   })
 })
 

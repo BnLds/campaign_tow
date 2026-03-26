@@ -10,5 +10,8 @@ export { createPlayerFn, listPlayersFn, deletePlayerFn, getInviteLinkFn, regener
 export { importArmyFn, listArmiesFn, assignArmyFn, addUnitFn, updateSubProfileFn, getArmyUnitsFn } from './admin-armies'
 export { createMatchFn, deleteMatchAdminFn, listMatchesFn } from './admin-matches'
 
+// Auth
+export { logoutFn } from './logout'
+
 // Guards type (for consumers that need GuardResult)
 export type { GuardResult } from './guards'

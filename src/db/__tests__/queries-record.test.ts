@@ -92,8 +92,12 @@ describe('[AC4][AC10][P0] DB queries — getArmyRecord — src/db/queries.ts', (
 
   it('[3.1b-QRY-013] getArmyRecord uses sql template from drizzle-orm for COUNT FILTER', () => {
     const queries = getQueries()
-    // Must import sql from drizzle-orm
-    expect(queries).toMatch(/import[\s\S]{0,300}sql[\s\S]{0,100}drizzle-orm/)
+    // sql must be imported from drizzle-orm in the same file as getArmyRecord (lookups.ts).
+    // Files are concatenated with \n, so both must appear within one file's content.
+    // The regex anchors the import BEFORE getArmyRecord to ensure same-file co-location.
+    expect(queries).toMatch(
+      /import\s*\{[^}]*\bsql\b[^}]*\}\s*from\s*['"]drizzle-orm['"][\s\S]{0,3000}getArmyRecord/,
+    )
   })
 })
 
@@ -178,24 +182,24 @@ describe('[AC4][P0] Root layout — getArmyRecord integration (Task 5.2 → move
 // AC4, AC10 — Root header displays record (Task 5.3, 5.4 → moved to __root.tsx)
 // ---------------------------------------------------------------------------
 
-describe('[AC4][AC10][P0] Root header — record display (Task 5.3, 5.4 → moved to __root.tsx)', () => {
-  it('[3.1b-QRY-026] __root.tsx contains "Aucune partie" for zero/null record (AC10)', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toContain('Aucune partie')
+describe('[AC4][AC10][P0] Root header — record display (Task 5.3, 5.4 → extracted to app-header.tsx)', () => {
+  it('[3.1b-QRY-026] app-header.tsx contains "Aucune partie" for zero/null record (AC10)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('Aucune partie')
   })
 
-  it('[3.1b-QRY-027] __root.tsx contains "parties" text in record format (e.g. "4 parties")', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toContain('parties')
+  it('[3.1b-QRY-027] app-header.tsx contains "parties" text in record format (e.g. "4 parties")', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('parties')
   })
 
-  it('[3.1b-QRY-028] __root.tsx applies --color-bonus token for wins display', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toContain('--color-bonus')
+  it('[3.1b-QRY-028] app-header.tsx applies --color-bonus token for wins display', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('--color-bonus')
   })
 
-  it('[3.1b-QRY-029] __root.tsx applies --color-malus token for losses display', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toContain('--color-malus')
+  it('[3.1b-QRY-029] app-header.tsx applies --color-malus token for losses display', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('--color-malus')
   })
 })

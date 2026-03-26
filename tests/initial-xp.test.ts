@@ -5,14 +5,12 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readMatchesQueries } from './helpers/read-queries'
 
 const root = resolve(__dirname, '..')
 
 function getSchema() {
   return readFileSync(resolve(root, 'src/db/schema.ts'), 'utf-8')
-}
-function getMatchesQuery() {
-  return readFileSync(resolve(root, 'src/db/queries/matches.ts'), 'utf-8')
 }
 function getEvolutionsQuery() {
   return readFileSync(resolve(root, 'src/db/queries/evolutions.ts'), 'utf-8')
@@ -52,36 +50,36 @@ describe('[INIT-SCH] Schema — matchType and needsInitialXp', () => {
 // ---------------------------------------------------------------------------
 
 describe('[INIT-QRY] Queries — createInitialSetupMatch', () => {
-  it('[INIT-QRY-001] createInitialSetupMatch is exported from matches.ts', () => {
-    expect(getMatchesQuery()).toContain('export async function createInitialSetupMatch')
+  it('[INIT-QRY-001] createInitialSetupMatch is exported from matches queries', () => {
+    expect(readMatchesQueries()).toContain('export async function createInitialSetupMatch')
   })
 
   it('[INIT-QRY-002] createInitialSetupMatch inserts matchType initial_setup', () => {
-    expect(getMatchesQuery()).toMatch(/createInitialSetupMatch[\s\S]{0,500}initial_setup/)
+    expect(readMatchesQueries()).toMatch(/createInitialSetupMatch[\s\S]{0,500}initial_setup/)
   })
 
   it('[INIT-QRY-003] createInitialSetupMatch is idempotent (returns existing if found)', () => {
-    const query = getMatchesQuery()
+    const query = readMatchesQueries()
     expect(query).toMatch(/createInitialSetupMatch[\s\S]{0,600}(existing|already|found|return)/)
   })
 
-  it('[INIT-QRY-004] getInitialSetupMatchForArmy is exported from matches.ts', () => {
-    expect(getMatchesQuery()).toContain('export async function getInitialSetupMatchForArmy')
+  it('[INIT-QRY-004] getInitialSetupMatchForArmy is exported from matches queries', () => {
+    expect(readMatchesQueries()).toContain('export async function getInitialSetupMatchForArmy')
   })
 
   it('[INIT-QRY-005] getPendingMatches excludes initial_setup matches', () => {
-    const query = getMatchesQuery()
+    const query = readMatchesQueries()
     expect(query).toMatch(/getPendingMatches[\s\S]{0,1500}ne\(matches\.matchType,\s*['"]initial_setup['"]/)
   })
 
   it('[INIT-QRY-006] getTimelineForArmy uses leftJoin for opponent participant (supports initial_setup with no opponent)', () => {
-    const query = getMatchesQuery()
+    const query = readMatchesQueries()
     // Must have leftJoin on oppParticipant after the getTimelineForArmy function definition
     expect(query).toMatch(/getTimelineForArmy[\s\S]{0,1000}\.leftJoin\(oppParticipant/)
   })
 
   it('[INIT-QRY-007] TimelineEntryData type includes matchType field', () => {
-    expect(getMatchesQuery()).toMatch(/matchType.*MatchType|MatchType.*matchType/)
+    expect(readMatchesQueries()).toMatch(/matchType.*MatchType|MatchType.*matchType/)
   })
 })
 

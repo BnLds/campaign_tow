@@ -35,7 +35,7 @@ describe('[AC1][P0] Validator — deleteMatchSchema — src/lib/validators.ts', 
 // AC1 / AC6 — DB query: deleteMatchWithXpRollback
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC6][P0] DB query — deleteMatchWithXpRollback — src/db/queries/matches.ts', () => {
+describe('[AC1][AC6][P0] DB query — deleteMatchWithXpRollback — src/db/queries/matches/', () => {
   const queries = () => readAllQueries()
 
   it('[DEL-003] deleteMatchWithXpRollback is exported and uses db.transaction', () => {

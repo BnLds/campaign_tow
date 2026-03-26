@@ -25,12 +25,12 @@ describe('[AC7][AC10][P0] Settings route — src/routes/settings.tsx', () => {
 
   it('[settings-INT-004] changePasswordFn enforces current password check when passwordHash is set (coupled guard)', () => {
     const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
-    expect(route).toMatch(/INVALID_CURRENT_PASSWORD/)
+    expect(route).toMatch(/changePasswordFn[\s\S]{0,1500}INVALID_CURRENT_PASSWORD/)
   })
 
   it('[settings-INT-005] changePasswordFn hashes new password with bcryptjs 12 rounds (coupled)', () => {
     const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
-    expect(route).toMatch(/bcryptjs[\s\S]{0,300}hash[\s\S]{0,100}12/)
+    expect(route).toMatch(/changePasswordFn[\s\S]{0,2000}bcryptjs[\s\S]{0,300}hash[\s\S]{0,100}12/)
   })
 
   it('[settings-INT-006] settings route uses changePasswordSchema for validation', () => {
@@ -55,7 +55,7 @@ describe('[AC7][AC10][P0] Settings route — src/routes/settings.tsx', () => {
 
   it('[settings-INT-010] updateUsernameFn calls checkUsernameExists for uniqueness check', () => {
     const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
-    expect(route).toContain('checkUsernameExists')
+    expect(route).toMatch(/updateUsernameFn[\s\S]{0,1500}checkUsernameExists/)
   })
 
   it('[settings-INT-011] updateUsernameFn does NOT call updatePlayerUsername when username is unchanged (short-circuit)', () => {
@@ -66,13 +66,13 @@ describe('[AC7][AC10][P0] Settings route — src/routes/settings.tsx', () => {
 })
 
 describe('[AC10][P0] AppHeader — Paramètres link', () => {
-  it('[settings-INT-008] __root.tsx contains Paramètres navigation link', () => {
-    const root_tsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(root_tsx).toContain('Paramètres')
+  it('[settings-INT-012] app-header.tsx contains Paramètres navigation link', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('Paramètres')
   })
 
-  it('[settings-INT-009] __root.tsx navigates to /settings (coupled with Paramètres)', () => {
-    const root_tsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(root_tsx).toMatch(/Paramètres[\s\S]{0,600}\/settings|\/settings[\s\S]{0,600}Paramètres/)
+  it('[settings-INT-013] app-header.tsx navigates to /settings (coupled with Paramètres)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toMatch(/Paramètres[\s\S]{0,600}\/settings|\/settings[\s\S]{0,600}Paramètres/)
   })
 })

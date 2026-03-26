@@ -140,16 +140,16 @@ describe('[AC1][AC2][AC4][AC5][P0] Admin route — src/routes/admin/index.tsx', 
 // AC1 — Admin navigation link: moved to src/routes/__root.tsx (AppHeader) by story 1.6
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P1] Admin navigation link — src/routes/__root.tsx (AppHeader, updated by story 1.6)', () => {
+describe('[AC1][P1] Admin navigation link — src/components/app-header.tsx (extracted from __root.tsx)', () => {
   it('[1.4-INT-021] AppHeader shows admin link only when isAdmin is true (conditional rendering — moved from index.tsx to AppHeader in story 1.6)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // isAdmin condition and /admin link must be coupled — link gated behind admin check
-    expect(rootTsx).toMatch(/isAdmin[\s\S]{0,300}\/admin/)
+    expect(appHeader).toMatch(/isAdmin[\s\S]{0,300}\/admin/)
   })
 
-  it('[1.4-INT-022] admin link navigates to /admin route (now in AppHeader — story 1.6)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    // /admin target must appear as a navigation destination in __root.tsx
-    expect(rootTsx).toMatch(/\/admin/)
+  it('[1.4-INT-022] admin link navigates to /admin route via router.navigate (now in AppHeader)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    // navigate call and /admin target must be coupled — not just any occurrence of /admin
+    expect(appHeader).toMatch(/onSelect[\s\S]{0,100}navigate[\s\S]{0,50}\/admin/)
   })
 })
