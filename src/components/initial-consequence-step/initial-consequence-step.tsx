@@ -4,6 +4,7 @@
 
 import { PERMANENT_INJURY_SUBTABLE } from '../injury-bonus-step'
 import type { ConsequenceEntry } from '../../lib/validators'
+import { cn } from '@/lib/utils'
 import { getChipLabel, buildConsequenceEntry } from './helpers'
 import type { CampaignPlayer } from './helpers'
 import { useConsequenceForm } from './use-consequence-form'
@@ -58,51 +59,20 @@ export function InitialConsequenceStep({
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.75rem',
-        background: 'var(--color-malus-bg, #fdf0f0)',
-        borderRadius: '8px',
-        padding: '1rem',
-        border: '1px solid var(--color-malus, #b82c2c)',
-      }}
-    >
+    <div className="flex flex-col gap-3 bg-[var(--color-malus-bg,#fdf0f0)] rounded-lg p-4 border border-[var(--color-malus,#b82c2c)]">
       {/* Section title */}
-      <p
-        style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.78rem',
-          fontWeight: 600,
-          color: 'var(--color-malus, #b82c2c)',
-          margin: 0,
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-        }}
-      >
+      <p className="font-[family-name:var(--font-body)] text-xs font-semibold text-[var(--color-malus,#b82c2c)] m-0 uppercase tracking-[0.04em]">
         Conséquences passées
       </p>
 
       {/* Consequence chips */}
       {consequences.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+        <div className="flex flex-wrap gap-[0.4rem]">
           {consequences.map((item) => (
             <div
               key={item._localId}
               data-testid={`initial-consequence-chip-${item._localId}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.3rem',
-                padding: '0.2rem 0.5rem',
-                borderRadius: '9999px',
-                border: '1px solid var(--color-malus, #b82c2c)',
-                background: 'rgba(184,44,44,0.06)',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.78rem',
-                color: 'var(--color-malus, #b82c2c)',
-              }}
+              className="flex items-center gap-[0.3rem] py-[0.2rem] px-[0.5rem] rounded-full border border-[var(--color-malus,#b82c2c)] bg-[rgba(184,44,44,0.06)] font-[family-name:var(--font-body)] text-xs text-[var(--color-malus,#b82c2c)]"
             >
               <span>{getChipLabel(item)}</span>
               <button
@@ -110,15 +80,7 @@ export function InitialConsequenceStep({
                 type="button"
                 onClick={() => onRemove(item._localId)}
                 aria-label="Supprimer"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--color-malus, #b82c2c)',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  padding: '0',
-                }}
+                className="bg-none border-none cursor-pointer text-[var(--color-malus,#b82c2c)] text-base leading-none p-0"
               >
                 ×
               </button>
@@ -129,24 +91,16 @@ export function InitialConsequenceStep({
 
       {/* Add form or add button */}
       {isAdding ? (
-        <div data-testid="initial-consequence-form" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div data-testid="initial-consequence-form" className="flex flex-col gap-2">
           {/* Radio list — filtered options */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div className="flex flex-col gap-[0.35rem]">
             {filteredOptions.map((option) => (
               <div key={option.type}>
                 <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.875rem',
-                    color: 'var(--color-text-primary)',
-                    padding: '0.35rem 0.5rem',
-                    borderRadius: '4px',
-                    background: selectedType === option.type ? 'rgba(184,44,44,0.08)' : 'transparent',
-                  }}
+                  className={cn(
+                    'flex items-center gap-2 cursor-pointer font-[family-name:var(--font-body)] text-sm text-[var(--color-text-primary)] py-[0.35rem] px-2 rounded',
+                    selectedType === option.type ? 'bg-[rgba(184,44,44,0.08)]' : 'bg-transparent'
+                  )}
                 >
                   <input
                     data-testid={`initial-consequence-type-${option.type}`}
@@ -155,24 +109,12 @@ export function InitialConsequenceStep({
                     value={option.type}
                     checked={selectedType === option.type}
                     onChange={() => handleTypeSelect(option.type)}
-                    style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
+                    className="accent-[var(--color-malus,#b82c2c)]"
                   />
                   {option.label}
                 </label>
                 {selectedType === option.type && (
-                  <p
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.78rem',
-                      fontStyle: 'italic',
-                      color: 'var(--color-text-secondary)',
-                      margin: '0 0 0.2rem',
-                      padding: '0.3rem 0.75rem',
-                      background: 'rgba(184,44,44,0.05)',
-                      borderRadius: '4px',
-                      borderLeft: '2px solid rgba(184,44,44,0.3)',
-                    }}
-                  >
+                  <p className="font-[family-name:var(--font-body)] text-xs italic text-[var(--color-text-secondary)] my-[0.2rem] mt-0 py-[0.3rem] px-3 bg-[rgba(184,44,44,0.05)] rounded border-l-2 border-l-[rgba(184,44,44,0.3)]">
                     {option.ruleText}
                   </p>
                 )}
@@ -182,43 +124,17 @@ export function InitialConsequenceStep({
 
           {/* Sub-table: permanent_injury */}
           {needsStat && (
-            <div
-              style={{
-                marginLeft: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem',
-                padding: '0.5rem',
-                background: 'rgba(184,44,44,0.05)',
-                borderRadius: '4px',
-                borderLeft: '2px solid var(--color-malus, #b82c2c)',
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '0.78rem',
-                  color: 'var(--color-text-secondary)',
-                  margin: '0 0 0.2rem',
-                }}
-              >
+            <div className="ml-4 flex flex-col gap-[0.3rem] p-2 bg-[rgba(184,44,44,0.05)] rounded border-l-2 border-l-[var(--color-malus,#b82c2c)]">
+              <p className="font-[family-name:var(--font-body)] text-xs text-[var(--color-text-secondary)] mb-[0.2rem] mt-0">
                 Sous-table 1D6 — Blessure Permanente
               </p>
               {PERMANENT_INJURY_SUBTABLE.map((sub) => (
                 <label
                   key={sub.stat}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.85rem',
-                    color: 'var(--color-text-primary)',
-                    padding: '0.25rem 0.4rem',
-                    borderRadius: '4px',
-                    background: selectedStat === sub.stat ? 'rgba(184,44,44,0.08)' : 'transparent',
-                  }}
+                  className={cn(
+                    'flex items-center gap-2 cursor-pointer font-[family-name:var(--font-body)] text-sm text-[var(--color-text-primary)] py-1 px-[0.4rem] rounded',
+                    selectedStat === sub.stat ? 'bg-[rgba(184,44,44,0.08)]' : 'bg-transparent'
+                  )}
                 >
                   <input
                     data-testid={`initial-consequence-stat-${sub.stat}`}
@@ -227,7 +143,7 @@ export function InitialConsequenceStep({
                     value={sub.stat}
                     checked={selectedStat === sub.stat}
                     onChange={() => setSelectedStat(sub.stat)}
-                    style={{ accentColor: 'var(--color-malus, #b82c2c)' }}
+                    className="accent-[var(--color-malus,#b82c2c)]"
                   />
                   {sub.label}
                 </label>
@@ -237,17 +153,9 @@ export function InitialConsequenceStep({
 
           {/* Player picker: haine / rancune */}
           {needsPlayer && (
-            <div style={{ marginLeft: '1rem' }}>
+            <div className="ml-4">
               {campaignPlayers.length === 0 ? (
-                <p
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.85rem',
-                    color: 'var(--color-text-secondary)',
-                    fontStyle: 'italic',
-                    margin: 0,
-                  }}
-                >
+                <p className="font-[family-name:var(--font-body)] text-sm text-[var(--color-text-secondary)] italic m-0">
                   Aucun autre joueur dans la campagne
                 </p>
               ) : (
@@ -255,16 +163,7 @@ export function InitialConsequenceStep({
                   data-testid="initial-consequence-player-select"
                   value={selectedPlayerId ?? ''}
                   onChange={(e) => setSelectedPlayerId(e.target.value || null)}
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.875rem',
-                    padding: '0.375rem 0.5rem',
-                    borderRadius: '6px',
-                    border: '1px solid var(--color-separator)',
-                    background: 'var(--color-background)',
-                    color: 'var(--color-text-primary)',
-                    width: '100%',
-                  }}
+                  className="font-[family-name:var(--font-body)] text-sm py-[0.375rem] px-2 rounded-md border border-[var(--color-separator)] bg-[var(--color-background)] text-[var(--color-text-primary)] w-full"
                 >
                   <option value="">— Choisir un joueur —</option>
                   {campaignPlayers.map((p) => (
@@ -278,25 +177,18 @@ export function InitialConsequenceStep({
           )}
 
           {/* Confirm / Cancel buttons */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+          <div className="flex gap-2 mt-1">
             <button
               data-testid="initial-consequence-confirm-btn"
               type="button"
               onClick={handleConfirm}
               disabled={!isConfirmEnabled}
-              style={{
-                flex: 1,
-                fontFamily: 'var(--font-body)',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                background: isConfirmEnabled ? 'var(--color-malus, #b82c2c)' : '#9aa0a6',
-                color: '#fff',
-                border: 'none',
-                cursor: isConfirmEnabled ? 'pointer' : 'not-allowed',
-                opacity: isConfirmEnabled ? 1 : 0.7,
-              }}
+              className={cn(
+                'flex-1 font-[family-name:var(--font-body)] font-semibold text-sm py-2 px-4 rounded-lg text-white border-none',
+                isConfirmEnabled
+                  ? 'bg-[var(--color-malus,#b82c2c)] cursor-pointer opacity-100'
+                  : 'bg-[#9aa0a6] cursor-not-allowed opacity-70'
+              )}
             >
               Ajouter
             </button>
@@ -304,17 +196,7 @@ export function InitialConsequenceStep({
               data-testid="initial-consequence-cancel-btn"
               type="button"
               onClick={resetForm}
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                background: 'transparent',
-                color: 'var(--color-text-secondary)',
-                border: '1px solid var(--color-separator)',
-                cursor: 'pointer',
-              }}
+              className="font-[family-name:var(--font-body)] font-semibold text-sm py-2 px-4 rounded-lg bg-transparent text-[var(--color-text-secondary)] border border-[var(--color-separator)] cursor-pointer"
             >
               Annuler
             </button>
@@ -325,18 +207,7 @@ export function InitialConsequenceStep({
           data-testid="initial-consequence-add-btn"
           type="button"
           onClick={() => setIsAdding(true)}
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: 'var(--color-malus, #b82c2c)',
-            background: 'none',
-            border: '1px dashed var(--color-malus, #b82c2c)',
-            borderRadius: '6px',
-            padding: '0.4rem 0.75rem',
-            cursor: 'pointer',
-            alignSelf: 'flex-start',
-          }}
+          className="font-[family-name:var(--font-body)] text-sm font-semibold text-[var(--color-malus,#b82c2c)] bg-none border border-dashed border-[var(--color-malus,#b82c2c)] rounded-md py-[0.4rem] px-3 cursor-pointer self-start"
         >
           + Ajouter une conséquence
         </button>
