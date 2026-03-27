@@ -97,7 +97,9 @@ function buildXpEntriesMap(
 }
 
 export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: Date | null): Promise<TimelineEntryData[]> {
-  if (!initialXpCompletedAt) return []
+  const matchFilter = initialXpCompletedAt
+    ? gte(matches.date, initialXpCompletedAt)
+    : eq(matches.matchType, 'initial_setup')
   const oppParticipant = alias(matchParticipants, 'opp')
   const oppArmy = alias(armies, 'opp_army')
   const oppPlayer = alias(players, 'opp_player')
@@ -120,7 +122,7 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
     .leftJoin(oppParticipant, and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.playerId, matchParticipants.playerId)))
     .leftJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
     .leftJoin(oppPlayer, eq(oppParticipant.playerId, oppPlayer.id))
-    .where(and(eq(matchParticipants.armyId, armyId), gte(matches.date, initialXpCompletedAt)))
+    .where(and(eq(matchParticipants.armyId, armyId), matchFilter))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
   const latestMatchId = rows.length > 0 ? rows[0].matchId : null

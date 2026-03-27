@@ -157,8 +157,10 @@ describe('[INIT-TL] Timeline — initialXpCompletedAt gating', () => {
     expect(getTimelineQuery()).toMatch(/getTimelineForArmy\(armyId:\s*string,\s*initialXpCompletedAt:\s*Date\s*\|\s*null\)/)
   })
 
-  it('[INIT-TL-002] getTimelineForArmy returns early [] when initialXpCompletedAt is null', () => {
-    expect(getTimelineQuery()).toMatch(/getTimelineForArmy[\s\S]{0,200}if\s*\(\s*!initialXpCompletedAt\s*\)\s*return\s*\[\]/)
+  it('[INIT-TL-002] getTimelineForArmy filters by matchType initial_setup when initialXpCompletedAt is null', () => {
+    const query = getTimelineQuery()
+    // When initialXpCompletedAt is null, the conditional filter selects initial_setup matches only
+    expect(query).toMatch(/getTimelineForArmy[\s\S]{0,500}initialXpCompletedAt[\s\S]{0,200}eq\(matches\.matchType,\s*['"]initial_setup['"]/)
   })
 
   it('[INIT-TL-003] getTimelineForArmy filters matches.date using gte with initialXpCompletedAt', () => {
