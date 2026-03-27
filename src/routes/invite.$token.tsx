@@ -214,6 +214,10 @@ function InvitePage() {
     return <InviteErrorPage message="Lien invalide." />
   }
 
+  if (data.status === 'activated') {
+    return <InviteErrorPage message="Ce compte a déjà été activé." />
+  }
+
   return <InviteSetupForm token={Route.useParams().token} playerId={data.playerId} defaultUsername={data.username} />
 }
 

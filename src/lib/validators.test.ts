@@ -142,11 +142,11 @@ describe('[AC5][P0] createPlayerSchema — invalid inputs', () => {
 
 describe('[AC7][P0] changePasswordSchema — valid inputs', () => {
   it('[settings-UNIT-001] accepts valid newPassword and confirmNewPassword', () => {
-    const result = changePasswordSchema.safeParse({ newPassword: 'newsecret', confirmNewPassword: 'newsecret' })
+    const result = changePasswordSchema.safeParse({ currentPassword: '', newPassword: 'newsecret', confirmNewPassword: 'newsecret' })
     expect(result.success).toBe(true)
   })
 
-  it('[settings-UNIT-002] accepts with optional currentPassword', () => {
+  it('[settings-UNIT-002] accepts with currentPassword provided', () => {
     const result = changePasswordSchema.safeParse({ currentPassword: 'oldpass', newPassword: 'newsecret', confirmNewPassword: 'newsecret' })
     expect(result.success).toBe(true)
   })
@@ -154,12 +154,12 @@ describe('[AC7][P0] changePasswordSchema — valid inputs', () => {
 
 describe('[AC7][P0] changePasswordSchema — invalid inputs', () => {
   it('[settings-UNIT-003] rejects newPassword shorter than 6 characters', () => {
-    const result = changePasswordSchema.safeParse({ newPassword: '12345', confirmNewPassword: '12345' })
+    const result = changePasswordSchema.safeParse({ currentPassword: '', newPassword: '12345', confirmNewPassword: '12345' })
     expect(result.success).toBe(false)
   })
 
   it('[settings-UNIT-004] rejects mismatched confirmNewPassword — error attributed to confirmNewPassword field', () => {
-    const result = changePasswordSchema.safeParse({ newPassword: 'newsecret', confirmNewPassword: 'different' })
+    const result = changePasswordSchema.safeParse({ currentPassword: '', newPassword: 'newsecret', confirmNewPassword: 'different' })
     expect(result.success).toBe(false)
     if (!result.success) {
       const paths = result.error.issues.map((i) => i.path.join('.'))
@@ -188,12 +188,12 @@ describe('passwordConfirmRefinement — via inviteFormSchema', () => {
   })
 
   it('changePasswordSchema accepts matching passwords', () => {
-    const result = changePasswordSchema.safeParse({ newPassword: 'newsecret', confirmNewPassword: 'newsecret' })
+    const result = changePasswordSchema.safeParse({ currentPassword: '', newPassword: 'newsecret', confirmNewPassword: 'newsecret' })
     expect(result.success).toBe(true)
   })
 
   it('changePasswordSchema rejects mismatched passwords — error on confirmNewPassword path', () => {
-    const result = changePasswordSchema.safeParse({ newPassword: 'newsecret', confirmNewPassword: 'different' })
+    const result = changePasswordSchema.safeParse({ currentPassword: '', newPassword: 'newsecret', confirmNewPassword: 'different' })
     expect(result.success).toBe(false)
     if (!result.success) {
       const paths = result.error.issues.map((i) => i.path.join('.'))

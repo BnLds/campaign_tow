@@ -80,7 +80,7 @@ export function PhaseTierUp({
   onBack,
   onCancel,
 }: PhaseTierUpProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // For honour thresholds, dynamically filter out improvements already selected

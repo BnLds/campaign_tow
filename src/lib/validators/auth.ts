@@ -43,7 +43,7 @@ export type InviteFormInput = z.infer<typeof inviteFormSchema>
 
 // Password change — settings page
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1).max(100).optional(),
+  currentPassword: z.string().max(100),
   newPassword: z.string().min(6, 'Le mot de passe doit faire au moins 6 caractères').max(100),
   confirmNewPassword: z.string().min(6).max(100),
 }).superRefine(passwordConfirmRefinement('newPassword', 'confirmNewPassword'))

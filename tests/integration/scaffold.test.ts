@@ -70,7 +70,7 @@ describe('[AC2][P0] Additional dev dependencies', () => {
     expect(existsSync(resolve(root, 'vitest.config.ts'))).toBe(true)
   })
 
-  it('[1.1-UNIT-012] playwright.config.ts exists', () => {
+  it.skip('[1.1-UNIT-012] playwright.config.ts exists (e2e removed)', () => {
     expect(existsSync(resolve(root, 'playwright.config.ts'))).toBe(true)
   })
 })
