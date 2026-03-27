@@ -87,9 +87,10 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     const opponentPlayerName = matchType === 'initial_setup' ? '' : (oppRows[0]?.playerName ?? 'Adversaire')
 
     // Check re-entry eligibility: only the army's latest match can be re-entered
+    // Skip for initial_setup — it's a one-off match whose 1993 date is always excluded by the gte filter
     const isReentry = participant.evolutionsEnteredAt !== null
-    if (isReentry) {
-      const latestMatchId = await getLatestMatchIdForArmy(army.id)
+    if (isReentry && matchType !== 'initial_setup') {
+      const latestMatchId = await getLatestMatchIdForArmy(army.id, army.initialXpCompletedAt)
       if (data.matchId !== latestMatchId) {
         return {
           alreadyCompleted: true,
@@ -326,9 +327,20 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     if (data.matchParticipantId !== participant.id) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Participant invalide' } }
     }
+    // Load matchType server-side (do not trust client input) for initial_setup flag handling
+    const { db: dbInst } = await import('../../../db/index')
+    const { matches: matchesTable } = await import('../../../db/schema')
+    const { eq: dbEqFn } = await import('drizzle-orm')
+    const matchTypeRows = await dbInst
+      .select({ matchType: matchesTable.matchType })
+      .from(matchesTable)
+      .where(dbEqFn(matchesTable.id, data.matchId))
+      .limit(1)
+    const resolvedMatchType = matchTypeRows[0]?.matchType ?? 'standard'
     // Re-entry guard: only the army's latest match can be re-entered
-    if (participant.evolutionsEnteredAt !== null) {
-      const latestMatchId = await getLatestMatchIdForArmy(army.id)
+    // Skip for initial_setup — it's a one-off match whose 1993 date is always excluded by the gte filter
+    if (participant.evolutionsEnteredAt !== null && resolvedMatchType !== 'initial_setup') {
+      const latestMatchId = await getLatestMatchIdForArmy(army.id, army.initialXpCompletedAt)
       if (data.matchId !== latestMatchId) {
         return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la dernière partie peut être modifiée' } }
       }
@@ -347,16 +359,6 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
         return { success: false, error: { code: 'FORBIDDEN', message: "Une unité des conséquences n'appartient pas à votre armée" } }
       }
     }
-    // Load matchType server-side (do not trust client input) for initial_setup flag handling
-    const { db: dbInst } = await import('../../../db/index')
-    const { matches: matchesTable } = await import('../../../db/schema')
-    const { eq: dbEqFn } = await import('drizzle-orm')
-    const matchTypeRows = await dbInst
-      .select({ matchType: matchesTable.matchType })
-      .from(matchesTable)
-      .where(dbEqFn(matchesTable.id, data.matchId))
-      .limit(1)
-    const resolvedMatchType = matchTypeRows[0]?.matchType ?? 'standard'
 
     // Story 4.3: pass consequences, armyId, championKilledIds for full post-match processing
     try {

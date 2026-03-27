@@ -32,7 +32,7 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     // First-time result entry (result is null) or re-edit on latest match
     const updated = participant.result === null
       ? await updateMatchResults(data.matchId, context.session.playerId, data.result)
-      : await updateMatchResultOnLatest(data.matchId, context.session.playerId, army.id, data.result)
+      : await updateMatchResultOnLatest(data.matchId, context.session.playerId, army.id, army.initialXpCompletedAt, data.result)
     if (!updated) {
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Échec de la mise à jour du résultat' } }
     }
@@ -90,8 +90,8 @@ const skipInitialXpFn = createServerFn({ method: 'POST' })
     }
 
     await db.transaction(async (tx) => {
-      // Clear needsInitialXp flag
-      await tx.update(armiesTable).set({ needsInitialXp: false }).where(dbEq(armiesTable.id, army.id))
+      // Set initialXpCompletedAt timestamp
+      await tx.update(armiesTable).set({ initialXpCompletedAt: new Date() }).where(dbEq(armiesTable.id, army.id))
 
       // Delete incomplete initial_setup match if it exists
       const existing = await getInitialSetupMatchForArmy(army.id)
@@ -119,8 +119,8 @@ const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
     const { getPlayerArmy, getTimelineForArmy, getInitialSetupMatchForArmy } = await import('../db/queries')
     const army = await getPlayerArmy(session.playerId)
     const [timeline, initialSetupMatchRaw] = await Promise.all([
-      army ? getTimelineForArmy(army.id) : Promise.resolve([] as TimelineEntryData[]),
-      army?.needsInitialXp ? getInitialSetupMatchForArmy(army.id) : Promise.resolve(null),
+      army ? getTimelineForArmy(army.id, army.initialXpCompletedAt) : Promise.resolve([] as TimelineEntryData[]),
+      army && !army.initialXpCompletedAt ? getInitialSetupMatchForArmy(army.id) : Promise.resolve(null),
     ])
     const initialSetupMatch = initialSetupMatchRaw
       ? {
@@ -179,7 +179,7 @@ function CampaignView() {
   const initialMatchCreatedRef = useRef(false)
   useEffect(() => {
     if (initialMatchCreatedRef.current) return
-    if (!army?.needsInitialXp || initialSetupMatch) return
+    if (army?.initialXpCompletedAt || initialSetupMatch) return
     initialMatchCreatedRef.current = true
     createInitialSetupMatchFn()
       .then(async (result) => {
@@ -310,7 +310,7 @@ function CampaignView() {
 
   const handleEvolutionStart = (matchId: string) => {
     // Priority 1: initial XP not done — block all standard matches
-    if (army?.needsInitialXp && matchId !== initialSetupMatch?.matchId) {
+    if (!army?.initialXpCompletedAt && matchId !== initialSetupMatch?.matchId) {
       if (initialSetupMatch === null || initialSetupMatch.evolutionsEnteredAt === null) {
         showBlockToast("Remplissez d'abord l'XP initiale de votre armée")
         return

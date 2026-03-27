@@ -53,7 +53,7 @@ export const armies = pgTable('armies', {
   name: text('name').notNull(),
   faction: text('faction').notNull(),
   playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
-  needsInitialXp: boolean('needs_initial_xp').notNull().default(true),
+  initialXpCompletedAt: timestamp('initial_xp_completed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
   // One army per player max — nullable unique allows multiple unassigned armies

@@ -1,4 +1,4 @@
-import { eq, and, ne, desc, isNull } from 'drizzle-orm'
+import { eq, and, ne, desc, isNull, gte } from 'drizzle-orm'
 import { db } from '../../index'
 import { matches, matchParticipants } from '../../schema'
 
@@ -79,7 +79,7 @@ export async function createInitialSetupMatch(playerId: string, armyId: string):
 
     const [inserted] = await tx
       .insert(matches)
-      // Historical placeholder date — initial setup matches are always filtered by matchType, not date
+      // Historical placeholder date — always excluded by the gte(initialXpCompletedAt) timeline filter
       .values({ date: new Date('1993-08-19'), matchType: 'initial_setup', createdByPlayerId: playerId })
       .returning({ id: matches.id })
 
@@ -100,6 +100,7 @@ export async function updateMatchResultOnLatest(
   matchId: string,
   myPlayerId: string,
   armyId: string,
+  initialXpCompletedAt: Date | null,
   myResult: 'victory' | 'defeat' | 'draw',
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
@@ -112,11 +113,15 @@ export async function updateMatchResultOnLatest(
     if (!myRow) return false
 
     // Re-verify latest match inside transaction (prevents TOCTOU race)
+    // Align with getLatestMatchIdForArmy: filter by initialXpCompletedAt to exclude pre-completion matches
+    const latestWhere = initialXpCompletedAt
+      ? and(eq(matchParticipants.armyId, armyId), gte(matches.date, initialXpCompletedAt))
+      : eq(matchParticipants.armyId, armyId)
     const latestRows = await tx
       .select({ matchId: matchParticipants.matchId })
       .from(matchParticipants)
       .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
-      .where(eq(matchParticipants.armyId, armyId))
+      .where(latestWhere)
       .orderBy(desc(matches.date), desc(matches.createdAt))
       .limit(1)
     if (latestRows.length === 0 || latestRows[0].matchId !== matchId) return false

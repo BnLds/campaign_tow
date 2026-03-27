@@ -450,14 +450,15 @@ async function finalizeEvolutions(
   matchType: 'standard' | 'initial_setup' | undefined,
   armyId: string | undefined,
 ): Promise<void> {
+  const now = new Date()
   await tx.update(matchParticipants)
-    .set({ evolutionsEnteredAt: new Date() })
+    .set({ evolutionsEnteredAt: now })
     .where(eq(matchParticipants.id, matchParticipantId))
 
-  // Initial XP entry: clear needsInitialXp flag atomically with the commit
+  // Initial XP entry: set initialXpCompletedAt atomically with the commit
   if (matchType === 'initial_setup' && armyId) {
     await tx.update(armies)
-      .set({ needsInitialXp: false })
+      .set({ initialXpCompletedAt: now })
       .where(eq(armies.id, armyId))
   }
 }

@@ -1,4 +1,4 @@
-import { eq, and, ne, desc, inArray } from 'drizzle-orm'
+import { eq, and, ne, desc, inArray, gte } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../../index'
 import { players, armies, units, matches, matchParticipants, matchXpEntries, statModifiers, unitGains } from '../../schema'
@@ -35,12 +35,13 @@ export type TimelineEntryData = {
   }
 }
 
-export async function getLatestMatchIdForArmy(armyId: string): Promise<string | null> {
+export async function getLatestMatchIdForArmy(armyId: string, initialXpCompletedAt: Date | null): Promise<string | null> {
+  if (!initialXpCompletedAt) return null
   const rows = await db
     .select({ matchId: matchParticipants.matchId })
     .from(matchParticipants)
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
-    .where(eq(matchParticipants.armyId, armyId))
+    .where(and(eq(matchParticipants.armyId, armyId), gte(matches.date, initialXpCompletedAt)))
     .orderBy(desc(matches.date), desc(matches.createdAt))
     .limit(1)
   return rows.length > 0 ? rows[0].matchId : null
@@ -95,7 +96,8 @@ function buildXpEntriesMap(
   return xpMap
 }
 
-export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryData[]> {
+export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: Date | null): Promise<TimelineEntryData[]> {
+  if (!initialXpCompletedAt) return []
   const oppParticipant = alias(matchParticipants, 'opp')
   const oppArmy = alias(armies, 'opp_army')
   const oppPlayer = alias(players, 'opp_player')
@@ -118,7 +120,7 @@ export async function getTimelineForArmy(armyId: string): Promise<TimelineEntryD
     .leftJoin(oppParticipant, and(eq(oppParticipant.matchId, matches.id), ne(oppParticipant.playerId, matchParticipants.playerId)))
     .leftJoin(oppArmy, eq(oppParticipant.armyId, oppArmy.id))
     .leftJoin(oppPlayer, eq(oppParticipant.playerId, oppPlayer.id))
-    .where(eq(matchParticipants.armyId, armyId))
+    .where(and(eq(matchParticipants.armyId, armyId), gte(matches.date, initialXpCompletedAt)))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
   const latestMatchId = rows.length > 0 ? rows[0].matchId : null

@@ -118,7 +118,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
   faction: string
   playerId: string | null
   playerUsername: string | null
-  needsInitialXp: boolean
+  initialXpCompletedAt: Date | null
 } | null> {
   const rows = await db
     .select({
@@ -127,7 +127,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
       faction: armies.faction,
       playerId: armies.playerId,
       playerUsername: players.username,
-      needsInitialXp: armies.needsInitialXp,
+      initialXpCompletedAt: armies.initialXpCompletedAt,
     })
     .from(armies)
     .leftJoin(players, eq(armies.playerId, players.id))
