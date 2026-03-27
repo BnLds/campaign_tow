@@ -1,15 +1,15 @@
 import { createFileRoute, useRouteContext, useRouter, Link } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { useState, useEffect, useRef } from 'react'
-import { useHydrated } from '../lib/useHydrated'
 import { TimelineEntry } from '../components/timeline-entry'
 import { ArmyImportForm } from '../components/army-import-form'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult, MatchType } from '../lib/types'
-import type { TimelineEntryData } from '../db/queries'
 import { submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
 import { invalidateArmyState } from '../lib/invalidation-helpers'
+import { campaignTimelineQueryOptions } from '../lib/campaign-queries'
+import { sessionQueryOptions } from '../lib/session-queries'
 
 export const submitMatchResultFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -105,38 +105,11 @@ const skipInitialXpFn = createServerFn({ method: 'POST' })
     return { success: true, data: undefined }
   })
 
-const loadCampaignTimelineFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
-  .handler(async ({ context }) => {
-    const { session } = context
-    if (session.isGuest) {
-      return {
-        isGuest: true as const,
-        army: null,
-        timeline: [] as TimelineEntryData[],
-        initialSetupMatch: null as { matchId: string; matchParticipantId: string; evolutionsEnteredAt: string | null } | null,
-      }
-    }
-    const { getPlayerArmy, getTimelineForArmy, getInitialSetupMatchForArmy } = await import('../db/queries')
-    const army = await getPlayerArmy(session.playerId)
-    const [timeline, initialSetupMatchRaw] = await Promise.all([
-      army ? getTimelineForArmy(army.id, army.initialXpCompletedAt) : Promise.resolve([] as TimelineEntryData[]),
-      army && !army.initialXpCompletedAt ? getInitialSetupMatchForArmy(army.id) : Promise.resolve(null),
-    ])
-    const initialSetupMatch = initialSetupMatchRaw
-      ? {
-          matchId: initialSetupMatchRaw.matchId,
-          matchParticipantId: initialSetupMatchRaw.matchParticipantId,
-          evolutionsEnteredAt: initialSetupMatchRaw.evolutionsEnteredAt?.toISOString() ?? null,
-        }
-      : null
-    return { isGuest: false as const, army, timeline, initialSetupMatch }
-  })
-
 export const Route = createFileRoute('/')({
-  staleTime: 10_000, // must stay below the 15s polling interval so invalidation triggers a re-fetch
-  loader: async () => {
-    return loadCampaignTimelineFn()
+  loader: async ({ context: { queryClient } }) => {
+    const session = queryClient.getQueryData(sessionQueryOptions().queryKey)
+    if (!session || session.isGuest) return
+    await queryClient.ensureQueryData(campaignTimelineQueryOptions(session.playerId))
   },
   component: CampaignView,
 })
@@ -154,8 +127,15 @@ function CampaignView() {
   const [blockToast, setBlockToast] = useState<string | null>(null)
   const blockToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
-  const hydrated = useHydrated()
-  const { isGuest, army, timeline, initialSetupMatch } = Route.useLoaderData()
+  const playerId = session && !session.isGuest ? session.playerId : null
+  const timelineQuery = useQuery({
+    ...campaignTimelineQueryOptions(playerId ?? ''),
+    enabled: !!playerId,
+  })
+  const isGuest = !playerId
+  const army = isGuest ? null : timelineQuery.data?.army ?? null
+  const timeline = isGuest ? [] : timelineQuery.data?.timeline ?? []
+  const initialSetupMatch = isGuest ? null : timelineQuery.data?.initialSetupMatch ?? null
 
   // Ref to track toast timeout — clears previous timeout on each new toast, and on unmount
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -186,7 +166,8 @@ function CampaignView() {
     createInitialSetupMatchFn()
       .then(async (result) => {
         if (result.success) {
-          await router.invalidate({ filter: (d) => d.routeId === '/' })
+          await queryClient.invalidateQueries({ queryKey: ['campaign-timeline'] })
+          await router.invalidate({ filter: (d) => d.routeId === '__root__' })
         } else {
           initialMatchCreatedRef.current = false
         }
@@ -195,63 +176,7 @@ function CampaignView() {
         console.error('[initial-setup] failed:', err)
         initialMatchCreatedRef.current = false
       })
-  }, [army, initialSetupMatch, router])
-
-  useEffect(() => {
-    if (hydrated) {
-      document.documentElement.setAttribute('data-app-hydrated', 'true')
-    }
-  }, [hydrated])
-
-  // Stability: use army ID (primitive) rather than the army object so the effect
-  // does not restart on every poll cycle (loader returns a new object reference each time).
-  const armyId = army?.id ?? null
-
-  // Visibility-aware polling: auto-refresh timeline every ~15s so player B sees
-  // results submitted by player A without manual refresh.
-  useEffect(() => {
-    if (isGuest || armyId === null) return
-
-    const invalidate = async () => {
-      try {
-        await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
-      } catch {
-        // Network errors must not break the polling interval
-      }
-    }
-
-    let intervalId: ReturnType<typeof setInterval> | null = null
-
-    const startPolling = () => {
-      intervalId = setInterval(() => { void invalidate() }, 15_000)
-    }
-
-    const stopPolling = () => {
-      if (intervalId !== null) {
-        clearInterval(intervalId)
-        intervalId = null
-      }
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        stopPolling()
-      } else {
-        void invalidate()
-        startPolling()
-      }
-    }
-
-    if (!document.hidden) {
-      startPolling()
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      stopPolling()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [isGuest, armyId, router])
+  }, [army, initialSetupMatch, queryClient, router])
 
   const handleResultSubmit = async (matchId: string, result: 'victory' | 'defeat' | 'draw') => {
     const response = await submitMatchResultFn({ data: { matchId, result } })
@@ -481,6 +406,11 @@ function CampaignView() {
             <Link to="/armies" style={{ color: 'var(--color-brand)' }}>
               Voir toutes les armées
             </Link>
+          </div>
+        ) : !timelineQuery.data ? (
+          /* Data loading (hydration) */
+          <div style={{ padding: '2rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Chargement…</p>
           </div>
         ) : army === null ? (
           /* Logged in but no army assigned */

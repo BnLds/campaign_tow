@@ -25,6 +25,10 @@ function getCampaignRoute() {
   return readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
 }
 
+function getCampaignServerFn() {
+  return readFileSync(resolve(root, 'src/server-fns/campaign-queries.ts'), 'utf-8')
+}
+
 function getArmiesListRoute() {
   return readFileSync(resolve(root, 'src/routes/armies/index.tsx'), 'utf-8')
 }
@@ -38,36 +42,35 @@ function getArmiesListRoute() {
 // Task 7.18: guest sees "Connectez-vous" message, no army header
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC2][AC5][AC8][P0] Campaign view — loadCampaignTimelineFn — src/routes/index.tsx', () => {
-  it('[3.1-CMP-001] index.tsx defines loadCampaignTimelineFn using createServerFn', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn/)
+describe('[AC1][AC2][AC5][AC8][P0] Campaign view — loadCampaignTimelineFn — src/server-fns/campaign-queries.ts', () => {
+  it('[3.1-CMP-001] campaign-queries.ts defines loadCampaignTimelineFn using createServerFn', () => {
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn/)
   })
 
   it('[3.1-CMP-002] loadCampaignTimelineFn uses authMiddleware', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[authMiddleware\]\)/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[authMiddleware\]\)/)
   })
 
   it('[3.1-CMP-003] loadCampaignTimelineFn returns isGuest + empty timeline for guest session', () => {
-    const route = getCampaignRoute()
-    // Guest path: returns { isGuest: true, army: null, timeline: [] }
-    expect(route).toMatch(/loadCampaignTimelineFn[\s\S]{0,1500}isGuest/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/isGuest/)
   })
 
   it('[3.1-CMP-004] loadCampaignTimelineFn calls getPlayerArmy using dynamic import', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/getPlayerArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/getPlayerArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
   it('[3.1-CMP-005] loadCampaignTimelineFn calls getTimelineForArmy using dynamic import', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/getTimelineForArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/getTimelineForArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
-  it('[3.1-CMP-006] index.tsx defines a route loader that calls loadCampaignTimelineFn', () => {
+  it('[3.1-CMP-006] index.tsx route loader uses ensureQueryData with campaignTimelineQueryOptions', () => {
     const route = getCampaignRoute()
-    expect(route).toMatch(/loader[\s\S]{0,300}loadCampaignTimelineFn/)
+    expect(route).toMatch(/ensureQueryData\(campaignTimelineQueryOptions/)
   })
 })
 

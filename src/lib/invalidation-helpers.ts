@@ -10,7 +10,8 @@ import type { AnyRouter } from '@tanstack/react-router'
 export async function invalidateArmyState(queryClient: QueryClient, router: AnyRouter) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ['army-info'] }),
-    // Route IDs from src/routes/__root.tsx and src/routes/index.tsx — update if routes are renamed
-    router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' }),
+    queryClient.invalidateQueries({ queryKey: ['campaign-timeline'] }),
+    // Route IDs from src/routes/__root.tsx — update if routes are renamed
+    router.invalidate({ filter: (d) => d.routeId === '__root__' }),
   ])
 }

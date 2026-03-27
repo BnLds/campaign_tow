@@ -15,7 +15,7 @@ interface UnitGainsSectionProps {
   unitId: string
   unitGains: UnitGainRow[]
   loadingDeltas: boolean
-  onDeltaChange: () => Promise<void>
+  onDeltaChange: () => void
 }
 
 export function UnitGainsSection({
@@ -31,12 +31,12 @@ export function UnitGainsSection({
 
   const { mutate, isPending: addingGain } = useMutation({
     mutationFn: (description: string) => addUnitGainFn({ data: { armyId, unitId, description } }),
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       if (result.success) {
         gainFeedback.show('Capacité ajoutée', false)
         setGainDescription('')
         void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
-        await onDeltaChange()
+        onDeltaChange()
       } else {
         gainFeedback.show(result.error.message, true)
       }
@@ -61,9 +61,9 @@ export function UnitGainsSection({
       if (!result.success) throw new Error(result.error.message)
       return result.data
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
-      await onDeltaChange()
+      onDeltaChange()
     },
     onError: (error) => {
       gainFeedback.show(error.message, true)

@@ -1,8 +1,8 @@
 // Campaign TOW — UnitEditPanel orchestrator (directory module)
 
-import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../ui/button'
-import { fetchUnitDeltasFn } from '../../server-fns/unit-queries'
+import { unitDeltasQueryOptions } from '../../lib/unit-deltas-queries'
 import { NicknameField } from './nickname-field'
 import { SubProfilesSection } from './sub-profiles-section'
 import { StatModifiersSection } from './stat-modifiers-section'
@@ -10,7 +10,7 @@ import { UnitGainsSection } from './unit-gains-section'
 import { PointsSection } from './points-section'
 import { XpSection } from './xp-section'
 import { DangerZone } from './danger-zone'
-import type { StatModifierRow, UnitGainRow, SubProfileItem } from './types'
+import type { SubProfileItem } from './types'
 
 export type { SubProfileItem }
 
@@ -39,42 +39,11 @@ export function UnitEditPanel({
   isAdmin,
   onClose,
 }: UnitEditPanelProps) {
-  const [statModifiers, setStatModifiers] = useState<StatModifierRow[]>([])
-  const [unitGains, setUnitGains] = useState<UnitGainRow[]>([])
-  const [loadingDeltas, setLoadingDeltas] = useState(true)
-
-  useEffect(() => {
-    if (!isAdmin) {
-      setLoadingDeltas(false)
-      return
-    }
-    let mounted = true
-    async function fetchDeltas() {
-      setLoadingDeltas(true)
-      try {
-        const result = await fetchUnitDeltasFn({ data: { armyId, unitId } })
-        if (!mounted) return
-        setStatModifiers(result.statModifiers)
-        setUnitGains(result.unitGains)
-      } catch {
-        // silently fail
-      } finally {
-        if (mounted) setLoadingDeltas(false)
-      }
-    }
-    void fetchDeltas()
-    return () => { mounted = false }
-  }, [unitId, armyId, isAdmin])
-
-  const refetchDeltas = async () => {
-    try {
-      const result = await fetchUnitDeltasFn({ data: { armyId, unitId } })
-      setStatModifiers(result.statModifiers)
-      setUnitGains(result.unitGains)
-    } catch {
-      // silently fail
-    }
-  }
+  const queryClient = useQueryClient()
+  const deltasQuery = useQuery({ ...unitDeltasQueryOptions(armyId, unitId), enabled: isAdmin })
+  const statModifiers = deltasQuery.data?.statModifiers ?? []
+  const unitGains = deltasQuery.data?.unitGains ?? []
+  const loadingDeltas = deltasQuery.isLoading
 
   return (
     <div
@@ -107,7 +76,7 @@ export function UnitEditPanel({
           unitId={unitId}
           statModifiers={statModifiers}
           loadingDeltas={loadingDeltas}
-          onDeltaChange={refetchDeltas}
+          onDeltaChange={() => queryClient.invalidateQueries({ queryKey: unitDeltasQueryOptions(armyId, unitId).queryKey })}
         />
       )}
 
@@ -117,7 +86,7 @@ export function UnitEditPanel({
           unitId={unitId}
           unitGains={unitGains}
           loadingDeltas={loadingDeltas}
-          onDeltaChange={refetchDeltas}
+          onDeltaChange={() => queryClient.invalidateQueries({ queryKey: unitDeltasQueryOptions(armyId, unitId).queryKey })}
         />
       )}
 

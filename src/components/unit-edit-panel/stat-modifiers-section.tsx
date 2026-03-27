@@ -22,7 +22,7 @@ interface StatModifiersSectionProps {
   unitId: string
   statModifiers: StatModifierRow[]
   loadingDeltas: boolean
-  onDeltaChange: () => Promise<void>
+  onDeltaChange: () => void
 }
 
 export function StatModifiersSection({
@@ -42,7 +42,7 @@ export function StatModifiersSection({
   const { mutate, isPending: addingMod } = useMutation({
     mutationFn: (params: { stat: StatKey; delta: number; source: string; temporary: boolean }) =>
       addStatModifierFn({ data: { armyId, unitId, stat: params.stat, delta: params.delta, source: params.source, temporary: params.temporary } }),
-    onSuccess: async (result) => {
+    onSuccess: (result) => {
       if (result.success) {
         modFeedback.show('Modificateur ajouté', false)
         setModStat('m')
@@ -50,7 +50,7 @@ export function StatModifiersSection({
         setModSource('')
         setModTemporary(false)
         void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
-        await onDeltaChange()
+        onDeltaChange()
       } else {
         modFeedback.show(result.error.message, true)
       }
@@ -80,9 +80,9 @@ export function StatModifiersSection({
       if (!result.success) throw new Error(result.error.message)
       return result.data
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
-      await onDeltaChange()
+      onDeltaChange()
     },
     onError: (error) => {
       modFeedback.show(error.message, true)

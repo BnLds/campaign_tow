@@ -159,3 +159,68 @@ describe('[6.19] loadArmyFn — admin override in isOwner calculation', () => {
     expect(code).toMatch(/!session\.isGuest/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// TanStack Query migration — structural contract tests
+// ---------------------------------------------------------------------------
+
+function getUnitEditPanel() {
+  return readFileSync(resolve(root, 'src/components/unit-edit-panel/index.tsx'), 'utf-8')
+}
+
+function getCampaignQueries() {
+  return readFileSync(resolve(root, 'src/lib/campaign-queries.ts'), 'utf-8')
+}
+
+function getIndexRoute() {
+  return readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
+}
+
+describe('TanStack Query migration — UnitEditPanel uses useQuery', () => {
+  it('imports useQuery from @tanstack/react-query', () => {
+    const code = getUnitEditPanel()
+    expect(code).toMatch(/import\s*\{[^}]*useQuery[^}]*\}\s*from\s*['"]@tanstack\/react-query['"]/)
+  })
+
+  it('uses unitDeltasQueryOptions', () => {
+    const code = getUnitEditPanel()
+    expect(code).toContain('unitDeltasQueryOptions')
+  })
+
+  it('uses useQuery with enabled conditioned on isAdmin', () => {
+    const code = getUnitEditPanel()
+    expect(code).toMatch(/useQuery\(\{[\s\S]*?enabled:\s*isAdmin/)
+  })
+
+  it('does NOT contain the old manual fetch function definition', () => {
+    const code = getUnitEditPanel()
+    expect(code).not.toContain('async function fetchDeltas')
+  })
+
+  it('does NOT contain the old mounted guard pattern', () => {
+    const code = getUnitEditPanel()
+    expect(code).not.toMatch(/let mounted\s*=\s*true/)
+  })
+})
+
+describe('TanStack Query migration — Campaign timeline uses queryOptions', () => {
+  it('campaign-queries.ts exports campaignTimelineQueryOptions', () => {
+    const code = getCampaignQueries()
+    expect(code).toMatch(/export const campaignTimelineQueryOptions/)
+  })
+
+  it('index.tsx uses campaignTimelineQueryOptions', () => {
+    const code = getIndexRoute()
+    expect(code).toContain('campaignTimelineQueryOptions')
+  })
+
+  it('index.tsx does NOT contain manual setInterval polling', () => {
+    const code = getIndexRoute()
+    expect(code).not.toContain('setInterval')
+  })
+
+  it('index.tsx does NOT contain manual visibility listener', () => {
+    const code = getIndexRoute()
+    expect(code).not.toContain('visibilitychange')
+  })
+})
