@@ -180,15 +180,21 @@ function CampaignView() {
   const initialMatchCreatedRef = useRef(false)
   useEffect(() => {
     if (initialMatchCreatedRef.current) return
-    if (army?.initialXpCompletedAt || initialSetupMatch) return
+    if (!army) return
+    if (army.initialXpCompletedAt || initialSetupMatch) return
     initialMatchCreatedRef.current = true
     createInitialSetupMatchFn()
       .then(async (result) => {
         if (result.success) {
           await router.invalidate({ filter: (d) => d.routeId === '/' })
+        } else {
+          initialMatchCreatedRef.current = false
         }
       })
-      .catch((err) => console.error('[initial-setup] failed:', err))
+      .catch((err) => {
+        console.error('[initial-setup] failed:', err)
+        initialMatchCreatedRef.current = false
+      })
   }, [army, initialSetupMatch, router])
 
   useEffect(() => {
