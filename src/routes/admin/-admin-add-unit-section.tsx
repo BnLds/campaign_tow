@@ -8,9 +8,9 @@ interface AdminAddUnitSectionProps {
 }
 
 export function AdminAddUnitSection({ queries }: AdminAddUnitSectionProps) {
-  const { state, actions } = useAddUnit(queries)
+  const { state, actions, isPending, error } = useAddUnit(queries)
   const armies = queries.armiesQuery.data ?? []
-  const canSubmit = !!state.addUnitArmyId && !!state.addUnitName.trim() && !!state.addUnitType && !state.addUnitSubmitting
+  const canSubmit = !!state.addUnitArmyId && !!state.addUnitName.trim() && !!state.addUnitType && !isPending
 
   return (
     <section style={{ marginTop: '2rem' }}>
@@ -72,7 +72,7 @@ export function AdminAddUnitSection({ queries }: AdminAddUnitSectionProps) {
         className={btnClass}
         style={{ opacity: canSubmit ? 1 : 0.5 }}
       >
-        {state.addUnitSubmitting ? 'Ajout en cours…' : 'Ajouter l\'unité'}
+        {isPending ? 'Ajout en cours…' : 'Ajouter l\'unité'}
       </button>
 
       {state.addUnitResult && (
@@ -80,12 +80,26 @@ export function AdminAddUnitSection({ queries }: AdminAddUnitSectionProps) {
           marginTop: '0.75rem',
           padding: '0.625rem',
           borderRadius: '0.375rem',
-          background: state.addUnitResult.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
-          color: state.addUnitResult.success ? 'var(--color-bonus)' : 'var(--color-malus)',
-          border: `1px solid ${state.addUnitResult.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+          background: 'var(--color-bonus-bg)',
+          color: 'var(--color-bonus)',
+          border: '1px solid var(--color-bonus)',
           fontSize: '0.875rem',
         }}>
           {state.addUnitResult.message}
+        </p>
+      )}
+
+      {error && (
+        <p style={{
+          marginTop: '0.75rem',
+          padding: '0.625rem',
+          borderRadius: '0.375rem',
+          background: 'var(--color-malus-bg)',
+          color: 'var(--color-malus)',
+          border: '1px solid var(--color-malus)',
+          fontSize: '0.875rem',
+        }}>
+          {error.message}
         </p>
       )}
     </section>

@@ -98,7 +98,7 @@ export function AdminPlayersSection({ queries, session }: AdminPlayersSectionPro
           Joueurs
         </h2>
 
-        {(state.deleteError || queries.playersQuery.error) && (
+        {(state.deleteError || state.copyLinkError || state.bulkGenerateError || queries.playersQuery.error) && (
           <div
             style={{
               background: 'var(--color-malus-bg)',
@@ -109,7 +109,12 @@ export function AdminPlayersSection({ queries, session }: AdminPlayersSectionPro
               color: 'var(--color-malus)',
             }}
           >
-            {[queries.playersQuery.error ? 'Impossible de charger la liste des joueurs' : null, state.deleteError].filter(Boolean).join(' — ')}
+            {[
+              queries.playersQuery.error ? 'Impossible de charger la liste des joueurs' : null,
+              state.deleteError ?? null,
+              state.copyLinkError ?? null,
+              state.bulkGenerateError ?? null,
+            ].filter(Boolean).join(' — ')}
           </div>
         )}
 
@@ -154,15 +159,17 @@ export function AdminPlayersSection({ queries, session }: AdminPlayersSectionPro
                   <button
                     data-testid={`copy-invite-${player.id}`}
                     onClick={() => actions.handleCopyInviteLink(player.id)}
+                    disabled={state.isCopyLinkPending}
                     style={{
                       background: 'none',
                       border: '1px solid var(--color-brand)',
                       color: 'var(--color-brand)',
                       padding: '0.25rem 0.5rem',
                       borderRadius: '0.25rem',
-                      cursor: 'pointer',
+                      cursor: state.isCopyLinkPending ? 'not-allowed' : 'pointer',
                       fontSize: '0.75rem',
                       whiteSpace: 'nowrap',
+                      opacity: state.isCopyLinkPending ? 0.6 : 1,
                     }}
                   >
                     {state.copyFeedback[player.id] ? 'Copié !' : 'Copier le lien'}
@@ -185,14 +192,16 @@ export function AdminPlayersSection({ queries, session }: AdminPlayersSectionPro
                   <button
                     data-testid={`delete-player-${player.id}`}
                     onClick={() => actions.handleDelete(player.id, player.username)}
+                    disabled={state.isDeletePending}
                     style={{
                       background: 'none',
                       border: '1px solid var(--color-malus)',
                       color: 'var(--color-malus)',
                       padding: '0.25rem 0.5rem',
                       borderRadius: '0.25rem',
-                      cursor: 'pointer',
+                      cursor: state.isDeletePending ? 'not-allowed' : 'pointer',
                       fontSize: '0.75rem',
+                      opacity: state.isDeletePending ? 0.6 : 1,
                     }}
                   >
                     Supprimer
@@ -211,6 +220,7 @@ export function AdminPlayersSection({ queries, session }: AdminPlayersSectionPro
         <button
           data-testid="bulk-generate-tokens"
           onClick={actions.handleBulkGenerate}
+          disabled={state.isBulkGeneratePending}
           style={{
             marginTop: '0.75rem',
             background: 'none',
@@ -218,11 +228,12 @@ export function AdminPlayersSection({ queries, session }: AdminPlayersSectionPro
             color: 'var(--color-brand)',
             padding: '0.375rem 0.75rem',
             borderRadius: '0.375rem',
-            cursor: 'pointer',
+            cursor: state.isBulkGeneratePending ? 'not-allowed' : 'pointer',
             fontSize: '0.875rem',
+            opacity: state.isBulkGeneratePending ? 0.6 : 1,
           }}
         >
-          Générer tous les liens manquants
+          {state.isBulkGeneratePending ? 'Génération…' : 'Générer tous les liens manquants'}
         </button>
       </section>
 
@@ -236,7 +247,9 @@ export function AdminPlayersSection({ queries, session }: AdminPlayersSectionPro
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={actions.handleRegenConfirm}>Regénérer</AlertDialogAction>
+            <AlertDialogAction onClick={actions.handleRegenConfirm} disabled={state.isRegenPending}>
+              {state.isRegenPending ? 'Regénération…' : 'Regénérer'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -27,7 +27,6 @@ export function UnitGainsSection({
 }: UnitGainsSectionProps) {
   const [gainDescription, setGainDescription] = useState('')
   const gainFeedback = useFeedback()
-  const [deletingGainId, setDeletingGainId] = useState<string | null>(null)
   const router = useRouter()
 
   const { mutate, isPending: addingGain } = useMutation({
@@ -56,22 +55,24 @@ export function UnitGainsSection({
     mutate(gainDescription.trim())
   }
 
-  const handleDeleteUnitGain = async (gainId: string) => {
-    if (!window.confirm('Supprimer cette capacité ?')) return
-    setDeletingGainId(gainId)
-    try {
+  const { mutate: deleteUnitGain, isPending: deletingGain, variables: deletingGainVars } = useMutation({
+    mutationFn: async (gainId: string) => {
       const result = await removeUnitGainFn({ data: { armyId, gainId } })
-      if (result.success) {
-        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
-        await onDeltaChange()
-      } else {
-        gainFeedback.show(result.error.message, true)
-      }
-    } catch {
-      gainFeedback.show('Erreur lors de la suppression', true)
-    } finally {
-      setDeletingGainId(null)
-    }
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: async () => {
+      void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      await onDeltaChange()
+    },
+    onError: (error) => {
+      gainFeedback.show(error.message, true)
+    },
+  })
+
+  const handleDeleteUnitGain = (gainId: string) => {
+    if (!window.confirm('Supprimer cette capacité ?')) return
+    deleteUnitGain(gainId)
   }
 
   return (
@@ -92,11 +93,11 @@ export function UnitGainsSection({
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={deletingGainId === gain.id}
+                disabled={deletingGain && deletingGainVars === gain.id}
                 onClick={() => handleDeleteUnitGain(gain.id)}
                 className="text-xs p-1 text-[var(--color-malus)]"
               >
-                {deletingGainId === gain.id ? '...' : 'supprimer'}
+                {deletingGain && deletingGainVars === gain.id ? '...' : 'supprimer'}
               </Button>
             </li>
           ))}

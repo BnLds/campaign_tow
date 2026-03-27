@@ -8,7 +8,7 @@ interface AdminMatchSectionProps {
 }
 
 export function AdminMatchSection({ queries }: AdminMatchSectionProps) {
-  const { state, derived, actions } = useCreateMatch(queries)
+  const { state, derived, actions, createIsPending, createError, deleteIsPending, deleteError } = useCreateMatch(queries)
   const armies = queries.armiesQuery.data ?? []
 
   const selectStyle: React.CSSProperties = {
@@ -38,7 +38,7 @@ export function AdminMatchSection({ queries }: AdminMatchSectionProps) {
     state.matchArmy1Id !== state.matchArmy2Id &&
     !!state.matchDate &&
     !!state.matchTime &&
-    !state.matchSubmitting
+    !createIsPending
 
   return (
     <>
@@ -104,18 +104,30 @@ export function AdminMatchSection({ queries }: AdminMatchSectionProps) {
         </div>
 
         <button onClick={actions.handleCreateMatch} disabled={!canSubmit} className={btnClass} style={{ opacity: canSubmit ? 1 : 0.5 }}>
-          {state.matchSubmitting ? 'Création…' : 'Créer la partie'}
+          {createIsPending ? 'Création…' : 'Créer la partie'}
         </button>
 
         {state.matchResult && (
           <p style={{
             marginTop: '0.75rem', padding: '0.625rem', borderRadius: '0.375rem',
-            background: state.matchResult.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
-            color: state.matchResult.success ? 'var(--color-bonus)' : 'var(--color-malus)',
-            border: `1px solid ${state.matchResult.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+            background: 'var(--color-bonus-bg)',
+            color: 'var(--color-bonus)',
+            border: '1px solid var(--color-bonus)',
             fontSize: '0.875rem',
           }}>
             {state.matchResult.message}
+          </p>
+        )}
+
+        {createError && (
+          <p style={{
+            marginTop: '0.75rem', padding: '0.625rem', borderRadius: '0.375rem',
+            background: 'var(--color-malus-bg)',
+            color: 'var(--color-malus)',
+            border: '1px solid var(--color-malus)',
+            fontSize: '0.875rem',
+          }}>
+            {createError.message}
           </p>
         )}
       </section>
@@ -124,9 +136,9 @@ export function AdminMatchSection({ queries }: AdminMatchSectionProps) {
         <h2 style={{ fontFamily: 'var(--font-body)', fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>
           Parties (suppression)
         </h2>
-        {state.deleteMatchError && (
+        {deleteError && (
           <p style={{ color: 'var(--color-malus)', fontFamily: 'var(--font-body)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-            {state.deleteMatchError}
+            {deleteError.message}
           </p>
         )}
         {queries.matchesQuery.isLoading && <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Chargement…</p>}
@@ -144,8 +156,9 @@ export function AdminMatchSection({ queries }: AdminMatchSectionProps) {
               {isPending && (
                 <button
                   type="button"
-                  onClick={() => void actions.handleDeleteMatchAdmin(m.matchId, label)}
-                  style={{ padding: '0.25rem 0.625rem', borderRadius: 6, border: 'none', background: 'var(--color-malus)', color: '#fff', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 600 }}
+                  onClick={() => actions.handleDeleteMatchAdmin(m.matchId, label)}
+                  disabled={deleteIsPending}
+                  style={{ padding: '0.25rem 0.625rem', borderRadius: 6, border: 'none', background: 'var(--color-malus)', color: '#fff', cursor: deleteIsPending ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.8rem', fontWeight: 600, opacity: deleteIsPending ? 0.6 : 1 }}
                 >
                   Supprimer
                 </button>

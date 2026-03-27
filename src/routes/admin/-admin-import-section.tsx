@@ -3,7 +3,7 @@ import { useImportArmy } from './-use-import-army'
 import { btnClass } from './-admin-helpers'
 
 export function AdminImportSection({ queries }: { queries: AdminQueries }) {
-  const { state, actions } = useImportArmy(queries)
+  const { state, actions, isPending, error } = useImportArmy(queries)
 
   return (
     <section style={{ marginTop: '2rem' }}>
@@ -15,7 +15,7 @@ export function AdminImportSection({ queries }: { queries: AdminQueries }) {
         data-testid="owb-import-textarea"
         value={state.owbText}
         onChange={(e) => actions.setOwbText(e.target.value)}
-        disabled={state.importSubmitting}
+        disabled={isPending}
         placeholder="Coller ici l'export texte Old World Builder…"
         rows={6}
         style={{
@@ -34,12 +34,29 @@ export function AdminImportSection({ queries }: { queries: AdminQueries }) {
       <button
         data-testid="owb-import-submit"
         onClick={actions.handleImport}
-        disabled={state.importSubmitting || !state.owbText.trim()}
+        disabled={isPending || !state.owbText.trim()}
         className={btnClass}
-        style={{ marginTop: '0.75rem', opacity: state.importSubmitting ? 0.6 : 1 }}
+        style={{ marginTop: '0.75rem', opacity: isPending ? 0.6 : 1 }}
       >
-        {state.importSubmitting ? 'Import en cours…' : 'Importer'}
+        {isPending ? 'Import en cours…' : 'Importer'}
       </button>
+
+      {error && (
+        <p
+          data-testid="import-result-message"
+          style={{
+            marginTop: '0.75rem',
+            padding: '0.625rem',
+            borderRadius: '0.375rem',
+            background: 'var(--color-malus-bg)',
+            color: 'var(--color-malus)',
+            border: '1px solid var(--color-malus)',
+            fontSize: '0.875rem',
+          }}
+        >
+          {error.message}
+        </p>
+      )}
 
       {state.importResult && (
         <p
@@ -48,9 +65,9 @@ export function AdminImportSection({ queries }: { queries: AdminQueries }) {
             marginTop: '0.75rem',
             padding: '0.625rem',
             borderRadius: '0.375rem',
-            background: state.importResult.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
-            color: state.importResult.success ? 'var(--color-bonus)' : 'var(--color-malus)',
-            border: `1px solid ${state.importResult.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+            background: 'var(--color-bonus-bg)',
+            color: 'var(--color-bonus)',
+            border: '1px solid var(--color-bonus)',
             fontSize: '0.875rem',
           }}
         >

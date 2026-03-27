@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { createMatchFn, deleteMatchAdminFn } from '#/server-fns/admin-matches'
 import type { AdminQueries } from './-use-admin-queries'
 import type { ResultMessage } from './-admin-helpers'
@@ -19,8 +20,6 @@ export interface CreateMatchState {
   matchTime: string
   matchEvolutions: boolean
   matchResult: ResultMessage
-  matchSubmitting: boolean
-  deleteMatchError: string | null
 }
 
 export interface CreateMatchDerived {
@@ -29,8 +28,8 @@ export interface CreateMatchDerived {
 }
 
 export interface CreateMatchActions {
-  handleCreateMatch: () => Promise<void>
-  handleDeleteMatchAdmin: (matchId: string, label: string) => Promise<void>
+  handleCreateMatch: () => void
+  handleDeleteMatchAdmin: (matchId: string, label: string) => void
   setMatchArmy1Id: (v: string) => void
   setMatchResult1: (v: 'victory' | 'defeat' | 'draw' | '') => void
   setMatchArmy2Id: (v: string) => void
@@ -44,6 +43,10 @@ export interface CreateMatchApi {
   state: CreateMatchState
   derived: CreateMatchDerived
   actions: CreateMatchActions
+  createIsPending: boolean
+  createError: Error | null
+  deleteIsPending: boolean
+  deleteError: Error | null
 }
 
 export function useCreateMatch(queries: AdminQueries): CreateMatchApi {
@@ -59,16 +62,9 @@ export function useCreateMatch(queries: AdminQueries): CreateMatchApi {
   })
   const [matchEvolutions, setMatchEvolutions] = useState(false)
   const [matchResult, setMatchResult] = useState<ResultMessage>(null)
-  const [matchSubmitting, setMatchSubmitting] = useState(false)
-  const matchSubmitRef = useRef(false)
-  const [deleteMatchError, setDeleteMatchError] = useState<string | null>(null)
 
-  async function handleCreateMatch() {
-    if (matchSubmitRef.current) return
-    matchSubmitRef.current = true
-    setMatchResult(null)
-    setMatchSubmitting(true)
-    try {
+  const createMatchMutation = useMutation({
+    mutationFn: async () => {
       const result = await createMatchFn({
         data: {
           army1Id: matchArmy1Id,
@@ -80,37 +76,42 @@ export function useCreateMatch(queries: AdminQueries): CreateMatchApi {
           evolutionsEntered: matchEvolutions,
         },
       })
-      if (result.success) {
-        setMatchResult({ success: true, message: `Partie créée (id: ${result.data.matchId.slice(0, 8)}…)` })
-        setMatchArmy1Id('')
-        setMatchResult1('')
-        setMatchArmy2Id('')
-        setMatchResult2('')
-        setMatchDate(today)
-        const now = new Date()
-        setMatchTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
-        setMatchEvolutions(false)
-        await queries.queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
-      } else {
-        setMatchResult({ success: false, message: result.error.message })
-      }
-    } catch {
-      setMatchResult({ success: false, message: 'Erreur réseau — veuillez réessayer' })
-    } finally {
-      matchSubmitRef.current = false
-      setMatchSubmitting(false)
-    }
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: (data) => {
+      setMatchResult({ success: true, message: `Partie créée (id: ${data.matchId.slice(0, 8)}…)` })
+      setMatchArmy1Id('')
+      setMatchResult1('')
+      setMatchArmy2Id('')
+      setMatchResult2('')
+      setMatchDate(today)
+      const now = new Date()
+      setMatchTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
+      setMatchEvolutions(false)
+      void queries.queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+
+  const deleteMatchMutation = useMutation({
+    mutationFn: async (matchId: string) => {
+      const result = await deleteMatchAdminFn({ data: { matchId } })
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: () => {
+      void queries.queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
+    },
+  })
+
+  function handleCreateMatch() {
+    setMatchResult(null)
+    createMatchMutation.mutate()
   }
 
-  async function handleDeleteMatchAdmin(matchId: string, label: string) {
+  function handleDeleteMatchAdmin(matchId: string, label: string) {
     if (!window.confirm(`Supprimer la partie ${label} ? Cette action est irréversible.`)) return
-    setDeleteMatchError(null)
-    const result = await deleteMatchAdminFn({ data: { matchId } })
-    if (result.success) {
-      await queries.queryClient.invalidateQueries({ queryKey: ['admin', 'matches'] })
-    } else {
-      setDeleteMatchError(result.error.message)
-    }
+    deleteMatchMutation.mutate(matchId)
   }
 
   return {
@@ -123,8 +124,6 @@ export function useCreateMatch(queries: AdminQueries): CreateMatchApi {
       matchTime,
       matchEvolutions,
       matchResult,
-      matchSubmitting,
-      deleteMatchError,
     },
     derived: {
       today,
@@ -141,5 +140,9 @@ export function useCreateMatch(queries: AdminQueries): CreateMatchApi {
       setMatchTime,
       setMatchEvolutions,
     },
+    createIsPending: createMatchMutation.isPending,
+    createError: createMatchMutation.error,
+    deleteIsPending: deleteMatchMutation.isPending,
+    deleteError: deleteMatchMutation.error,
   }
 }

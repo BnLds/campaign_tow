@@ -8,12 +8,12 @@ interface AdminCorrectionSectionProps {
 }
 
 export function AdminCorrectionSection({ queries }: AdminCorrectionSectionProps) {
-  const { state, derived, actions } = useCorrection(queries)
+  const { state, derived, actions, isPending, error } = useCorrection(queries)
   const armies = queries.armiesQuery.data ?? []
   const selectedUnit = derived.corrUnits.find((u) => u.id === state.corrUnitId)
   const hasMultipleSubProfiles = (selectedUnit?.subProfiles.length ?? 0) > 1
   const hasNoSubProfiles = selectedUnit && selectedUnit.subProfiles.length === 0
-  const canSubmit = !!state.corrSubProfileId && !state.corrSubmitting
+  const canSubmit = !!state.corrSubProfileId && !isPending
 
   return (
     <section style={{ marginTop: '2rem' }}>
@@ -96,7 +96,7 @@ export function AdminCorrectionSection({ queries }: AdminCorrectionSectionProps)
             className={btnClass}
             style={{ opacity: canSubmit ? 1 : 0.5 }}
           >
-            {state.corrSubmitting ? 'Mise à jour…' : 'Mettre à jour les stats'}
+            {isPending ? 'Mise à jour…' : 'Mettre à jour les stats'}
           </button>
         </>
       )}
@@ -106,12 +106,26 @@ export function AdminCorrectionSection({ queries }: AdminCorrectionSectionProps)
           marginTop: '0.75rem',
           padding: '0.625rem',
           borderRadius: '0.375rem',
-          background: state.corrResult.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
-          color: state.corrResult.success ? 'var(--color-bonus)' : 'var(--color-malus)',
-          border: `1px solid ${state.corrResult.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+          background: 'var(--color-bonus-bg)',
+          color: 'var(--color-bonus)',
+          border: '1px solid var(--color-bonus)',
           fontSize: '0.875rem',
         }}>
           {state.corrResult.message}
+        </p>
+      )}
+
+      {error && (
+        <p style={{
+          marginTop: '0.75rem',
+          padding: '0.625rem',
+          borderRadius: '0.375rem',
+          background: 'var(--color-malus-bg)',
+          color: 'var(--color-malus)',
+          border: '1px solid var(--color-malus)',
+          fontSize: '0.875rem',
+        }}>
+          {error.message}
         </p>
       )}
     </section>

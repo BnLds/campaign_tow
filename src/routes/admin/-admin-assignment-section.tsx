@@ -3,7 +3,7 @@ import { useArmyAssignment } from './-use-army-assignment'
 import { btnClass } from './-admin-helpers'
 
 export function AdminAssignmentSection({ queries }: { queries: AdminQueries }) {
-  const { state, actions } = useArmyAssignment(queries)
+  const { state, actions, isPending, error } = useArmyAssignment(queries)
 
   return (
     <section style={{ marginTop: '2rem' }}>
@@ -26,6 +26,23 @@ export function AdminAssignmentSection({ queries }: { queries: AdminQueries }) {
         </div>
       )}
 
+      {error && (
+        <p
+          data-testid="assign-result-message"
+          style={{
+            marginBottom: '1rem',
+            padding: '0.625rem',
+            borderRadius: '0.375rem',
+            background: 'var(--color-malus-bg)',
+            color: 'var(--color-malus)',
+            border: '1px solid var(--color-malus)',
+            fontSize: '0.875rem',
+          }}
+        >
+          {error.message}
+        </p>
+      )}
+
       {state.assignResult && (
         <p
           data-testid="assign-result-message"
@@ -33,9 +50,9 @@ export function AdminAssignmentSection({ queries }: { queries: AdminQueries }) {
             marginBottom: '1rem',
             padding: '0.625rem',
             borderRadius: '0.375rem',
-            background: state.assignResult.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
-            color: state.assignResult.success ? 'var(--color-bonus)' : 'var(--color-malus)',
-            border: `1px solid ${state.assignResult.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+            background: 'var(--color-bonus-bg)',
+            color: 'var(--color-bonus)',
+            border: '1px solid var(--color-bonus)',
             fontSize: '0.875rem',
           }}
         >
@@ -98,10 +115,10 @@ export function AdminAssignmentSection({ queries }: { queries: AdminQueries }) {
                 </select>
                 <button
                   onClick={() => actions.handleAssign(army.id)}
-                  disabled={state.assigningArmyId === army.id || !state.selectedPlayers[army.id]}
+                  disabled={isPending || !state.selectedPlayers[army.id]}
                   className={btnClass}
                   style={{
-                    opacity: state.assigningArmyId === army.id || !state.selectedPlayers[army.id] ? 0.5 : 1,
+                    opacity: isPending || !state.selectedPlayers[army.id] ? 0.5 : 1,
                   }}
                 >
                   Assigner

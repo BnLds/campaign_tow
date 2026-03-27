@@ -3,6 +3,7 @@
 // Client-side parsing with parseOwbExport, then structured data sent to server.
 
 import { useState, useEffect, useRef } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { parseOwbExport } from '../lib/owb-parser'
 import { addUnitsToArmyFn } from '../lib/server-fns/add-units-to-army'
 
@@ -18,11 +19,23 @@ const FOCUSABLE_SELECTOR =
 
 export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsSheetProps) {
   const [owbText, setOwbText] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
-  const submittingRef = useRef(false)
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (units: ReturnType<typeof parseOwbExport>['units']) => {
+      const result = await addUnitsToArmyFn({ data: { armyId, units } })
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: (data) => {
+      onSuccess(data.unitCount)
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Erreur serveur, veuillez réessayer')
+    },
+  })
 
   // Capture the trigger element for focus restoration
   useEffect(() => {
@@ -36,8 +49,6 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
     if (!open) {
       setOwbText('')
       setError(null)
-      setSubmitting(false)
-      submittingRef.current = false
     }
   }, [open])
 
@@ -80,13 +91,11 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
     }
   }, [open, onClose])
 
-  const handleSubmit = async () => {
-    if (submittingRef.current) return
+  const handleSubmit = () => {
     setError(null)
     const trimmed = owbText.trim()
     if (!trimmed) return
 
-    // Client-side parsing
     let parsed
     try {
       parsed = parseOwbExport(trimmed)
@@ -100,24 +109,7 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
       return
     }
 
-    // Send structured data to server
-    submittingRef.current = true
-    setSubmitting(true)
-    try {
-      const response = await addUnitsToArmyFn({
-        data: { armyId, units: parsed.units },
-      })
-      if (response.success) {
-        onSuccess(response.data.unitCount)
-      } else {
-        setError(response.error.message)
-      }
-    } catch {
-      setError('Erreur serveur, veuillez réessayer')
-    } finally {
-      submittingRef.current = false
-      setSubmitting(false)
-    }
+    mutate(parsed.units)
   }
 
   if (!open) return null
@@ -208,7 +200,7 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
           data-testid="add-units-textarea"
           value={owbText}
           onChange={(e) => setOwbText(e.target.value)}
-          disabled={submitting}
+          disabled={isPending}
           placeholder="Collez ici l'export OWB des nouvelles unités..."
           rows={6}
           maxLength={50000}
@@ -228,8 +220,8 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
         <button
           data-testid="add-units-submit"
           type="button"
-          onClick={() => void handleSubmit()}
-          disabled={submitting || !trimmed}
+          onClick={handleSubmit}
+          disabled={isPending || !trimmed}
           style={{
             marginTop: '0.75rem',
             padding: '0.5rem 1.25rem',
@@ -240,12 +232,12 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
             fontFamily: 'var(--font-body)',
             fontWeight: 600,
             fontSize: '0.9rem',
-            cursor: submitting || !trimmed ? 'not-allowed' : 'pointer',
-            opacity: submitting || !trimmed ? 0.6 : 1,
+            cursor: isPending || !trimmed ? 'not-allowed' : 'pointer',
+            opacity: isPending || !trimmed ? 0.6 : 1,
             width: '100%',
           }}
         >
-          {submitting ? 'Import en cours...' : 'Importer'}
+          {isPending ? 'Import en cours...' : 'Importer'}
         </button>
 
         {error && (

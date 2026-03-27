@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { addUnitFn } from '#/server-fns/admin-armies'
 import type { AdminQueries } from './-use-admin-queries'
 import { createEmptyStats } from './-admin-helpers'
@@ -11,11 +12,10 @@ export interface AddUnitState {
   addUnitType: string
   addUnitStats: StatFields
   addUnitResult: ResultMessage
-  addUnitSubmitting: boolean
 }
 
 export interface AddUnitActions {
-  handleAddUnit: () => Promise<void>
+  handleAddUnit: () => void
   setAddUnitArmyId: (v: string) => void
   setAddUnitName: (v: string) => void
   setAddUnitType: (v: string) => void
@@ -25,6 +25,8 @@ export interface AddUnitActions {
 export interface AddUnitApi {
   state: AddUnitState
   actions: AddUnitActions
+  isPending: boolean
+  error: Error | null
 }
 
 export function useAddUnit(queries: AdminQueries): AddUnitApi {
@@ -33,41 +35,34 @@ export function useAddUnit(queries: AdminQueries): AddUnitApi {
   const [addUnitType, setAddUnitType] = useState('')
   const [addUnitStats, setAddUnitStats] = useState(createEmptyStats())
   const [addUnitResult, setAddUnitResult] = useState<ResultMessage>(null)
-  const [addUnitSubmitting, setAddUnitSubmitting] = useState(false)
-  const addUnitSubmitRef = useRef(false)
 
-  async function handleAddUnit() {
-    if (addUnitSubmitRef.current) return
-    addUnitSubmitRef.current = true
-    setAddUnitResult(null)
-    setAddUnitSubmitting(true)
-    try {
+  const addUnitMutation = useMutation({
+    mutationFn: async (variables: { armyId: string; name: string; type: string; stats: StatFields }) => {
       const result = await addUnitFn({
         data: {
-          armyId: addUnitArmyId,
-          name: addUnitName,
-          type: addUnitType,
-          ...addUnitStats,
+          armyId: variables.armyId,
+          name: variables.name,
+          type: variables.type,
+          ...variables.stats,
         },
       })
-      if (result.success) {
-        const successArmyId = addUnitArmyId
-        setAddUnitResult({ success: true, message: `Unité "${addUnitName}" ajoutée avec succès` })
-        setAddUnitName('')
-        setAddUnitType('')
-        setAddUnitArmyId('')
-        setAddUnitStats(createEmptyStats())
-        await queries.queryClient.invalidateQueries({ queryKey: ['admin', 'armies'] })
-        await queries.queryClient.invalidateQueries({ queryKey: ['admin', 'army-units', successArmyId] })
-      } else {
-        setAddUnitResult({ success: false, message: result.error.message })
-      }
-    } catch {
-      setAddUnitResult({ success: false, message: 'Erreur — veuillez réessayer' })
-    } finally {
-      addUnitSubmitRef.current = false
-      setAddUnitSubmitting(false)
-    }
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: (_data, variables) => {
+      setAddUnitResult({ success: true, message: `Unité "${variables.name}" ajoutée avec succès` })
+      setAddUnitName('')
+      setAddUnitType('')
+      setAddUnitArmyId('')
+      setAddUnitStats(createEmptyStats())
+      void queries.queryClient.invalidateQueries({ queryKey: ['admin', 'armies'] })
+      void queries.queryClient.invalidateQueries({ queryKey: ['admin', 'army-units', variables.armyId] })
+    },
+  })
+
+  function handleAddUnit() {
+    setAddUnitResult(null)
+    addUnitMutation.mutate({ armyId: addUnitArmyId, name: addUnitName, type: addUnitType, stats: addUnitStats })
   }
 
   return {
@@ -77,7 +72,6 @@ export function useAddUnit(queries: AdminQueries): AddUnitApi {
       addUnitType,
       addUnitStats,
       addUnitResult,
-      addUnitSubmitting,
     },
     actions: {
       handleAddUnit,
@@ -86,5 +80,7 @@ export function useAddUnit(queries: AdminQueries): AddUnitApi {
       setAddUnitType,
       setAddUnitStats,
     },
+    isPending: addUnitMutation.isPending,
+    error: addUnitMutation.error,
   }
 }

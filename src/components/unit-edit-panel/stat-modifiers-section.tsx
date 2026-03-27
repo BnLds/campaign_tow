@@ -36,7 +36,6 @@ export function StatModifiersSection({
   const [modDelta, setModDelta] = useState<string>('')
   const [modSource, setModSource] = useState('')
   const [modTemporary, setModTemporary] = useState(false)
-  const [deletingModId, setDeletingModId] = useState<string | null>(null)
   const modFeedback = useFeedback()
   const router = useRouter()
 
@@ -75,22 +74,24 @@ export function StatModifiersSection({
     mutate({ stat: modStat, delta: num, source: modSource.trim(), temporary: modTemporary })
   }
 
-  const handleDeleteStatModifier = async (modifierId: string) => {
-    if (!window.confirm('Supprimer ce modificateur ?')) return
-    setDeletingModId(modifierId)
-    try {
+  const { mutate: deleteStatModifier, isPending: deletingMod, variables: deletingModVars } = useMutation({
+    mutationFn: async (modifierId: string) => {
       const result = await removeStatModifierFn({ data: { armyId, modifierId } })
-      if (result.success) {
-        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
-        await onDeltaChange()
-      } else {
-        modFeedback.show(result.error.message, true)
-      }
-    } catch {
-      modFeedback.show('Erreur lors de la suppression', true)
-    } finally {
-      setDeletingModId(null)
-    }
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: async () => {
+      void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      await onDeltaChange()
+    },
+    onError: (error) => {
+      modFeedback.show(error.message, true)
+    },
+  })
+
+  const handleDeleteStatModifier = (modifierId: string) => {
+    if (!window.confirm('Supprimer ce modificateur ?')) return
+    deleteStatModifier(modifierId)
   }
 
   return (
@@ -118,11 +119,11 @@ export function StatModifiersSection({
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={deletingModId === mod.id}
+                disabled={deletingMod && deletingModVars === mod.id}
                 onClick={() => handleDeleteStatModifier(mod.id)}
                 className="text-xs p-1 text-[var(--color-malus)]"
               >
-                {deletingModId === mod.id ? '...' : 'supprimer'}
+                {deletingMod && deletingModVars === mod.id ? '...' : 'supprimer'}
               </Button>
             </li>
           ))}

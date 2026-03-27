@@ -3,6 +3,7 @@
 // Shared between Campaign view (/) and Armies list view (/armies).
 
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { playerImportArmyFn } from '../lib/server-fns/player-import-army'
 
 interface ArmyImportFormProps {
@@ -11,37 +12,34 @@ interface ArmyImportFormProps {
 
 export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
   const [owbText, setOwbText] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [result, setResult] = useState<{ message: string } | null>(null)
 
   const trimmed = owbText.trim()
 
-  const handleSubmit = async () => {
-    setSubmitting(true)
+  const { mutate, isPending, error: mutationError } = useMutation({
+    mutationFn: async (rawText: string) => {
+      const response = await playerImportArmyFn({ data: { rawText } })
+      if (!response.success) throw new Error(response.error.message)
+      return response.data
+    },
+    onSuccess: async (data) => {
+      const { armyName, faction, unitCount } = data
+      setResult({
+        message: `Armée importée : ${armyName} (${faction}) — ${unitCount} unité${unitCount > 1 ? 's' : ''}`,
+      })
+      setOwbText('')
+      await onSuccess(data)
+    },
+  })
+
+  const handleSubmit = () => {
     setResult(null)
-    try {
-      const response = await playerImportArmyFn({ data: { rawText: trimmed } })
-      if (response.success) {
-        const { armyName, faction, unitCount } = response.data
-        setResult({
-          success: true,
-          message: `Armée importée : ${armyName} (${faction}) — ${unitCount} unité${unitCount > 1 ? 's' : ''}`,
-        })
-        setOwbText('')
-        await onSuccess(response.data)
-      } else {
-        setResult({ success: false, message: response.error.message })
-      }
-    } catch {
-      setResult({ success: false, message: "Erreur serveur — veuillez réessayer" })
-    } finally {
-      setSubmitting(false)
-    }
+    mutate(trimmed)
   }
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); void handleSubmit() }}
+      onSubmit={(e) => { e.preventDefault(); handleSubmit() }}
       style={{
         padding: '1.5rem',
         borderRadius: '0.5rem',
@@ -76,7 +74,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
         data-testid="player-owb-import-textarea"
         value={owbText}
         onChange={(e) => setOwbText(e.target.value)}
-        disabled={submitting}
+        disabled={isPending}
         placeholder="Collez ici l'export de votre armée depuis Old World Builder..."
         rows={6}
         maxLength={50000}
@@ -96,7 +94,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
       <button
         data-testid="player-owb-import-submit"
         type="submit"
-        disabled={submitting || !trimmed}
+        disabled={isPending || !trimmed}
         style={{
           marginTop: '0.75rem',
           padding: '0.5rem 1.25rem',
@@ -107,11 +105,11 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
           fontFamily: 'var(--font-body)',
           fontWeight: 600,
           fontSize: '0.9rem',
-          cursor: submitting || !trimmed ? 'not-allowed' : 'pointer',
-          opacity: submitting || !trimmed ? 0.6 : 1,
+          cursor: isPending || !trimmed ? 'not-allowed' : 'pointer',
+          opacity: isPending || !trimmed ? 0.6 : 1,
         }}
       >
-        {submitting ? 'Import en cours...' : 'Importer'}
+        {isPending ? 'Import en cours...' : 'Importer'}
       </button>
 
       {result && (
@@ -120,14 +118,30 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
             marginTop: '0.75rem',
             padding: '0.625rem',
             borderRadius: '0.375rem',
-            background: result.success ? 'var(--color-bonus-bg)' : 'var(--color-malus-bg)',
-            color: result.success ? 'var(--color-bonus)' : 'var(--color-malus)',
-            border: `1px solid ${result.success ? 'var(--color-bonus)' : 'var(--color-malus)'}`,
+            background: 'var(--color-bonus-bg)',
+            color: 'var(--color-bonus)',
+            border: '1px solid var(--color-bonus)',
             fontSize: '0.875rem',
             fontFamily: 'var(--font-body)',
           }}
         >
           {result.message}
+        </p>
+      )}
+      {mutationError && (
+        <p
+          style={{
+            marginTop: '0.75rem',
+            padding: '0.625rem',
+            borderRadius: '0.375rem',
+            background: 'var(--color-malus-bg)',
+            color: 'var(--color-malus)',
+            border: '1px solid var(--color-malus)',
+            fontSize: '0.875rem',
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          {mutationError.message}
         </p>
       )}
     </form>

@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { updateSubProfileFn, getArmyUnitsFn } from '#/server-fns/admin-armies'
 import type { AdminQueries } from './-use-admin-queries'
 import { createEmptyStats } from './-admin-helpers'
@@ -12,7 +12,6 @@ export interface CorrectionState {
   corrSubProfileId: string
   corrStats: StatFields
   corrResult: ResultMessage
-  corrSubmitting: boolean
 }
 
 export interface CorrectionDerived {
@@ -40,7 +39,7 @@ export interface CorrectionDerived {
 }
 
 export interface CorrectionActions {
-  handleCorrectStats: () => Promise<void>
+  handleCorrectStats: () => void
   setCorrArmyId: (id: string) => void
   setCorrUnitId: (id: string) => void
   setCorrSubProfileId: (id: string) => void
@@ -51,6 +50,8 @@ export interface CorrectionApi {
   state: CorrectionState
   derived: CorrectionDerived
   actions: CorrectionActions
+  isPending: boolean
+  error: Error | null
 }
 
 export function useCorrection(queries: AdminQueries): CorrectionApi {
@@ -59,8 +60,6 @@ export function useCorrection(queries: AdminQueries): CorrectionApi {
   const [corrSubProfileId, setCorrSubProfileIdRaw] = useState('')
   const [corrStats, setCorrStats] = useState(createEmptyStats())
   const [corrResult, setCorrResult] = useState<ResultMessage>(null)
-  const [corrSubmitting, setCorrSubmitting] = useState(false)
-  const correctStatsSubmitRef = useRef(false)
 
   const armyUnitsQuery = useQuery({
     queryKey: ['admin', 'army-units', corrArmyId],
@@ -123,30 +122,26 @@ export function useCorrection(queries: AdminQueries): CorrectionApi {
     }
   }
 
-  async function handleCorrectStats() {
-    if (correctStatsSubmitRef.current) return
-    correctStatsSubmitRef.current = true
-    setCorrResult(null)
-    setCorrSubmitting(true)
-    try {
+  const correctStatsMutation = useMutation({
+    mutationFn: async (variables: { subProfileId: string; stats: StatFields; armyId: string }) => {
       const result = await updateSubProfileFn({
         data: {
-          subProfileId: corrSubProfileId,
-          ...corrStats,
+          subProfileId: variables.subProfileId,
+          ...variables.stats,
         },
       })
-      if (result.success) {
-        setCorrResult({ success: true, message: 'Stats mises à jour avec succès' })
-        await queries.queryClient.invalidateQueries({ queryKey: ['admin', 'army-units', corrArmyId] })
-      } else {
-        setCorrResult({ success: false, message: result.error.message })
-      }
-    } catch {
-      setCorrResult({ success: false, message: 'Erreur — veuillez réessayer' })
-    } finally {
-      correctStatsSubmitRef.current = false
-      setCorrSubmitting(false)
-    }
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: (_data, variables) => {
+      setCorrResult({ success: true, message: 'Stats mises à jour avec succès' })
+      void queries.queryClient.invalidateQueries({ queryKey: ['admin', 'army-units', variables.armyId] })
+    },
+  })
+
+  function handleCorrectStats() {
+    setCorrResult(null)
+    correctStatsMutation.mutate({ subProfileId: corrSubProfileId, stats: corrStats, armyId: corrArmyId })
   }
 
   return {
@@ -156,7 +151,6 @@ export function useCorrection(queries: AdminQueries): CorrectionApi {
       corrSubProfileId,
       corrStats,
       corrResult,
-      corrSubmitting,
     },
     derived: {
       corrUnits,
@@ -172,5 +166,7 @@ export function useCorrection(queries: AdminQueries): CorrectionApi {
       setCorrSubProfileId,
       setCorrStats,
     },
+    isPending: correctStatsMutation.isPending,
+    error: correctStatsMutation.error,
   }
 }
