@@ -219,7 +219,7 @@ describe('[AC2][AC5][P0] Campaign view — result submission wiring in src/route
   // AC: 6 — Task 7.20: handleResultSubmit calls router.invalidate() on success
   it('[3.3-SFN-025] index.tsx handleResultSubmit calls router.invalidate() on success', () => {
     const route = getCampaignRoute()
-    expect(route).toMatch(/handleResultSubmit[\s\S]{0,500}router\.invalidate|router\.invalidate[\s\S]{0,500}handleResultSubmit/)
+    expect(route).toMatch(/handleResultSubmit[\s\S]{0,500}invalidateArmyState/)
   })
 })
 

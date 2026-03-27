@@ -9,6 +9,7 @@ import { authMiddleware } from '../lib/middleware'
 import type { ServerResult, MatchType } from '../lib/types'
 import type { TimelineEntryData } from '../db/queries'
 import { submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
+import { invalidateArmyState } from '../lib/invalidation-helpers'
 
 export const submitMatchResultFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
@@ -252,8 +253,7 @@ function CampaignView() {
       throw new Error(response.error.message)
     }
     queryClient.invalidateQueries({ queryKey: ['session'] })
-    queryClient.invalidateQueries({ queryKey: ['army-info'] })
-    await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+    await invalidateArmyState(queryClient, router)
   }
 
   const handleDeleteMatch = async () => {
@@ -272,7 +272,7 @@ function CampaignView() {
       setBlockToast(null)
       setToast({ message })
       toastTimeoutRef.current = setTimeout(() => setToast(null), 5000)
-      await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+      await invalidateArmyState(queryClient, router)
     } finally {
       deleteMatchInProgressRef.current = false
     }
@@ -293,7 +293,7 @@ function CampaignView() {
         return
       }
       setSkipXpConfirmOpen(false)
-      await router.invalidate({ filter: (d) => d.routeId === '/' })
+      await invalidateArmyState(queryClient, router)
     } catch {
       setSkipXpError('Une erreur est survenue')
     } finally {
@@ -481,8 +481,7 @@ function CampaignView() {
           <ArmyImportForm onSuccess={async (data) => {
             setImportSuccess(`Armée importée : ${data.armyName} (${data.faction}) — ${data.unitCount} unité${data.unitCount > 1 ? 's' : ''}`)
             await queryClient.invalidateQueries({ queryKey: ['session'] })
-            await queryClient.invalidateQueries({ queryKey: ['army-info'] })
-            await router.invalidate({ filter: (d) => d.routeId === '__root__' || d.routeId === '/' })
+            await invalidateArmyState(queryClient, router)
           }} />
         ) : (
           /* Logged in with an army */

@@ -3,6 +3,7 @@
 // Server functions: loadPostMatchDataFn, submitUnitXpFn, completeEvolutionsWithGainsFn
 
 import { createFileRoute, useRouter, Link, redirect } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import React, { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
@@ -11,6 +12,7 @@ import { submitInitialXpSchema, loadPostMatchDataSchema, completeEvolutionsWithG
 import type { ConsequenceEntry } from '../../../lib/validators'
 import { PostMatchWizard } from '../../../components/post-match-wizard'
 import type { ServerResult } from '../../../lib/types'
+import { invalidateArmyState } from '../../../lib/invalidation-helpers'
 
 // ---------------------------------------------------------------------------
 // Loader data type
@@ -405,6 +407,7 @@ function PostMatchRoute() {
   const { alreadyCompleted, reentry: _reentry, matchId, matchParticipantId, opponentPlayerName, mode, units, campaignPlayers } = loaderData as PostMatchLoaderData
   const hydrated = useHydrated()
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (hydrated) {
@@ -439,7 +442,7 @@ function PostMatchRoute() {
   }
 
   const handleComplete = async () => {
-    await router.invalidate({ filter: (d) => d.routeId === '/' })
+    await invalidateArmyState(queryClient, router)
     await router.navigate({ to: '/' })
   }
 
