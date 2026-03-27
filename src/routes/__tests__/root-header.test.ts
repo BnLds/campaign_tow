@@ -127,3 +127,46 @@ describe('[AC6] CampaignView — no duplicate army header in body', () => {
   })
 
 })
+
+describe('[FAB-XP] CreateMatchFab — initial XP gate', () => {
+  function getFabTsx() {
+    return readFileSync(resolve(root, 'src/components/create-match-fab.tsx'), 'utf-8')
+  }
+
+  function getSessionQueries() {
+    return readFileSync(resolve(root, 'src/lib/session-queries.ts'), 'utf-8')
+  }
+
+  it('getPlayerArmyInfoFn returns initialXpCompleted boolean', () => {
+    const code = getSessionQueries()
+    expect(code).toMatch(/initialXpCompleted:\s*!!army\.initialXpCompletedAt/)
+  })
+
+  it('CreateMatchFab accepts initialXpCompleted prop', () => {
+    const code = getFabTsx()
+    expect(code).toMatch(/initialXpCompleted:\s*boolean/)
+  })
+
+  it('handleFabClick gates on initialXpCompleted after armyId check', () => {
+    const code = getFabTsx()
+    // armyId gate comes before initialXpCompleted gate
+    const armyGateIdx = code.indexOf('if (!armyId)')
+    const xpGateIdx = code.indexOf('if (!initialXpCompleted)')
+    expect(armyGateIdx).toBeGreaterThan(-1)
+    expect(xpGateIdx).toBeGreaterThan(-1)
+    expect(xpGateIdx).toBeGreaterThan(armyGateIdx)
+  })
+
+  it('root layout passes initialXpCompleted prop to CreateMatchFab', () => {
+    const code = getRootTsx()
+    expect(code).toMatch(/initialXpCompleted=\{army\?\.initialXpCompleted\s*\?\?\s*false\}/)
+  })
+
+  it('uses FabBlockerMessage component for both blocker messages', () => {
+    const code = getFabTsx()
+    expect(code).toContain("import { FabBlockerMessage } from './fab-blocker-message'")
+    // Two FabBlockerMessage instances: no-army and no-xp
+    const matches = code.match(/FabBlockerMessage/g)
+    expect(matches?.length).toBeGreaterThanOrEqual(3) // 1 import + 2 usages
+  })
+})

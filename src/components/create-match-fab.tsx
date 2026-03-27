@@ -4,6 +4,7 @@
 // Player-first: select an opponent player, not an army.
 
 import { useState, useEffect, useRef } from 'react'
+import { FabBlockerMessage } from './fab-blocker-message'
 import { FAB_BOTTOM } from '../lib/layout-constants'
 import { useRouter } from '@tanstack/react-router'
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -78,6 +79,11 @@ export const createMatchFn = createServerFn({ method: 'POST' })
       throw new Error('Vous devez avoir une armée pour créer une partie')
     }
 
+    // Reject players who haven't completed initial XP
+    if (!playerArmy.initialXpCompletedAt) {
+      throw new Error("Complétez d'abord l'XP initiale de votre armée")
+    }
+
     // AC8 — Reject self-match
     if (data.opponentPlayerId === session.playerId) {
       throw new Error('Vous ne pouvez pas jouer contre vous-même')
@@ -121,6 +127,7 @@ export const createMatchFn = createServerFn({ method: 'POST' })
 type CreateMatchFabProps = {
   session: { playerId: string; isGuest: boolean }
   armyId: string | null
+  initialXpCompleted: boolean
 }
 
 type OpponentItem = {
@@ -135,12 +142,14 @@ type OpponentItem = {
 // CreateMatchFab component
 // ---------------------------------------------------------------------------
 
-export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProps) {
+export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }: CreateMatchFabProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [noArmyMessage, setNoArmyMessage] = useState(false)
   const noArmyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [noXpMessage, setNoXpMessage] = useState(false)
+  const noXpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Dialog state
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
@@ -181,15 +190,23 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
   useEffect(() => {
     return () => {
       if (noArmyTimeoutRef.current) clearTimeout(noArmyTimeoutRef.current)
+      if (noXpTimeoutRef.current) clearTimeout(noXpTimeoutRef.current)
     }
   }, [])
 
   const handleFabClick = () => {
     if (!armyId) {
+      setNoXpMessage(false)
       setNoArmyMessage(true)
-      // M3 — store timeout id for cleanup
       if (noArmyTimeoutRef.current) clearTimeout(noArmyTimeoutRef.current)
       noArmyTimeoutRef.current = setTimeout(() => setNoArmyMessage(false), 3000)
+      return
+    }
+    if (!initialXpCompleted) {
+      setNoArmyMessage(false)
+      setNoXpMessage(true)
+      if (noXpTimeoutRef.current) clearTimeout(noXpTimeoutRef.current)
+      noXpTimeoutRef.current = setTimeout(() => setNoXpMessage(false), 3000)
       return
     }
     setOpen(true)
@@ -224,26 +241,9 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
 
   return (
     <>
-      {/* No-army inline message */}
-      {noArmyMessage && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 130,
-            right: 16,
-            background: '#1e293b',
-            color: '#fff',
-            padding: '8px 14px',
-            borderRadius: 8,
-            fontSize: 13,
-            zIndex: 3,
-            maxWidth: 260,
-            textAlign: 'right',
-          }}
-        >
-          Vous devez avoir une armée pour créer une partie
-        </div>
-      )}
+      {/* Blocker messages */}
+      <FabBlockerMessage visible={noArmyMessage} message="Vous devez avoir une armée pour créer une partie" />
+      <FabBlockerMessage visible={noXpMessage} message="Complétez d'abord l'XP initiale de votre armée" />
 
       {/* FAB button */}
       <button

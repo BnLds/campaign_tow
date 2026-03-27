@@ -99,6 +99,7 @@ function RootLayout() {
         <CreateMatchFab
           session={{ playerId: session.playerId, isGuest: session.isGuest }}
           armyId={army?.id ?? null}
+          initialXpCompleted={army?.initialXpCompleted ?? false}
         />
       )}
       {session && <TabBar currentPath={currentPath} />}

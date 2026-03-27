@@ -31,7 +31,7 @@ export const getPlayerArmyInfoFn = createServerFn({ method: 'GET' })
     if (!army) return { army: null, record: null }
     const record = await getArmyRecord(army.id)
     return {
-      army: { id: army.id, name: army.name, faction: army.faction },
+      army: { id: army.id, name: army.name, faction: army.faction, initialXpCompleted: !!army.initialXpCompletedAt },
       record,
     }
   })
