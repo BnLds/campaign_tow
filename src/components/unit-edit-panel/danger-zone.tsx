@@ -1,6 +1,8 @@
 // Campaign TOW — DangerZone: graveyard + permanent deletion for UnitEditPanel
 
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import {
@@ -16,20 +18,45 @@ import {
 } from '../ui/alert-dialog'
 import { sendToGraveyardFn, deleteUnitFn } from '../../server-fns/unit-mutations'
 import { useFeedback, FeedbackMsg } from './use-feedback'
-import { useUnitMutation } from './use-unit-mutation'
 
 interface DangerZoneProps {
   armyId: string
   unitId: string
-  onMutationSuccess: () => Promise<void>
 }
 
-export function DangerZone({ armyId, unitId, onMutationSuccess }: DangerZoneProps) {
+export function DangerZone({ armyId, unitId }: DangerZoneProps) {
   const [showGraveyardInput, setShowGraveyardInput] = useState(false)
   const [graveyardReason, setGraveyardReason] = useState('')
   const dangerFeedback = useFeedback()
-  const { mutate: mutateGraveyard, isPending: sendingToGraveyard } = useUnitMutation(dangerFeedback, onMutationSuccess)
-  const { mutate: mutateDelete, isPending: deletingUnit } = useUnitMutation(dangerFeedback, onMutationSuccess)
+  const router = useRouter()
+
+  const { mutate: sendToGraveyard, isPending: sendingToGraveyard } = useMutation({
+    mutationFn: (reason: string) => sendToGraveyardFn({ data: { armyId, unitId, reason } }),
+    onSuccess: (result) => {
+      if (result.success) {
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      } else {
+        dangerFeedback.show(result.error.message, true)
+      }
+    },
+    onError: () => {
+      dangerFeedback.show('Erreur réseau', true)
+    },
+  })
+
+  const { mutate: deleteUnit, isPending: deletingUnit } = useMutation({
+    mutationFn: () => deleteUnitFn({ data: { armyId, unitId } }),
+    onSuccess: (result) => {
+      if (result.success) {
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      } else {
+        dangerFeedback.show(result.error.message, true)
+      }
+    },
+    onError: () => {
+      dangerFeedback.show('Erreur réseau', true)
+    },
+  })
 
   return (
     <div className="border-t border-[var(--color-border)] mt-6 pt-4">
@@ -65,10 +92,7 @@ export function DangerZone({ armyId, unitId, onMutationSuccess }: DangerZoneProp
                   dangerFeedback.show('La raison ne peut pas être vide', true)
                   return
                 }
-                void mutateGraveyard(
-                  () => sendToGraveyardFn({ data: { armyId, unitId, reason: graveyardReason.trim() } }),
-                  { successMsg: '' },
-                )
+                sendToGraveyard(graveyardReason.trim())
               }}
               className="bg-[#334155] text-white"
             >
@@ -113,10 +137,7 @@ export function DangerZone({ armyId, unitId, onMutationSuccess }: DangerZoneProp
               disabled={deletingUnit}
               onClick={(e) => {
                 e.preventDefault()
-                void mutateDelete(
-                  () => deleteUnitFn({ data: { armyId, unitId } }),
-                  { successMsg: '' },
-                )
+                deleteUnit()
               }}
               className="bg-[var(--color-malus)] text-white"
             >

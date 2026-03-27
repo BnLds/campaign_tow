@@ -1,12 +1,13 @@
 // Campaign TOW — UnitGainsSection: unit gains (add/remove) for UnitEditPanel
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { addUnitGainFn, removeUnitGainFn } from '../../server-fns/unit-mutations'
 import { useFeedback, FeedbackMsg } from './use-feedback'
-import { useUnitMutation } from './use-unit-mutation'
 import type { UnitGainRow } from './types'
 
 interface UnitGainsSectionProps {
@@ -14,7 +15,6 @@ interface UnitGainsSectionProps {
   unitId: string
   unitGains: UnitGainRow[]
   loadingDeltas: boolean
-  onMutationSuccess: () => Promise<void>
   onDeltaChange: () => Promise<void>
 }
 
@@ -23,32 +23,37 @@ export function UnitGainsSection({
   unitId,
   unitGains,
   loadingDeltas,
-  onMutationSuccess,
   onDeltaChange,
 }: UnitGainsSectionProps) {
   const [gainDescription, setGainDescription] = useState('')
   const gainFeedback = useFeedback()
   const [deletingGainId, setDeletingGainId] = useState<string | null>(null)
-  const mountedRef = useRef(true)
-  useEffect(() => { return () => { mountedRef.current = false } }, [])
-  const { mutate, isPending: addingGain } = useUnitMutation(gainFeedback, onMutationSuccess)
+  const router = useRouter()
 
-  const handleAddUnitGain = async (e: React.FormEvent) => {
+  const { mutate, isPending: addingGain } = useMutation({
+    mutationFn: (description: string) => addUnitGainFn({ data: { armyId, unitId, description } }),
+    onSuccess: async (result) => {
+      if (result.success) {
+        gainFeedback.show('Capacité ajoutée', false)
+        setGainDescription('')
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+        await onDeltaChange()
+      } else {
+        gainFeedback.show(result.error.message, true)
+      }
+    },
+    onError: () => {
+      gainFeedback.show('Erreur réseau', true)
+    },
+  })
+
+  const handleAddUnitGain = (e: React.FormEvent) => {
     e.preventDefault()
     if (!gainDescription.trim()) {
       gainFeedback.show('La description ne peut pas être vide', true)
       return
     }
-    await mutate(
-      () => addUnitGainFn({ data: { armyId, unitId, description: gainDescription.trim() } }),
-      {
-        successMsg: 'Capacité ajoutée',
-        onSuccess: async () => {
-          setGainDescription('')
-          await onDeltaChange()
-        },
-      },
-    )
+    mutate(gainDescription.trim())
   }
 
   const handleDeleteUnitGain = async (gainId: string) => {
@@ -57,15 +62,15 @@ export function UnitGainsSection({
     try {
       const result = await removeUnitGainFn({ data: { armyId, gainId } })
       if (result.success) {
-        await onMutationSuccess()
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
         await onDeltaChange()
       } else {
-        if (mountedRef.current) gainFeedback.show(result.error.message, true)
+        gainFeedback.show(result.error.message, true)
       }
     } catch {
-      if (mountedRef.current) gainFeedback.show('Erreur lors de la suppression', true)
+      gainFeedback.show('Erreur lors de la suppression', true)
     } finally {
-      if (mountedRef.current) setDeletingGainId(null)
+      setDeletingGainId(null)
     }
   }
 

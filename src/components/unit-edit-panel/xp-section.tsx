@@ -1,12 +1,13 @@
 // Campaign TOW — XpSection: XP editing with tier display for UnitEditPanel
 
 import { useEffect, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { updateXpFn } from '../../server-fns/unit-mutations'
 import { useFeedback, FeedbackMsg } from './use-feedback'
-import { useUnitMutation } from './use-unit-mutation'
 import { getTierLabel, getTierColor } from '../../lib/tier'
 import type { TierLevel } from '../../lib/tier'
 
@@ -15,15 +16,31 @@ interface XpSectionProps {
   unitId: string
   unitType: string
   currentXp: number
-  onMutationSuccess: () => Promise<void>
 }
 
-export function XpSection({ armyId, unitId, unitType, currentXp, onMutationSuccess }: XpSectionProps) {
+export function XpSection({ armyId, unitId, unitType, currentXp }: XpSectionProps) {
   const [xpValue, setXpValue] = useState(String(currentXp))
   const [currentTier, setCurrentTier] = useState<TierLevel | null>(null)
   const [confirmedXpUpdate, setConfirmedXpUpdate] = useState(false)
   const xpFeedback = useFeedback()
-  const { mutate, isPending } = useUnitMutation(xpFeedback, onMutationSuccess)
+  const router = useRouter()
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (xp: number) => updateXpFn({ data: { armyId, unitId, xp } }),
+    onSuccess: (result) => {
+      if (result.success) {
+        xpFeedback.show(`XP mis à jour (${result.data.xp} XP)`, false)
+        setCurrentTier(result.data.tier)
+        setConfirmedXpUpdate(true)
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      } else {
+        xpFeedback.show(result.error.message, true)
+      }
+    },
+    onError: () => {
+      xpFeedback.show('Erreur réseau', true)
+    },
+  })
 
   useEffect(() => {
     setXpValue(String(currentXp))
@@ -32,20 +49,14 @@ export function XpSection({ armyId, unitId, unitType, currentXp, onMutationSucce
   const tierLabel = currentTier !== null ? getTierLabel(currentTier, unitType) : null
   const tierColor = currentTier !== null ? getTierColor(currentTier) : undefined
 
-  async function handleUpdateXp(e: React.FormEvent) {
+  function handleUpdateXp(e: React.FormEvent) {
     e.preventDefault()
     const xp = Number(xpValue)
     if (!Number.isInteger(xp) || xp < 0) {
       xpFeedback.show('XP doit être un nombre entier >= 0', true)
       return
     }
-    await mutate(
-      () => updateXpFn({ data: { armyId, unitId, xp } }),
-      {
-        successMsg: `XP mis à jour (${xp} XP)`,
-        onSuccess: (data) => { setCurrentTier(data.tier); setConfirmedXpUpdate(true) },
-      },
-    )
+    mutate(xp)
   }
 
   return (

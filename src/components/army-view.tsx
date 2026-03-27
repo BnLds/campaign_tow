@@ -52,10 +52,6 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
   const totalPoints = unitCards.reduce((sum, c) => sum + (c.unit.points ?? 0), 0)
   const allHavePoints = unitCards.length > 0 && unitCards.every((c) => c.unit.points !== null)
 
-  const handleMutationSuccess = async () => {
-    await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
-  }
-
   return (
     <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
       {/* Army header */}
@@ -190,7 +186,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
         onClose={() => setAddUnitsOpen(false)}
         onSuccess={async (unitCount) => {
           setSuccessMessage(`${unitCount} unité${unitCount > 1 ? 's' : ''} ajoutée${unitCount > 1 ? 's' : ''}`)
-          await handleMutationSuccess()
+          await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
           setAddUnitsOpen(false)
         }}
       />
@@ -250,7 +246,6 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                   subProfiles={card.subProfiles}
                   isAdmin={isAdmin}
                   onClose={() => setEditingUnitId(null)}
-                  onMutationSuccess={handleMutationSuccess}
                 />
               )}
             </div>
@@ -356,7 +351,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                       data: { armyId: army.id, unitId: gu.id },
                     })
                     if (result.success) {
-                      await handleMutationSuccess()
+                      await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
                     }
                   } finally {
                     setRestoringUnitId(null)
@@ -408,7 +403,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                           data: { armyId: army.id, unitId: gu.id },
                         })
                         if (result.success) {
-                          await handleMutationSuccess()
+                          await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
                         }
                       }}
                       style={{ background: 'var(--color-malus)', color: '#fff' }}

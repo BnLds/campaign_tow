@@ -1,13 +1,14 @@
 // Campaign TOW — StatModifiersSection: add/remove stat modifiers for UnitEditPanel
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { addStatModifierFn, removeStatModifierFn, VALID_STATS } from '../../server-fns/unit-mutations'
 import { useFeedback, FeedbackMsg } from './use-feedback'
-import { useUnitMutation } from './use-unit-mutation'
 import type { StatModifierRow } from './types'
 
 type StatKey = (typeof VALID_STATS)[number]
@@ -21,7 +22,6 @@ interface StatModifiersSectionProps {
   unitId: string
   statModifiers: StatModifierRow[]
   loadingDeltas: boolean
-  onMutationSuccess: () => Promise<void>
   onDeltaChange: () => Promise<void>
 }
 
@@ -30,7 +30,6 @@ export function StatModifiersSection({
   unitId,
   statModifiers,
   loadingDeltas,
-  onMutationSuccess,
   onDeltaChange,
 }: StatModifiersSectionProps) {
   const [modStat, setModStat] = useState<StatKey>('m')
@@ -38,12 +37,31 @@ export function StatModifiersSection({
   const [modSource, setModSource] = useState('')
   const [modTemporary, setModTemporary] = useState(false)
   const [deletingModId, setDeletingModId] = useState<string | null>(null)
-  const mountedRef = useRef(true)
-  useEffect(() => { return () => { mountedRef.current = false } }, [])
   const modFeedback = useFeedback()
-  const { mutate, isPending: addingMod } = useUnitMutation(modFeedback, onMutationSuccess)
+  const router = useRouter()
 
-  const handleAddStatModifier = async (e: React.FormEvent) => {
+  const { mutate, isPending: addingMod } = useMutation({
+    mutationFn: (params: { stat: StatKey; delta: number; source: string; temporary: boolean }) =>
+      addStatModifierFn({ data: { armyId, unitId, stat: params.stat, delta: params.delta, source: params.source, temporary: params.temporary } }),
+    onSuccess: async (result) => {
+      if (result.success) {
+        modFeedback.show('Modificateur ajouté', false)
+        setModStat('m')
+        setModDelta('')
+        setModSource('')
+        setModTemporary(false)
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+        await onDeltaChange()
+      } else {
+        modFeedback.show(result.error.message, true)
+      }
+    },
+    onError: () => {
+      modFeedback.show('Erreur réseau', true)
+    },
+  })
+
+  const handleAddStatModifier = (e: React.FormEvent) => {
     e.preventDefault()
     const num = Number(modDelta)
     if (!Number.isInteger(num) || num === 0) {
@@ -54,19 +72,7 @@ export function StatModifiersSection({
       modFeedback.show('La source ne peut pas être vide', true)
       return
     }
-    await mutate(
-      () => addStatModifierFn({ data: { armyId, unitId, stat: modStat, delta: num, source: modSource.trim(), temporary: modTemporary } }),
-      {
-        successMsg: 'Modificateur ajouté',
-        onSuccess: async () => {
-          setModStat('m')
-          setModDelta('')
-          setModSource('')
-          setModTemporary(false)
-          await onDeltaChange()
-        },
-      },
-    )
+    mutate({ stat: modStat, delta: num, source: modSource.trim(), temporary: modTemporary })
   }
 
   const handleDeleteStatModifier = async (modifierId: string) => {
@@ -75,15 +81,15 @@ export function StatModifiersSection({
     try {
       const result = await removeStatModifierFn({ data: { armyId, modifierId } })
       if (result.success) {
-        await onMutationSuccess()
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
         await onDeltaChange()
       } else {
-        if (mountedRef.current) modFeedback.show(result.error.message, true)
+        modFeedback.show(result.error.message, true)
       }
     } catch {
-      if (mountedRef.current) modFeedback.show('Erreur lors de la suppression', true)
+      modFeedback.show('Erreur lors de la suppression', true)
     } finally {
-      if (mountedRef.current) setDeletingModId(null)
+      setDeletingModId(null)
     }
   }
 

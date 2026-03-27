@@ -25,7 +25,6 @@ export interface UnitEditPanelProps {
   subProfiles: SubProfileItem[]
   isAdmin: boolean
   onClose: () => void
-  onMutationSuccess: () => Promise<void>
 }
 
 export function UnitEditPanel({
@@ -39,7 +38,6 @@ export function UnitEditPanel({
   subProfiles,
   isAdmin,
   onClose,
-  onMutationSuccess,
 }: UnitEditPanelProps) {
   const [statModifiers, setStatModifiers] = useState<StatModifierRow[]>([])
   const [unitGains, setUnitGains] = useState<UnitGainRow[]>([])
@@ -96,13 +94,11 @@ export function UnitEditPanel({
         armyId={armyId}
         unitId={unitId}
         unitNickname={unitNickname}
-        onMutationSuccess={onMutationSuccess}
       />
 
       <SubProfilesSection
         armyId={armyId}
         subProfiles={subProfiles}
-        onMutationSuccess={onMutationSuccess}
       />
 
       {isAdmin && (
@@ -111,7 +107,6 @@ export function UnitEditPanel({
           unitId={unitId}
           statModifiers={statModifiers}
           loadingDeltas={loadingDeltas}
-          onMutationSuccess={onMutationSuccess}
           onDeltaChange={refetchDeltas}
         />
       )}
@@ -122,7 +117,6 @@ export function UnitEditPanel({
           unitId={unitId}
           unitGains={unitGains}
           loadingDeltas={loadingDeltas}
-          onMutationSuccess={onMutationSuccess}
           onDeltaChange={refetchDeltas}
         />
       )}
@@ -131,7 +125,6 @@ export function UnitEditPanel({
         armyId={armyId}
         unitId={unitId}
         currentPoints={currentPoints}
-        onMutationSuccess={onMutationSuccess}
       />
 
       {isAdmin && (
@@ -140,14 +133,12 @@ export function UnitEditPanel({
           unitId={unitId}
           unitType={unitType}
           currentXp={currentXp}
-          onMutationSuccess={onMutationSuccess}
         />
       )}
 
       <DangerZone
         armyId={armyId}
         unitId={unitId}
-        onMutationSuccess={onMutationSuccess}
       />
     </div>
   )

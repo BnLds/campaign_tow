@@ -1,21 +1,37 @@
 // Campaign TOW — SubProfilesSection: mount toggle switches for UnitEditPanel
 
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { Switch } from '../ui/switch'
 import { Label } from '../ui/label'
 import { toggleMountFn } from '../../server-fns/unit-mutations'
 import { useFeedback, FeedbackMsg } from './use-feedback'
-import { useUnitMutation } from './use-unit-mutation'
 import type { SubProfileItem } from './types'
 
 interface SubProfilesSectionProps {
   armyId: string
   subProfiles: SubProfileItem[]
-  onMutationSuccess: () => Promise<void>
 }
 
-export function SubProfilesSection({ armyId, subProfiles, onMutationSuccess }: SubProfilesSectionProps) {
+export function SubProfilesSection({ armyId, subProfiles }: SubProfilesSectionProps) {
   const mountFeedback = useFeedback()
-  const { mutate, isPending } = useUnitMutation(mountFeedback, onMutationSuccess)
+  const router = useRouter()
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (params: { subProfileId: string; isMount: boolean }) =>
+      toggleMountFn({ data: { armyId, subProfileId: params.subProfileId, isMount: params.isMount } }),
+    onSuccess: (result) => {
+      if (result.success) {
+        mountFeedback.show('Monture mise à jour', false)
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      } else {
+        mountFeedback.show(result.error.message, true)
+      }
+    },
+    onError: () => {
+      mountFeedback.show('Erreur réseau', true)
+    },
+  })
 
   if (!(subProfiles.length >= 2)) return null
 
@@ -42,11 +58,8 @@ export function SubProfilesSection({ armyId, subProfiles, onMutationSuccess }: S
                 id={`mount-${sp.id}`}
                 checked={sp.isMount}
                 disabled={isPending}
-                onCheckedChange={async (checked) => {
-                  await mutate(
-                    () => toggleMountFn({ data: { armyId, subProfileId: sp.id, isMount: checked } }),
-                    { successMsg: 'Monture mise à jour' },
-                  )
+                onCheckedChange={(checked) => {
+                  mutate({ subProfileId: sp.id, isMount: checked })
                 }}
               />
             </div>

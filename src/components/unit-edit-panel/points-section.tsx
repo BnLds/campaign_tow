@@ -1,31 +1,45 @@
 // Campaign TOW — PointsSection: point cost editing for UnitEditPanel
 
 import { useEffect, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { updatePointsFn } from '../../server-fns/unit-mutations'
 import { useFeedback, FeedbackMsg } from './use-feedback'
-import { useUnitMutation } from './use-unit-mutation'
 
 interface PointsSectionProps {
   armyId: string
   unitId: string
   currentPoints: number | null
-  onMutationSuccess: () => Promise<void>
 }
 
-export function PointsSection({ armyId, unitId, currentPoints, onMutationSuccess }: PointsSectionProps) {
+export function PointsSection({ armyId, unitId, currentPoints }: PointsSectionProps) {
   const [pointsValue, setPointsValue] = useState(currentPoints !== null ? String(currentPoints) : '')
   const pointsFeedback = useFeedback()
-  const { mutate, isPending } = useUnitMutation(pointsFeedback, onMutationSuccess)
+  const router = useRouter()
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (points: number | null) => updatePointsFn({ data: { armyId, unitId, points } }),
+    onSuccess: (result, points) => {
+      if (result.success) {
+        pointsFeedback.show(points !== null ? `Coût mis à jour (${points} pts)` : 'Coût effacé', false)
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      } else {
+        pointsFeedback.show(result.error.message, true)
+      }
+    },
+    onError: () => {
+      pointsFeedback.show('Erreur réseau', true)
+    },
+  })
 
   useEffect(() => {
     setPointsValue(currentPoints !== null ? String(currentPoints) : '')
   }, [currentPoints])
 
-  async function handleUpdatePoints(e: React.FormEvent) {
-    e.preventDefault()
+  function handleUpdatePoints() {
     let points: number | null
     if (pointsValue.trim() === '') {
       points = null
@@ -37,10 +51,7 @@ export function PointsSection({ armyId, unitId, currentPoints, onMutationSuccess
       }
       points = parsed
     }
-    await mutate(
-      () => updatePointsFn({ data: { armyId, unitId, points } }),
-      { successMsg: points !== null ? `Coût mis à jour (${points} pts)` : 'Coût effacé' },
-    )
+    mutate(points)
   }
 
   return (
@@ -48,7 +59,7 @@ export function PointsSection({ armyId, unitId, currentPoints, onMutationSuccess
       <h4 className="font-[family-name:var(--font-body)] font-bold text-xs uppercase tracking-wider text-[var(--color-section-label)] mb-3">
         Coût en points
       </h4>
-      <form onSubmit={handleUpdatePoints} className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <div className="flex items-end gap-2">
           <div className="flex flex-col gap-1">
             <Label htmlFor={`points-input-${unitId}`} className="text-xs">Valeur</Label>
@@ -63,12 +74,12 @@ export function PointsSection({ armyId, unitId, currentPoints, onMutationSuccess
               disabled={isPending}
             />
           </div>
-          <Button type="submit" disabled={isPending} size="sm">
+          <Button type="button" onClick={handleUpdatePoints} disabled={isPending} size="sm">
             {isPending ? 'Mise à jour...' : 'Mettre à jour'}
           </Button>
         </div>
         <FeedbackMsg message={pointsFeedback.message} />
-      </form>
+      </div>
     </section>
   )
 }
