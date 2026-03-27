@@ -18,6 +18,8 @@ export type { InjuryResult, DestructionResult, InitialConsequenceItem, Consequen
 // Wizard-internal types
 // ---------------------------------------------------------------------------
 
+export type ExtendedDestructionResult = DestructionResult & { xpLostAmount?: number }
+
 export type TierUpQueueEntry = ThresholdEntry & {
   unitId: string
   unitName: string
@@ -69,4 +71,29 @@ export type PostMatchWizardProps = {
   campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
   catchupBonusXp?: number
   catchupDeltaXp?: number
+}
+
+// ---------------------------------------------------------------------------
+// WizardAccumulator — mutable cross-step accumulation state (lives in a ref)
+// ---------------------------------------------------------------------------
+
+export type WizardAccumulator = {
+  submittedUnits: Set<string>
+  xpResults: Map<string, { oldXp: number; newXp: number }>
+  consequenceFlags: Map<string, boolean>
+  championFlags: Map<string, boolean>
+  pendingConsequences: Map<string, InjuryResult | ExtendedDestructionResult>
+  pendingGains: Map<string, Array<{ descriptions: string[]; thresholdXp: number | null }>>
+  cumulativeGains: Map<string, string[]>
+  cumulativeHonourSelections: Map<string, Set<string>>
+  flaggedUnits: FlaggedUnit[]
+  submittedXpByStep: Map<number, Set<string>>
+  submittedTierUpsByStep: Map<number, string[]>
+
+  // Methods
+  recordXp(unitId: string, oldXp: number, newXp: number): void
+  recordConsequence(unitId: string, result: InjuryResult | ExtendedDestructionResult): void
+  recordTierUp(step: number, tierUpEntry: TierUpQueueEntry, descriptions: string[]): void
+  rollbackTierUp(step: number, prevEntry: TierUpQueueEntry): void
+  setFlaggedUnits(units: FlaggedUnit[]): void
 }

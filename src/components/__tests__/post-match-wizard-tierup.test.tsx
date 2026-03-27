@@ -12,8 +12,20 @@
 // Covers Tasks 12.1–12.6 (AC: 1, 6, 8, 9)
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from 'react'
 import { PostMatchWizard } from '../post-match-wizard'
+
+function render(ui: React.ReactElement, options?: Parameters<typeof rtlRender>[1]) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return rtlRender(ui, { wrapper: Wrapper, ...options })
+}
 
 // ---------------------------------------------------------------------------
 // Helpers — test fixtures
@@ -458,9 +470,9 @@ describe('[AC1][P0] PostMatchWizard — source contract for Phase 2 (story 4.2)'
       .join('\n')
   }
 
-  it('[4.2-WIZ-012] post-match-wizard.tsx has pendingGainsRef for batch commit', () => {
+  it('[4.2-WIZ-012] post-match-wizard source has pendingGains accumulator for batch commit', () => {
     const code = readWizardSource()
-    expect(code).toMatch(/pendingGainsRef/)
+    expect(code).toMatch(/pendingGains/)
   })
 
   it('[4.2-WIZ-013] post-match-wizard.tsx contains phase state (xp/tierup)', () => {

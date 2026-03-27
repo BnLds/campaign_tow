@@ -17,7 +17,14 @@ export function PostMatchWizard(props: PostMatchWizardProps) {
       return <WizardEmpty {...result.props} />
     case 'xp': {
       const { key, ...xpProps } = result.props
-      return <PhaseXp key={key} {...xpProps} />
+      return (
+        <>
+          {result.completeError && (
+            <p role="alert" style={{ color: '#b82c2c', marginBottom: '0.5rem' }}>{result.completeError}</p>
+          )}
+          <PhaseXp key={key} {...xpProps} />
+        </>
+      )
     }
     case 'consequences': {
       const { key, ...csqProps } = result.props
@@ -32,7 +39,14 @@ export function PostMatchWizard(props: PostMatchWizardProps) {
     }
     case 'tierup': {
       const { key, ...tierUpProps } = result.props
-      return <PhaseTierUp key={key} {...tierUpProps} />
+      return (
+        <>
+          {result.completeError && (
+            <p role="alert" style={{ color: '#b82c2c', marginBottom: '0.5rem' }}>{result.completeError}</p>
+          )}
+          <PhaseTierUp key={key} {...tierUpProps} />
+        </>
+      )
     }
     case 'complete':
       return null

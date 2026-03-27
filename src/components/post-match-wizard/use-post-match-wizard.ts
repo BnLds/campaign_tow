@@ -1,6 +1,7 @@
 // Campaign TOW — PostMatchWizard custom hook (stateful logic)
 
 import { useState, useReducer, useRef, useEffect } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { computeXpTotal } from '../../lib/xp-conditions'
 import type {
   PostMatchWizardProps,
@@ -22,6 +23,8 @@ import {
   buildFlaggedUnits,
 } from './helpers'
 import { submitUnitXpAction, completeEvolutionsAction } from './server-actions'
+import type { SubmitUnitXpParams, CompleteEvolutionsParams } from './server-actions'
+import { createWizardAccumulator } from './wizard-accumulator'
 
 // ---------------------------------------------------------------------------
 // Return types (discriminated union by phase)
@@ -33,6 +36,7 @@ type EmptyPhaseResult = {
 }
 type XpPhaseResult = {
   phase: 'xp'
+  completeError: string | null
   props: {
     key: number
     unit: WizardUnit
@@ -68,6 +72,7 @@ type ConsequencePhaseResult = {
 }
 type TierUpPhaseResult = {
   phase: 'tierup'
+  completeError: string | null
   props: {
     key: number
     currentTierUp: TierUpQueueEntry
@@ -90,60 +95,6 @@ export type UsePostMatchWizardReturn =
   | ConsequencePhaseResult
   | TierUpPhaseResult
   | CompletePhaseResult
-
-// ---------------------------------------------------------------------------
-// Private helper — rollback a single tier-up step
-// ---------------------------------------------------------------------------
-
-function rollbackTierUpStep(
-  prevEntry: TierUpQueueEntry,
-  prevSelections: string[],
-  pendingGains: Map<string, Array<{ descriptions: string[]; thresholdXp: number | null }>>,
-  cumulativeGains: Map<string, string[]>,
-  cumulativeHonourSelections: Map<string, Set<string>>,
-): void {
-  const descriptionsToRemove = prevSelections.filter((d) => d !== '2 améliorations mineures')
-
-  // Remove from pendingGains
-  const pendingGroups = pendingGains.get(prevEntry.unitId)
-  if (pendingGroups) {
-    const updatedGroups = pendingGroups
-      .map((group) => {
-        if (group.thresholdXp !== prevEntry.xp) return group
-        const updatedDescs = [...group.descriptions]
-        for (const desc of descriptionsToRemove) {
-          const idx = updatedDescs.indexOf(desc)
-          if (idx !== -1) updatedDescs.splice(idx, 1)
-        }
-        return { ...group, descriptions: updatedDescs }
-      })
-      .filter((group) => group.descriptions.length > 0)
-    if (updatedGroups.length > 0) {
-      pendingGains.set(prevEntry.unitId, updatedGroups)
-    } else {
-      pendingGains.delete(prevEntry.unitId)
-    }
-  }
-
-  // Remove from cumulativeGains
-  const cumGains = cumulativeGains.get(prevEntry.unitId)
-  if (cumGains) {
-    const updated = [...cumGains]
-    for (const desc of descriptionsToRemove) {
-      const idx = updated.indexOf(desc)
-      if (idx !== -1) updated.splice(idx, 1)
-    }
-    cumulativeGains.set(prevEntry.unitId, updated)
-  }
-
-  // Remove from cumulativeHonourSelections
-  if (prevEntry.tierLabel === 'Honneur de bataille') {
-    const honours = cumulativeHonourSelections.get(prevEntry.unitId)
-    if (honours) {
-      for (const d of prevSelections) honours.delete(d)
-    }
-  }
-}
 
 // ---------------------------------------------------------------------------
 // usePostMatchWizard hook
@@ -176,36 +127,42 @@ export function usePostMatchWizard({
   const nextLocalIdRef = useRef(0)
 
   // ---------------------------------------------------------------------------
-  // Empty-army UI state (only used when units.length === 0)
+  // WizardAccumulator — single ref holding all cross-step mutable data
   // ---------------------------------------------------------------------------
-  const [emptyIsSubmitting, setEmptyIsSubmitting] = useState(false)
-  const [emptyError, setEmptyError] = useState<string | null>(null)
+  const acc = useRef(createWizardAccumulator())
 
   // ---------------------------------------------------------------------------
-  // Consequence error state (Phase 1.5 async error display)
+  // Synchronous double-click guard
   // ---------------------------------------------------------------------------
-  const [consequenceError, setConsequenceError] = useState<string | null>(null)
-
-  // ---------------------------------------------------------------------------
-  // Refs — server-call guards and cross-phase data
-  // ---------------------------------------------------------------------------
-  const submittingRef = useRef(false)
-  const submittedUnitsRef = useRef<Set<string>>(new Set())
-  const xpResultsRef = useRef<Map<string, { oldXp: number; newXp: number }>>(new Map())
-  const pendingConsequencesRef = useRef<Map<string, InjuryResult | (DestructionResult & { xpLostAmount?: number })>>(new Map())
-  const pendingGainsRef = useRef<Map<string, Array<{ descriptions: string[]; thresholdXp: number | null }>>>(new Map())
-  const cumulativeGainsRef = useRef<Map<string, string[]>>(new Map())
-  const cumulativeHonourSelectionsRef = useRef<Map<string, Set<string>>>(new Map())
-  const submittedTierUpsByStepRef = useRef<Map<number, string[]>>(new Map())
-  const submittedXpByStep = useRef<Map<number, Set<string>>>(new Map())
-  const consequenceFlagsRef = useRef<Map<string, boolean>>(new Map())
-  const championFlagsRef = useRef<Map<string, boolean>>(new Map())
-  const flaggedUnitsRef = useRef<FlaggedUnit[]>([])
+  const busyRef = useRef(false)
 
   // Stable ref for onComplete — avoids re-triggering useEffect if parent
   // passes an unstable callback identity (F1 adversarial review fix)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
+
+  // ---------------------------------------------------------------------------
+  // Mutations
+  // ---------------------------------------------------------------------------
+
+  const submitXpMutation = useMutation({
+    mutationFn: async (params: SubmitUnitXpParams) => {
+      const result = await submitUnitXpAction(params)
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+  })
+
+  const completeEvolutionsMutation = useMutation({
+    mutationFn: async (params: CompleteEvolutionsParams) => {
+      const result = await completeEvolutionsAction(params)
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+  })
+
+  // Derived busy guard — covers both synchronous double-click and in-flight mutations
+  const isBusy = busyRef.current || submitXpMutation.isPending || completeEvolutionsMutation.isPending
 
   // ---------------------------------------------------------------------------
   // complete phase side-effect: detect phase === 'complete' after dispatch
@@ -222,39 +179,32 @@ export function usePostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const transitionToPhase2OrComplete = async () => {
-    // AC12 invariant: all units with deroute consequences must have xpResultsRef updated
-    for (const [unitId, consequence] of pendingConsequencesRef.current) {
+    // AC12 invariant: all units with deroute consequences must have xpResults updated
+    for (const [unitId, consequence] of acc.current.pendingConsequences) {
       if (consequence.type === 'deroute_sanglante') {
-        if (!xpResultsRef.current.has(unitId)) {
-          throw new Error(`[PostMatchWizard] AC12 invariant violated: unit ${unitId} has deroute consequence but xpResultsRef was not updated`)
+        if (!acc.current.xpResults.has(unitId)) {
+          throw new Error(`[PostMatchWizard] AC12 invariant violated: unit ${unitId} has deroute consequence but xpResults was not updated`)
         }
       }
     }
 
-    const queue = buildTierUpQueue(units, xpResultsRef.current)
+    const queue = buildTierUpQueue(units, acc.current.xpResults)
 
     if (queue.length === 0) {
       // No tier crossings — batch commit with empty gains + consequences
-      const consequences = buildConsequencesArray(pendingConsequencesRef.current, initialConsequencesRef.current, opponentPlayerName)
-      const championKilledIds = buildChampionKilledIds(championFlagsRef.current)
-      try {
-        const completeResult = await completeEvolutionsAction({
-          matchId, matchParticipantId, gains: [], consequences, championKilledIds,
-          onCompleteEvolutions,
-        })
-        if (!completeResult.success) {
-          throw new Error(completeResult.error.message)
-        }
-      } finally {
-        submittingRef.current = false
-      }
+      const consequences = buildConsequencesArray(acc.current.pendingConsequences, initialConsequencesRef.current, opponentPlayerName)
+      const championKilledIds = buildChampionKilledIds(acc.current.championFlags)
+      completeEvolutionsMutation.reset()
+      await completeEvolutionsMutation.mutateAsync({
+        matchId, matchParticipantId, gains: [], consequences, championKilledIds,
+        onCompleteEvolutions,
+      })
       // Transition out of Phase 1.5 before onComplete() so consequence steps are no longer rendered
-      flaggedUnitsRef.current = []
+      acc.current.setFlaggedUnits([])
       // Signal completion — useEffect above calls onComplete()
       wizardDispatch({ type: 'COMPLETE' })
     } else {
       // Tier crossings exist — transition to Phase 2
-      submittingRef.current = false
       wizardDispatch({ type: 'ENTER_TIERUP', queue })
     }
   }
@@ -264,80 +214,67 @@ export function usePostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const handleNext = async (xpData: XpData, currentUnit: WizardUnit, currentStep: number, isLastXpStep: boolean): Promise<void> => {
-    if (submittingRef.current) return
-    submittingRef.current = true
+    if (isBusy) return
+    busyRef.current = true
 
-    const { checkedConditions, numericXpValue, bonusXp, isConsequenceChecked, isChampionKilledChecked } = xpData
+    try {
+      const { checkedConditions, numericXpValue, bonusXp, isConsequenceChecked, isChampionKilledChecked } = xpData
 
-    // Sync consequence/champion flags to refs
-    consequenceFlagsRef.current.set(currentUnit.id, isConsequenceChecked)
-    championFlagsRef.current.set(currentUnit.id, isChampionKilledChecked)
+      // Sync consequence/champion flags to accumulator
+      acc.current.consequenceFlags.set(currentUnit.id, isConsequenceChecked)
+      acc.current.championFlags.set(currentUnit.id, isChampionKilledChecked)
 
-    const alreadySubmitted = submittedUnitsRef.current.has(currentUnit.id)
+      const alreadySubmitted = acc.current.submittedUnits.has(currentUnit.id)
 
-    let newXp: number | null = null
+      let newXp: number | null = null
 
-    if (!alreadySubmitted) {
-      const xpGained = computeXpTotal(checkedConditions, currentUnit.type)
-      const xpToSubmit = mode === 'initial-xp' ? Math.max(0, Math.floor(numericXpValue)) : Math.floor(xpGained) + bonusXp
-      const submitResult = await submitUnitXpAction({
-        unitId: currentUnit.id, xpGained: xpToSubmit, matchParticipantId,
-        bonusXp, onSubmitUnitXp,
-      })
+      if (!alreadySubmitted) {
+        const xpGained = computeXpTotal(checkedConditions, currentUnit.type)
+        const xpToSubmit = mode === 'initial-xp' ? Math.max(0, Math.floor(numericXpValue)) : Math.floor(xpGained) + bonusXp
+        submitXpMutation.reset()
+        const data = await submitXpMutation.mutateAsync({
+          unitId: currentUnit.id, xpGained: xpToSubmit, matchParticipantId,
+          bonusXp, onSubmitUnitXp,
+        })
 
-      if (!submitResult.success) {
-        submittingRef.current = false
-        throw new Error(submitResult.error.message)
+        newXp = data.newXp
       }
 
-      newXp = submitResult.data.newXp
-      submittedUnitsRef.current.add(currentUnit.id)
-    }
-
-    // Store XP result for tier crossing detection
-    const preMatchXp = mode === 'initial-xp' ? 0 : (currentUnit.xp - (currentUnit.previousXpGained ?? 0) + (currentUnit.previousDerouteXpLost ?? 0))
-    if (newXp !== null) {
-      xpResultsRef.current.set(currentUnit.id, { oldXp: preMatchXp, newXp })
-    } else {
-      // Unit was already submitted — keep previous result (don't overwrite)
-      if (!xpResultsRef.current.has(currentUnit.id)) {
-        // Fallback: use current xp as newXp (no change), but still use pre-match oldXp
-        xpResultsRef.current.set(currentUnit.id, { oldXp: preMatchXp, newXp: currentUnit.xp })
-      }
-    }
-
-    if (isLastXpStep) {
-      // Save last step's checked conditions (for back-nav from Phase 1.5)
-      submittedXpByStep.current.set(currentStep, new Set(checkedConditions))
-      // initial-xp: skip Phase 1.5 unconditionally — consequences collected inline during Phase 1
-      if (mode === 'initial-xp') {
-        try {
-          await transitionToPhase2OrComplete()
-        } catch (err) {
-          submittingRef.current = false
-          throw err
-        }
-        return
-      }
-      // Compute flagged units for Phase 1.5
-      flaggedUnitsRef.current = buildFlaggedUnits(units, consequenceFlagsRef.current)
-
-      if (flaggedUnitsRef.current.length > 0) {
-        submittingRef.current = false
-        wizardDispatch({ type: 'ENTER_CONSEQUENCES', startIndex: 0 })
+      // Store XP result for tier crossing detection
+      const preMatchXp = mode === 'initial-xp' ? 0 : (currentUnit.xp - (currentUnit.previousXpGained ?? 0) + (currentUnit.previousDerouteXpLost ?? 0))
+      if (newXp !== null) {
+        acc.current.recordXp(currentUnit.id, preMatchXp, newXp)
       } else {
-        try {
-          await transitionToPhase2OrComplete()
-        } catch (err) {
-          submittingRef.current = false
-          throw err
+        // Unit was already submitted — keep previous result (don't overwrite)
+        if (!acc.current.xpResults.has(currentUnit.id)) {
+          // Fallback: use current xp as newXp (no change), but still use pre-match oldXp
+          acc.current.recordXp(currentUnit.id, preMatchXp, currentUnit.xp)
         }
       }
-    } else {
-      // Record the checked conditions for this step (for back-button pre-fill)
-      submittedXpByStep.current.set(currentStep, new Set(checkedConditions))
-      submittingRef.current = false
-      wizardDispatch({ type: 'NEXT_XP_STEP' })
+
+      if (isLastXpStep) {
+        // Save last step's checked conditions (for back-nav from Phase 1.5)
+        acc.current.submittedXpByStep.set(currentStep, new Set(checkedConditions))
+        // initial-xp: skip Phase 1.5 unconditionally — consequences collected inline during Phase 1
+        if (mode === 'initial-xp') {
+          await transitionToPhase2OrComplete()
+          return
+        }
+        // Compute flagged units for Phase 1.5
+        acc.current.setFlaggedUnits(buildFlaggedUnits(units, acc.current.consequenceFlags))
+
+        if (acc.current.flaggedUnits.length > 0) {
+          wizardDispatch({ type: 'ENTER_CONSEQUENCES', startIndex: 0 })
+        } else {
+          await transitionToPhase2OrComplete()
+        }
+      } else {
+        // Record the checked conditions for this step (for back-button pre-fill)
+        acc.current.submittedXpByStep.set(currentStep, new Set(checkedConditions))
+        wizardDispatch({ type: 'NEXT_XP_STEP' })
+      }
+    } finally {
+      busyRef.current = false
     }
   }
 
@@ -346,80 +283,69 @@ export function usePostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const handleConsequenceConfirm = async (result: InjuryResult | DestructionResult): Promise<void> => {
-    if (submittingRef.current) return
-    submittingRef.current = true
-
-    if (wizardState.phase !== 'consequences') {
-      submittingRef.current = false
-      return
-    }
-    const { consequenceIndex } = wizardState
-    const currentFlaggedUnit = flaggedUnitsRef.current[consequenceIndex]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!currentFlaggedUnit) {
-      submittingRef.current = false
-      return
-    }
+    if (isBusy) return
+    busyRef.current = true
 
     try {
+      if (wizardState.phase !== 'consequences') {
+        return
+      }
+      const { consequenceIndex } = wizardState
+      const currentFlaggedUnit = acc.current.flaggedUnits[consequenceIndex]
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!currentFlaggedUnit) {
+        return
+      }
+
       if (result.type === 'miracule' || result.type === 'fureur_vengeresse') {
-        const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
+        const xpEntry = acc.current.xpResults.get(currentFlaggedUnit.id)
         if (xpEntry) {
           const currentXpGained = xpEntry.newXp - xpEntry.oldXp
           const newXpGained = currentXpGained + 2
-          const submitResult = await submitUnitXpAction({
+          submitXpMutation.reset()
+          const data = await submitXpMutation.mutateAsync({
             unitId: currentFlaggedUnit.id, xpGained: newXpGained, matchParticipantId,
             onSubmitUnitXp,
           })
-          if (submitResult.success) {
-            xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
-          } else {
-            throw new Error(submitResult.error?.message ?? 'Erreur de soumission XP')
-          }
+          acc.current.recordXp(currentFlaggedUnit.id, xpEntry.oldXp, data.newXp)
         }
-        pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
+        acc.current.recordConsequence(currentFlaggedUnit.id, result)
       } else if (result.type === 'deroute_sanglante') {
-        const xpEntry = xpResultsRef.current.get(currentFlaggedUnit.id)
+        const xpEntry = acc.current.xpResults.get(currentFlaggedUnit.id)
         if (xpEntry) {
           const { calculateTier } = await import('../../lib/tier')
           const { DEROUTE_XP_LOSS } = await import('../../lib/constants')
           const tier = calculateTier(xpEntry.newXp, currentFlaggedUnit.type)
           const tierLoss = DEROUTE_XP_LOSS[tier]
           const originalXpGained = xpEntry.newXp - xpEntry.oldXp
-          const submitResult = await submitUnitXpAction({
+          submitXpMutation.reset()
+          const data = await submitXpMutation.mutateAsync({
             unitId: currentFlaggedUnit.id, xpGained: originalXpGained, matchParticipantId,
             derouteXpLost: tierLoss, onSubmitUnitXp,
           })
-          if (submitResult.success) {
-            xpResultsRef.current.set(currentFlaggedUnit.id, { oldXp: xpEntry.oldXp, newXp: submitResult.data.newXp })
-          } else {
-            throw new Error(submitResult.error?.message ?? 'Erreur de soumission XP')
-          }
-          pendingConsequencesRef.current.set(currentFlaggedUnit.id, { ...result, xpLostAmount: tierLoss })
+          acc.current.recordXp(currentFlaggedUnit.id, xpEntry.oldXp, data.newXp)
+          acc.current.recordConsequence(currentFlaggedUnit.id, { ...result, xpLostAmount: tierLoss })
         } else {
-          pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
+          acc.current.recordConsequence(currentFlaggedUnit.id, result)
         }
       } else {
-        pendingConsequencesRef.current.set(currentFlaggedUnit.id, result)
+        acc.current.recordConsequence(currentFlaggedUnit.id, result)
       }
 
       const nextIndex = consequenceIndex + 1
-      if (nextIndex < flaggedUnitsRef.current.length) {
-        submittingRef.current = false
+      if (nextIndex < acc.current.flaggedUnits.length) {
         wizardDispatch({ type: 'NEXT_CONSEQUENCE' })
       } else {
-        // transitionToPhase2OrComplete manages submittingRef itself
+        // transitionToPhase2OrComplete does not manage busyRef
         await transitionToPhase2OrComplete()
       }
-    } catch (err) {
-      submittingRef.current = false
-      throw err
+    } finally {
+      busyRef.current = false
     }
   }
 
   const handleConsequenceBack = () => {
     if (wizardState.phase !== 'consequences') return
-    setConsequenceError(null)
     const { consequenceIndex } = wizardState
     if (consequenceIndex > 0) {
       wizardDispatch({ type: 'PREV_CONSEQUENCE' })
@@ -427,8 +353,8 @@ export function usePostMatchWizard({
       // Back to Phase 1 last XP step — clear last unit's XP result so it can be re-submitted
       const lastUnitId = units[units.length - 1]?.id
       if (lastUnitId) {
-        xpResultsRef.current.delete(lastUnitId)
-        submittedUnitsRef.current.delete(lastUnitId)
+        acc.current.xpResults.delete(lastUnitId)
+        acc.current.submittedUnits.delete(lastUnitId)
       }
       wizardDispatch({ type: 'BACK_TO_XP', step: units.length - 1 })
     }
@@ -440,44 +366,17 @@ export function usePostMatchWizard({
 
   const handleTierUpConfirm = async (result: { descriptions: string[] }): Promise<void> => {
     if (wizardState.phase !== 'tierup') return
-
-    // Synchronous ref guard prevents double-click race
-    if (submittingRef.current) return
-    submittingRef.current = true
+    if (isBusy) return
+    busyRef.current = true
 
     try {
       const { tierUpQueue, tierUpStep } = wizardState
       const currentTierUp = tierUpQueue[tierUpStep]
 
       const has2MinChoice = result.descriptions.includes('2 améliorations mineures')
-      const descriptionsToSave = result.descriptions.filter(
-        (d) => d !== '2 améliorations mineures' && d !== 'Non applicable'
-      )
 
-      // Accumulate gains in pendingGainsRef grouped by threshold
-      if (descriptionsToSave.length > 0) {
-        const groups = pendingGainsRef.current.get(currentTierUp.unitId) ?? []
-        const existingGroup = groups.find((g) => g.thresholdXp === currentTierUp.xp)
-        if (existingGroup) {
-          existingGroup.descriptions.push(...descriptionsToSave)
-        } else {
-          groups.push({ descriptions: [...descriptionsToSave], thresholdXp: currentTierUp.xp })
-        }
-        pendingGainsRef.current.set(currentTierUp.unitId, groups)
-      }
-
-      submittedTierUpsByStepRef.current.set(tierUpStep, result.descriptions)
-
-      // Update cumulative gains
-      const existingCumulative = cumulativeGainsRef.current.get(currentTierUp.unitId) ?? []
-      cumulativeGainsRef.current.set(currentTierUp.unitId, [...existingCumulative, ...descriptionsToSave])
-
-      // Update cumulative honour selections
-      if (currentTierUp.tierLabel === 'Honneur de bataille') {
-        const existing = cumulativeHonourSelectionsRef.current.get(currentTierUp.unitId) ?? new Set()
-        for (const d of descriptionsToSave) existing.add(d)
-        cumulativeHonourSelectionsRef.current.set(currentTierUp.unitId, existing)
-      }
+      // Use accumulator to record this tier-up (handles pendingGains, cumulativeGains, honourSelections)
+      acc.current.recordTierUp(tierUpStep, currentTierUp, result.descriptions)
 
       // If "2 améliorations mineures" was chosen, insert 2 sequential minor-pick sub-steps
       if (has2MinChoice) {
@@ -506,27 +405,22 @@ export function usePostMatchWizard({
 
       if (isLastTierUpStep) {
         // All tier-ups done — batch commit all gains + consequences
-        const gains = buildBatchGainsPayload(pendingGainsRef.current)
-        const consequences = buildConsequencesArray(pendingConsequencesRef.current, initialConsequencesRef.current, opponentPlayerName)
-        const championKilledIds = buildChampionKilledIds(championFlagsRef.current)
+        const gains = buildBatchGainsPayload(acc.current.pendingGains)
+        const consequences = buildConsequencesArray(acc.current.pendingConsequences, initialConsequencesRef.current, opponentPlayerName)
+        const championKilledIds = buildChampionKilledIds(acc.current.championFlags)
 
-        const completeResult = await completeEvolutionsAction({
+        completeEvolutionsMutation.reset()
+        await completeEvolutionsMutation.mutateAsync({
           matchId, matchParticipantId, gains, consequences, championKilledIds,
           onCompleteEvolutions,
         })
-        if (!completeResult.success) {
-          submittingRef.current = false
-          throw new Error(completeResult.error.message)
-        }
         // Dispatch COMPLETE so onComplete() fires consistently via useEffect
         wizardDispatch({ type: 'COMPLETE' })
       } else {
-        submittingRef.current = false
         wizardDispatch({ type: 'NEXT_TIERUP_STEP' })
       }
-    } catch (err) {
-      submittingRef.current = false
-      throw err
+    } finally {
+      busyRef.current = false
     }
   }
 
@@ -537,28 +431,20 @@ export function usePostMatchWizard({
     if (tierUpStep > 0) {
       const prevStep = tierUpStep - 1
       const prevEntry = tierUpQueue[prevStep]
-      const prevSelections = submittedTierUpsByStepRef.current.get(prevStep)
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (prevSelections && prevEntry) {
-        rollbackTierUpStep(
-          prevEntry,
-          prevSelections,
-          pendingGainsRef.current,
-          cumulativeGainsRef.current,
-          cumulativeHonourSelectionsRef.current,
-        )
-        submittedTierUpsByStepRef.current.delete(prevStep)
+      if (prevEntry) {
+        acc.current.rollbackTierUp(prevStep, prevEntry)
       }
       wizardDispatch({ type: 'PREV_TIERUP_STEP' })
     } else {
       // AC: Risk 9 — if Phase 1.5 was present, return there; otherwise return to Phase 1
-      if (flaggedUnitsRef.current.length > 0) {
-        wizardDispatch({ type: 'BACK_TO_CONSEQUENCES', consequenceIndex: flaggedUnitsRef.current.length - 1 })
+      if (acc.current.flaggedUnits.length > 0) {
+        wizardDispatch({ type: 'BACK_TO_CONSEQUENCES', consequenceIndex: acc.current.flaggedUnits.length - 1 })
       } else {
         const lastUnitId = units[units.length - 1]?.id
         if (lastUnitId) {
-          xpResultsRef.current.delete(lastUnitId)
-          submittedUnitsRef.current.delete(lastUnitId)
+          acc.current.xpResults.delete(lastUnitId)
+          acc.current.submittedUnits.delete(lastUnitId)
         }
         wizardDispatch({ type: 'BACK_TO_XP', step: units.length - 1 })
       }
@@ -581,7 +467,7 @@ export function usePostMatchWizard({
   }
 
   // ---------------------------------------------------------------------------
-  // handleXpBack — extracted named function (captures refs)
+  // handleXpBack — extracted named function (captures accumulator)
   // ---------------------------------------------------------------------------
 
   const handleXpBack = () => {
@@ -589,9 +475,9 @@ export function usePostMatchWizard({
     const prevStep = wizardState.currentStep - 1
     const prevUnitId = units[prevStep]?.id
     if (prevUnitId) {
-      submittedUnitsRef.current.delete(prevUnitId)
+      acc.current.submittedUnits.delete(prevUnitId)
       // also clear xpResults entry to avoid stale data
-      xpResultsRef.current.delete(prevUnitId)
+      acc.current.xpResults.delete(prevUnitId)
     }
     wizardDispatch({ type: 'PREV_XP_STEP' })
   }
@@ -601,21 +487,17 @@ export function usePostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const handleEmptyRetour = async () => {
-    if (submittingRef.current) return
-    submittingRef.current = true
-    setEmptyIsSubmitting(true)
-    setEmptyError(null)
+    if (isBusy) return
+    busyRef.current = true
     try {
-      const result = await completeEvolutionsAction({ matchId, matchParticipantId, gains: [], onCompleteEvolutions })
-      if (!result.success) {
-        throw new Error(result.error.message)
-      }
+      completeEvolutionsMutation.reset()
+      await completeEvolutionsMutation.mutateAsync({ matchId, matchParticipantId, gains: [], onCompleteEvolutions })
       wizardDispatch({ type: 'COMPLETE' })
-    } catch (err) {
-      setEmptyError(err instanceof Error ? err.message : 'Erreur inconnue')
-      setEmptyIsSubmitting(false)
+    } catch {
+      // Error is stored in completeEvolutionsMutation.error — swallow to prevent
+      // unhandled rejection (component reads error from mutation state)
     } finally {
-      submittingRef.current = false
+      busyRef.current = false
     }
   }
 
@@ -626,7 +508,11 @@ export function usePostMatchWizard({
   if (units.length === 0) {
     return {
       phase: 'empty',
-      props: { onRetour: handleEmptyRetour, isSubmitting: emptyIsSubmitting, error: emptyError },
+      props: {
+        onRetour: handleEmptyRetour,
+        isSubmitting: completeEvolutionsMutation.isPending,
+        error: completeEvolutionsMutation.error?.message ?? null,
+      },
     }
   }
 
@@ -642,14 +528,15 @@ export function usePostMatchWizard({
 
     // Deep copy for constraint display — PhaseTierUp receives snapshots, not live refs
     const cumulativeHonourSelections = new Map(
-      [...cumulativeHonourSelectionsRef.current].map(([k, v]) => [k, new Set(v)])
+      [...acc.current.cumulativeHonourSelections].map(([k, v]) => [k, new Set(v)])
     )
     const cumulativeGains = new Map(
-      [...cumulativeGainsRef.current].map(([k, v]) => [k, [...v]])
+      [...acc.current.cumulativeGains].map(([k, v]) => [k, [...v]])
     )
 
     return {
       phase: 'tierup',
+      completeError: completeEvolutionsMutation.error?.message ?? null,
       props: {
         key: tierUpStep,
         currentTierUp,
@@ -668,20 +555,19 @@ export function usePostMatchWizard({
 
   if (wizardState.phase === 'consequences') {
     const { consequenceIndex } = wizardState
-    const currentFlaggedUnit = flaggedUnitsRef.current[consequenceIndex]
+    const currentFlaggedUnit = acc.current.flaggedUnits[consequenceIndex]
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!currentFlaggedUnit) return { phase: 'complete' }
 
     return {
       phase: 'consequences',
-      consequenceError,
+      consequenceError: submitXpMutation.error?.message ?? completeEvolutionsMutation.error?.message ?? null,
       props: {
         key: consequenceIndex,
         flaggedUnit: currentFlaggedUnit,
         onConfirm: (result) => {
-          setConsequenceError(null)
           handleConsequenceConfirm(result).catch((err: unknown) => {
-            setConsequenceError(err instanceof Error ? err.message : 'Erreur inconnue')
+            console.error('[PostMatchWizard] consequence confirm error:', err)
           })
         },
         onBack: handleConsequenceBack,
@@ -702,12 +588,13 @@ export function usePostMatchWizard({
 
   const isLastXpStep = currentStep === units.length - 1
 
-  const savedCheckedConditions = submittedXpByStep.current.get(currentStep)
-  const savedConsequenceChecked = consequenceFlagsRef.current.get(currentUnit.id) ?? false
-  const savedChampionKilledChecked = championFlagsRef.current.get(currentUnit.id) ?? false
+  const savedCheckedConditions = acc.current.submittedXpByStep.get(currentStep)
+  const savedConsequenceChecked = acc.current.consequenceFlags.get(currentUnit.id) ?? false
+  const savedChampionKilledChecked = acc.current.championFlags.get(currentUnit.id) ?? false
 
   return {
     phase: 'xp',
+    completeError: completeEvolutionsMutation.error?.message ?? null,
     props: {
       key: currentStep,
       unit: currentUnit,
@@ -723,8 +610,8 @@ export function usePostMatchWizard({
       campaignPlayers,
       onAddInitialConsequence: handleAddInitialConsequence,
       onRemoveInitialConsequence: handleRemoveInitialConsequence,
-      onConsequenceChange: (unitId, checked) => consequenceFlagsRef.current.set(unitId, checked),
-      onChampionKilledChange: (unitId, checked) => championFlagsRef.current.set(unitId, checked),
+      onConsequenceChange: (unitId, checked) => acc.current.consequenceFlags.set(unitId, checked),
+      onChampionKilledChange: (unitId, checked) => acc.current.championFlags.set(unitId, checked),
       onNext: (xpData) => handleNext(xpData, currentUnit, currentStep, isLastXpStep),
       onBack: currentStep > 0 ? handleXpBack : undefined,
       onCancel,
