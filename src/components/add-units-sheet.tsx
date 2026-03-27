@@ -2,10 +2,12 @@
 // Bottom sheet for incremental unit import via OWB export paste.
 // Client-side parsing with parseOwbExport, then structured data sent to server.
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useForm } from '@tanstack/react-form'
 import { parseOwbExport } from '../lib/owb-parser'
 import { addUnitsToArmyFn } from '../lib/server-fns/add-units-to-army'
+import { owbTextFormSchema } from '../lib/validators/army'
 
 interface AddUnitsSheetProps {
   armyId: string
@@ -18,22 +20,39 @@ const FOCUSABLE_SELECTOR =
   'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
 
 export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsSheetProps) {
-  const [owbText, setOwbText] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const triggerRef = useRef<HTMLElement | null>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: async (units: ReturnType<typeof parseOwbExport>['units']) => {
-      const result = await addUnitsToArmyFn({ data: { armyId, units } })
+  const mutation = useMutation({
+    mutationFn: async (params: { armyId: string; units: ReturnType<typeof parseOwbExport>['units'] }) => {
+      const result = await addUnitsToArmyFn({ data: params })
       if (!result.success) throw new Error(result.error.message)
       return result.data
     },
     onSuccess: (data) => {
       onSuccess(data.unitCount)
     },
-    onError: (err) => {
-      setError(err instanceof Error ? err.message : 'Erreur serveur, veuillez réessayer')
+  })
+
+  const form = useForm({
+    defaultValues: { owbText: '' },
+    validators: { onSubmit: owbTextFormSchema },
+    onSubmit: ({ value }) => {
+      mutation.reset()
+      form.setErrorMap({})
+      let parsed
+      try {
+        const trimmedText = value.owbText.trim()
+        parsed = parseOwbExport(trimmedText)
+      } catch (err) {
+        form.setErrorMap({ onSubmit: { form: err instanceof Error ? err.message : String(err), fields: {} } })
+        return
+      }
+      if (parsed.units.length === 0) {
+        form.setErrorMap({ onSubmit: { form: 'Aucune unité trouvée dans le texte collé', fields: {} } })
+        return
+      }
+      mutation.mutate({ armyId, units: parsed.units })
     },
   })
 
@@ -47,10 +66,10 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
   // Reset state when sheet closes
   useEffect(() => {
     if (!open) {
-      setOwbText('')
-      setError(null)
+      form.reset()
+      mutation.reset()
     }
-  }, [open])
+  }, [open, form, mutation])
 
   // Focus trap + ESC handler
   useEffect(() => {
@@ -91,30 +110,7 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
     }
   }, [open, onClose])
 
-  const handleSubmit = () => {
-    setError(null)
-    const trimmed = owbText.trim()
-    if (!trimmed) return
-
-    let parsed
-    try {
-      parsed = parseOwbExport(trimmed)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'analyse du texte")
-      return
-    }
-
-    if (parsed.units.length === 0) {
-      setError('Aucune unité trouvée')
-      return
-    }
-
-    mutate(parsed.units)
-  }
-
   if (!open) return null
-
-  const trimmed = owbText.trim()
 
   return (
     <>
@@ -196,32 +192,58 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
           Collez l'export OWB contenant uniquement les nouvelles unités
         </p>
 
-        <textarea
-          data-testid="add-units-textarea"
-          value={owbText}
-          onChange={(e) => setOwbText(e.target.value)}
-          disabled={isPending}
-          placeholder="Collez ici l'export OWB des nouvelles unités..."
-          rows={6}
-          maxLength={50000}
-          style={{
-            width: '100%',
-            padding: '0.625rem',
-            borderRadius: '0.375rem',
-            border: '1px solid var(--color-border)',
-            fontFamily: 'monospace',
-            fontSize: '0.8rem',
-            resize: 'vertical',
-            background: 'var(--color-surface)',
-            boxSizing: 'border-box',
-          }}
-        />
+        <form.Field name="owbText">
+          {(field) => (
+            <>
+              <textarea
+                data-testid="add-units-textarea"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+                disabled={mutation.isPending}
+                placeholder="Collez ici l'export OWB des nouvelles unités..."
+                rows={6}
+                maxLength={50000}
+                style={{
+                  width: '100%',
+                  padding: '0.625rem',
+                  borderRadius: '0.375rem',
+                  border: '1px solid var(--color-border)',
+                  fontFamily: 'monospace',
+                  fontSize: '0.8rem',
+                  resize: 'vertical',
+                  background: 'var(--color-surface)',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {field.state.meta.errors.length > 0 && (
+                <p
+                  data-testid="add-units-field-error"
+                  style={{
+                    marginTop: '0.75rem',
+                    padding: '0.625rem',
+                    borderRadius: '0.375rem',
+                    background: 'var(--color-malus-bg)',
+                    color: 'var(--color-malus)',
+                    border: '1px solid var(--color-malus)',
+                    fontSize: '0.875rem',
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  {typeof field.state.meta.errors[0] === 'string'
+                    ? field.state.meta.errors[0]
+                    : (field.state.meta.errors[0] as { message: string } | undefined)?.message}
+                </p>
+              )}
+            </>
+          )}
+        </form.Field>
 
         <button
           data-testid="add-units-submit"
           type="button"
-          onClick={handleSubmit}
-          disabled={isPending || !trimmed}
+          onClick={() => form.handleSubmit()}
+          disabled={mutation.isPending}
           style={{
             marginTop: '0.75rem',
             padding: '0.5rem 1.25rem',
@@ -232,15 +254,45 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
             fontFamily: 'var(--font-body)',
             fontWeight: 600,
             fontSize: '0.9rem',
-            cursor: isPending || !trimmed ? 'not-allowed' : 'pointer',
-            opacity: isPending || !trimmed ? 0.6 : 1,
+            cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+            opacity: mutation.isPending ? 0.6 : 1,
             width: '100%',
           }}
         >
-          {isPending ? 'Import en cours...' : 'Importer'}
+          {mutation.isPending ? 'Import en cours...' : 'Importer'}
         </button>
 
-        {error && (
+        <form.Subscribe selector={(s) => s.errorMap.onSubmit}>
+          {(err) => {
+            if (!err) return null
+            const errObj = err as Record<string, unknown>
+            const msg =
+              typeof err === 'string'
+                ? err
+                : typeof errObj.form === 'string'
+                  ? errObj.form
+                  : null
+            return msg ? (
+              <p
+                data-testid="add-units-form-error"
+                style={{
+                  marginTop: '0.75rem',
+                  padding: '0.625rem',
+                  borderRadius: '0.375rem',
+                  background: 'var(--color-malus-bg)',
+                  color: 'var(--color-malus)',
+                  border: '1px solid var(--color-malus)',
+                  fontSize: '0.875rem',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                {msg}
+              </p>
+            ) : null
+          }}
+        </form.Subscribe>
+
+        {mutation.error && (
           <p
             data-testid="add-units-error"
             style={{
@@ -254,7 +306,7 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
               fontFamily: 'var(--font-body)',
             }}
           >
-            {error}
+            {mutation.error.message}
           </p>
         )}
       </div>

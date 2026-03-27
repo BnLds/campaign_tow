@@ -63,6 +63,23 @@ describe('[AC7][AC10][P0] Settings route — src/routes/settings.tsx', () => {
     // short-circuit: return before calling updatePlayerUsername when username matches session
     expect(route).toMatch(/data\.username === context\.session\.username[\s\S]{0,200}return/)
   })
+
+  it('[settings-INT-014] SettingsPage component does NOT use useState for success/error messages', () => {
+    const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
+    const componentBodyMatch = route.match(/function SettingsPage[\s\S]*/)
+    const componentBody = componentBodyMatch ? componentBodyMatch[0] : ''
+    expect(componentBody).not.toMatch(/useState/)
+  })
+
+  it('[settings-INT-015] SettingsPage uses passwordMutation via useMutation (coupled declaration)', () => {
+    const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
+    expect(route).toMatch(/passwordMutation\s*=\s*useMutation/)
+  })
+
+  it('[settings-INT-016] SettingsPage uses usernameMutation via useMutation (coupled declaration)', () => {
+    const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
+    expect(route).toMatch(/usernameMutation\s*=\s*useMutation/)
+  })
 })
 
 describe('[AC10][P0] AppHeader — Paramètres link', () => {

@@ -261,9 +261,9 @@ describe('[AC1][AC2][P0] ArmyImportForm — component structure', () => {
     expect(code).toMatch(/data-testid="player-owb-import-submit"/)
   })
 
-  it('[PAI-093] button is disabled when text is empty or submitting', () => {
+  it('[PAI-093] button is disabled when mutation is pending', () => {
     const code = getComponent()
-    expect(code).toMatch(/disabled=\{[\s\S]{0,100}submitting[\s\S]{0,100}trimmed|disabled=\{[\s\S]{0,100}trimmed[\s\S]{0,100}submitting/)
+    expect(code).toMatch(/disabled=\{mutation\.isPending/)
   })
 
   it('[PAI-094] calls playerImportArmyFn on submit', () => {

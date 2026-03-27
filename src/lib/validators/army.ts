@@ -65,6 +65,12 @@ export const addUnitsToArmySchema = z.object({
 })
 export type AddUnitsToArmyInput = z.infer<typeof addUnitsToArmySchema>
 
+// Client-side form schema for OWB textarea (shared by army-import-form & add-units-sheet)
+export const owbTextFormSchema = z.object({
+  owbText: z.string().trim().min(1, 'Le texte OWB est requis'),
+})
+export type OwbTextFormInput = z.infer<typeof owbTextFormSchema>
+
 export const updateSubProfileSchema = z.object({
   subProfileId: z.string().min(1, 'Le sous-profil est requis'),
   m: z.string().max(20).default(''),

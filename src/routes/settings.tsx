@@ -5,8 +5,7 @@
 import { createFileRoute, redirect, useRouteContext, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useForm } from '@tanstack/react-form'
-import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult } from '../lib/types'
 import { changePasswordSchema, updateUsernameSchema } from '../lib/validators'
@@ -110,42 +109,47 @@ function SettingsPage() {
   const { session } = context
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
-  const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [usernameSuccess, setUsernameSuccess] = useState<string | null>(null)
-  const [usernameError, setUsernameError] = useState<string | null>(null)
+
+  const passwordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string; confirmNewPassword: string }) => {
+      const result = await changePasswordFn({ data })
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: () => {
+      passwordForm.reset()
+    },
+  })
+
+  const usernameMutation = useMutation({
+    mutationFn: async (data: { username: string }) => {
+      const result = await updateUsernameFn({ data })
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries(sessionQueryOptions())
+      await router.invalidate()
+      usernameForm.reset()
+    },
+  })
 
   const passwordForm = useForm({
     defaultValues: { currentPassword: '', newPassword: '', confirmNewPassword: '' },
     validators: { onSubmit: changePasswordSchema },
-    onSubmit: async ({ value }) => {
-      setPasswordError(null)
-      setPasswordSuccess(null)
-      const result = await changePasswordFn({ data: value })
-      if (result.success) {
-        setPasswordSuccess('Mot de passe mis à jour.')
-        passwordForm.reset()
-      } else {
-        setPasswordError(result.error.message)
-      }
+    onSubmit: ({ value }) => {
+      passwordMutation.reset()
+      passwordMutation.mutate(value)
     },
   })
 
   const usernameForm = useForm({
     defaultValues: { username: session?.username ?? '' },
     validators: { onSubmit: updateUsernameSchema },
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       if (!window.confirm("Attention : votre nom d'utilisateur sert aussi d'identifiant de connexion. Continuer ?")) return
-      setUsernameError(null)
-      setUsernameSuccess(null)
-      const result = await updateUsernameFn({ data: value })
-      if (result.success) {
-        setUsernameSuccess("Nom d'utilisateur mis a jour.")
-        await queryClient.invalidateQueries(sessionQueryOptions())
-        await router.invalidate()
-      } else {
-        setUsernameError(result.error.message)
-      }
+      usernameMutation.reset()
+      usernameMutation.mutate(value)
     },
   })
 
@@ -209,15 +213,16 @@ function SettingsPage() {
               </div>
             )}
           </usernameForm.Field>
-          {usernameSuccess && (
-            <p style={{ color: 'var(--color-bonus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{usernameSuccess}</p>
+          {usernameMutation.isSuccess && (
+            <p style={{ color: 'var(--color-bonus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Nom d'utilisateur mis a jour.</p>
           )}
-          {usernameError && (
-            <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{usernameError}</p>
+          {usernameMutation.error && (
+            <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{usernameMutation.error.message}</p>
           )}
           <Button
             type="submit"
             data-testid="settings-username-submit"
+            disabled={usernameMutation.isPending}
             style={{ background: 'var(--color-brand)', color: 'white' }}
           >
             Enregistrer
@@ -298,15 +303,16 @@ function SettingsPage() {
               </div>
             )}
           </passwordForm.Field>
-          {passwordSuccess && (
-            <p style={{ color: 'var(--color-bonus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{passwordSuccess}</p>
+          {passwordMutation.isSuccess && (
+            <p style={{ color: 'var(--color-bonus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Mot de passe mis à jour.</p>
           )}
-          {passwordError && (
-            <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{passwordError}</p>
+          {passwordMutation.error && (
+            <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{passwordMutation.error.message}</p>
           )}
           <Button
             type="submit"
             data-testid="settings-change-password-submit"
+            disabled={passwordMutation.isPending}
             style={{ background: 'var(--color-brand)', color: 'white' }}
           >
             Changer le mot de passe
