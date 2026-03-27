@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createEmptyStats, STAT_KEYS } from '../admin-helpers'
+import { createEmptyStats, STAT_KEYS } from '../-admin-helpers'
 
 describe('createEmptyStats', () => {
   it('returns an object with all STAT_KEYS set to empty string', () => {

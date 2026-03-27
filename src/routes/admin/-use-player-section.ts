@@ -9,7 +9,7 @@ import {
   regenerateInviteTokenFn,
   generateAllMissingTokensFn,
 } from '#/server-fns/admin-players'
-import type { AdminQueries } from './use-admin-queries'
+import type { AdminQueries } from './-use-admin-queries'
 
 export interface PlayerSectionState {
   createdPlayer: { username: string; inviteToken: string } | null

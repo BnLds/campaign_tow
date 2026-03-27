@@ -1,7 +1,7 @@
-import { useAddUnit } from './use-add-unit'
-import type { AdminQueries } from './use-admin-queries'
-import { btnClass } from './admin-helpers'
-import { StatFieldsGrid } from './stat-fields-grid'
+import { useAddUnit } from './-use-add-unit'
+import type { AdminQueries } from './-use-admin-queries'
+import { btnClass } from './-admin-helpers'
+import { StatFieldsGrid } from './-stat-fields-grid'
 
 interface AdminAddUnitSectionProps {
   queries: AdminQueries

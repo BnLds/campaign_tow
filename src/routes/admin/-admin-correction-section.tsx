@@ -1,7 +1,7 @@
-import { useCorrection } from './use-correction'
-import type { AdminQueries } from './use-admin-queries'
-import { btnClass } from './admin-helpers'
-import { StatFieldsGrid } from './stat-fields-grid'
+import { useCorrection } from './-use-correction'
+import type { AdminQueries } from './-use-admin-queries'
+import { btnClass } from './-admin-helpers'
+import { StatFieldsGrid } from './-stat-fields-grid'
 
 interface AdminCorrectionSectionProps {
   queries: AdminQueries

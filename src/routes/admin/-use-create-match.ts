@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { createMatchFn, deleteMatchAdminFn } from '#/server-fns/admin-matches'
-import type { AdminQueries } from './use-admin-queries'
-import type { ResultMessage } from './admin-helpers'
+import type { AdminQueries } from './-use-admin-queries'
+import type { ResultMessage } from './-admin-helpers'
 
 const RESULT_OPTIONS: { value: 'victory' | 'defeat' | 'draw' | ''; label: string }[] = [
   { value: '', label: '— Résultat non saisi —' },

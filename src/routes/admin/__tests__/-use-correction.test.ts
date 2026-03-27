@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
-import { useCorrection } from '../use-correction'
-import type { AdminQueries } from '../use-admin-queries'
+import { useCorrection } from '../-use-correction'
+import type { AdminQueries } from '../-use-admin-queries'
 
 function createTestQueryClient() {
   return new QueryClient({

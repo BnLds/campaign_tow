@@ -1,13 +1,13 @@
 import { useRouteContext } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useHydrated } from '#/lib/useHydrated'
-import { useAdminQueries } from './use-admin-queries'
-import { AdminPlayersSection } from './admin-players-section'
-import { AdminImportSection } from './admin-import-section'
-import { AdminAssignmentSection } from './admin-assignment-section'
-import { AdminMatchSection } from './admin-match-section'
-import { AdminAddUnitSection } from './admin-add-unit-section'
-import { AdminCorrectionSection } from './admin-correction-section'
+import { useAdminQueries } from './-use-admin-queries'
+import { AdminPlayersSection } from './-admin-players-section'
+import { AdminImportSection } from './-admin-import-section'
+import { AdminAssignmentSection } from './-admin-assignment-section'
+import { AdminMatchSection } from './-admin-match-section'
+import { AdminAddUnitSection } from './-admin-add-unit-section'
+import { AdminCorrectionSection } from './-admin-correction-section'
 
 export default function AdminPage() {
   const context = useRouteContext({ from: '__root__' })

@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { updateSubProfileFn, getArmyUnitsFn } from '#/server-fns/admin-armies'
-import type { AdminQueries } from './use-admin-queries'
-import { createEmptyStats } from './admin-helpers'
-import type { ResultMessage } from './admin-helpers'
+import type { AdminQueries } from './-use-admin-queries'
+import { createEmptyStats } from './-admin-helpers'
+import type { ResultMessage } from './-admin-helpers'
 import type { StatFields } from '#/db/queries/units'
 
 export interface CorrectionState {

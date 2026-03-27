@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import AdminPage from './admin-page'
+import AdminPage from './-admin-page'
 
 export const Route = createFileRoute('/admin/')({
   beforeLoad: ({ context }) => {

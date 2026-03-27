@@ -1,6 +1,6 @@
-import type { AdminQueries } from './use-admin-queries'
-import { useImportArmy } from './use-import-army'
-import { btnClass } from './admin-helpers'
+import type { AdminQueries } from './-use-admin-queries'
+import { useImportArmy } from './-use-import-army'
+import { btnClass } from './-admin-helpers'
 
 export function AdminImportSection({ queries }: { queries: AdminQueries }) {
   const { state, actions } = useImportArmy(queries)

@@ -11,8 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '#/components/ui/alert-dialog'
-import type { AdminQueries } from './use-admin-queries'
-import { usePlayerSection } from './use-player-section'
+import type { AdminQueries } from './-use-admin-queries'
+import { usePlayerSection } from './-use-player-section'
 
 interface AdminPlayersSectionProps {
   queries: AdminQueries

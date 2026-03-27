@@ -1,6 +1,6 @@
-import type { AdminQueries } from './use-admin-queries'
-import { useArmyAssignment } from './use-army-assignment'
-import { btnClass } from './admin-helpers'
+import type { AdminQueries } from './-use-admin-queries'
+import { useArmyAssignment } from './-use-army-assignment'
+import { btnClass } from './-admin-helpers'
 
 export function AdminAssignmentSection({ queries }: { queries: AdminQueries }) {
   const { state, actions } = useArmyAssignment(queries)

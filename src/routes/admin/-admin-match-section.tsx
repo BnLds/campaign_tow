@@ -1,7 +1,7 @@
 import React from 'react'
-import { useCreateMatch } from './use-create-match'
-import type { AdminQueries } from './use-admin-queries'
-import { btnClass } from './admin-helpers'
+import { useCreateMatch } from './-use-create-match'
+import type { AdminQueries } from './-use-admin-queries'
+import { btnClass } from './-admin-helpers'
 
 interface AdminMatchSectionProps {
   queries: AdminQueries

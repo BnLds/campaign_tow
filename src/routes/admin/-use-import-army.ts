@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { importArmyFn } from '#/server-fns/admin-armies'
-import type { AdminQueries } from './use-admin-queries'
-import type { ResultMessage } from './admin-helpers'
+import type { AdminQueries } from './-use-admin-queries'
+import type { ResultMessage } from './-admin-helpers'
 
 export interface ImportArmyState { owbText: string; importResult: ResultMessage; importSubmitting: boolean }
 export interface ImportArmyActions { handleImport: () => Promise<void>; setOwbText: (v: string) => void }

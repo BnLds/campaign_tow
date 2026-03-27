@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { assignArmyFn } from '#/server-fns/admin-armies'
-import type { AdminQueries } from './use-admin-queries'
-import type { ResultMessage } from './admin-helpers'
+import type { AdminQueries } from './-use-admin-queries'
+import type { ResultMessage } from './-admin-helpers'
 
 export interface ArmyAssignmentState { selectedPlayers: Record<string, string | undefined>; assignResult: ResultMessage; assigningArmyId: string | null }
 export interface ArmyAssignmentActions { handleAssign: (armyId: string) => Promise<void>; setSelectedPlayer: (armyId: string, playerId: string) => void }
