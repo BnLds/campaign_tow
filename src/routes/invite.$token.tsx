@@ -5,6 +5,7 @@
 // AC13: rate limiting per IP (10 requests / 15 min)
 
 import { createFileRoute, redirect, Link, useRouter } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
@@ -21,7 +22,7 @@ import { Label } from '../components/ui/label'
 // ---------------------------------------------------------------------------
 
 const INVITE_RATE_WINDOW_MS = 15 * 60 * 1000
-const INVITE_RATE_MAX = 10
+const INVITE_RATE_MAX = 100
 const inviteAttempts = new Map<string, { count: number; resetAt: number }>()
 
 function getClientIp(request: Request): string {
@@ -263,6 +264,7 @@ function InviteSetupForm({
   defaultUsername: string
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm({
@@ -279,7 +281,7 @@ function InviteSetupForm({
         },
       })
       if (result.success) {
-        await router.invalidate()
+        queryClient.clear()
         await router.navigate({ to: '/' })
       } else {
         setServerError(result.error.message)
