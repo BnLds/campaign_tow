@@ -1,4 +1,4 @@
-import { eq, and, ne, desc, inArray, gte } from 'drizzle-orm'
+import { eq, and, ne, desc, inArray, gte, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../../index'
 import { players, armies, units, matches, matchParticipants, matchXpEntries, statModifiers, unitGains } from '../../schema'
@@ -98,7 +98,7 @@ function buildXpEntriesMap(
 
 export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: Date | null): Promise<TimelineEntryData[]> {
   const matchFilter = initialXpCompletedAt
-    ? gte(matches.date, initialXpCompletedAt)
+    ? or(eq(matches.matchType, 'initial_setup'), gte(matches.date, initialXpCompletedAt))
     : eq(matches.matchType, 'initial_setup')
   const oppParticipant = alias(matchParticipants, 'opp')
   const oppArmy = alias(armies, 'opp_army')

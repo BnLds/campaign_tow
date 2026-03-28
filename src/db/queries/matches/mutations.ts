@@ -79,7 +79,7 @@ export async function createInitialSetupMatch(playerId: string, armyId: string):
 
     const [inserted] = await tx
       .insert(matches)
-      // Historical placeholder date — always excluded by the gte(initialXpCompletedAt) timeline filter
+      // Historical placeholder date — sorts initial_setup to bottom of timeline (ORDER BY date DESC)
       .values({ date: new Date('1993-08-19'), matchType: 'initial_setup', createdByPlayerId: playerId })
       .returning({ id: matches.id })
 
