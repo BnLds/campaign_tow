@@ -189,7 +189,10 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
             marginBottom: '0.75rem',
           }}
         >
-          Collez l'export OWB contenant uniquement les nouvelles unités
+          Collez l'export OWB contenant uniquement les nouvelles unités.{' '}
+          <span style={{ color: 'var(--color-malus)', fontWeight: 600 }}>
+            Ne ré-importez pas les unités existantes !
+          </span>
         </p>
 
         <form.Field name="owbText">
