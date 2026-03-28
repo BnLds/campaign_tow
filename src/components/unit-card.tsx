@@ -2,7 +2,7 @@
 // Displays a unit's base stats, campaign deltas, tier pill and border.
 
 import React from 'react'
-import type { ComposedUnitView, ComposedSubProfile, StatDelta, UnitGain } from '../lib/delta-composer'
+import type { ComposedUnitView, ComposedSubProfile, GroupedStatDelta, GroupedUnitGain } from '../lib/delta-composer'
 import { getTierLabel, getTierColor } from '../lib/tier'
 import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
 import type { TierLevel } from '../lib/tier'
@@ -238,7 +238,7 @@ function StatCell({ entry }: StatCellProps) {
 // Delta chips
 // ---------------------------------------------------------------------------
 
-function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] }) {
+function DeltaChips({ deltas, gains }: { deltas: GroupedStatDelta[]; gains: GroupedUnitGain[] }) {
   if (deltas.length === 0 && gains.length === 0) return null
 
   return (
@@ -293,7 +293,7 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
               ...chipStyle,
             }}
           >
-            {prefix}{d.delta} {d.stat.toUpperCase()}
+            {prefix}{d.delta} {d.stat.toUpperCase()}{d.count > 1 && ` ×${d.count}`}
           </span>
         )
       })}
@@ -317,7 +317,7 @@ function DeltaChips({ deltas, gains }: { deltas: StatDelta[]; gains: UnitGain[] 
               fontWeight: 600,
             }}
           >
-            {stripConstraintHint(g.description)}
+            {stripConstraintHint(g.description)}{g.count > 1 && ` ×${g.count}`}
           </span>
         )
       })}
