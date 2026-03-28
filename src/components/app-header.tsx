@@ -82,7 +82,7 @@ export function AppHeader({
                   : 'font-[family-name:var(--font-display)] text-[16px] font-bold text-[var(--color-text-primary)]'
               }
             >
-              {session.isGuest ? 'Invité' : 'Campaign TOW'}
+              {session.isGuest ? 'Invité' : "Campagne TOW 2026 - Launa'Gamers"}
             </span>
           )}
         </div>

@@ -171,7 +171,7 @@ function LoginPage() {
             textAlign: 'center',
           }}
         >
-          Campaign TOW
+          Campagne TOW 2026 - Launa'Gamers
         </h1>
 
         <form

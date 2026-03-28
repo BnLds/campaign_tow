@@ -242,7 +242,7 @@ function InviteErrorPage({ message }: { message: string }) {
           marginBottom: '0.75rem',
         }}
       >
-        Campaign TOW
+        Campagne TOW 2026 - Launa'Gamers
       </h1>
       <p style={{ color: 'var(--color-malus)', marginBottom: '1.5rem' }}>{message}</p>
       <Link
@@ -311,7 +311,7 @@ function InviteSetupForm({
           textAlign: 'center',
         }}
       >
-        Bienvenue dans Campaign TOW !
+        Bienvenue dans Campagne TOW 2026 - Launa'Gamers !
       </h1>
       <p
         style={{
