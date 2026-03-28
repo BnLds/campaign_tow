@@ -10,7 +10,6 @@
 
 import { describe, it, expect } from 'vitest'
 import { getSession, createSession, deleteSession } from './auth'
-import type { SessionData } from './auth'
 import { authMiddleware, armyOwnerMiddleware, adminMiddleware } from './middleware'
 
 // ---------------------------------------------------------------------------

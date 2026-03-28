@@ -31,10 +31,6 @@ function getCampaignRoute() {
   return readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
 }
 
-function getArmyRoute() {
-  return readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
-}
-
 // ---------------------------------------------------------------------------
 // AC1, AC4 — submitMatchResultFn declaration and middleware (Task 7.9–7.12)
 // ---------------------------------------------------------------------------
@@ -223,7 +219,7 @@ describe('[AC2][AC5][P0] Campaign view — result submission wiring in src/route
   // AC: 6 — Task 7.20: handleResultSubmit calls router.invalidate() on success
   it('[3.3-SFN-025] index.tsx handleResultSubmit calls router.invalidate() on success', () => {
     const route = getCampaignRoute()
-    expect(route).toMatch(/handleResultSubmit[\s\S]{0,500}router\.invalidate|router\.invalidate[\s\S]{0,500}handleResultSubmit/)
+    expect(route).toMatch(/handleResultSubmit[\s\S]{0,500}invalidateArmyState/)
   })
 })
 

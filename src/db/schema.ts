@@ -13,11 +13,24 @@ export const unitStatusEnum = pgEnum('unit_status', ['active', 'graveyard'])
 // Initial XP entry flow — match type enum
 export const matchTypeEnum = pgEnum('match_type', ['standard', 'initial_setup'])
 
+// Unit gain type — classifies gains by mechanic (replaces description string matching)
+// Migration: column uses default('tier_up') so drizzle-kit push assigns 'tier_up' to all existing rows.
+// Run scripts/backfill-unit-gain-type.sql AFTER push to correct rows that are not actually tier_up.
+export const unitGainTypeEnum = pgEnum('unit_gain_type', [
+  'tier_up',          // Stat/skill improvement at a tier threshold (most common)
+  'honour_champion',  // Free champion (honour de bataille at 3/9 XP)
+  'honour_banner',    // Free banner (honour de bataille at 3/9 XP)
+  'death',            // Character killed (MHC roll = 2)
+  'haine',            // Hatred gained (MHC roll = 11 / destruction roll = 11)
+  'pertes_catastrophiques', // Half strength next battle (destruction roll = 4-6)
+  'deroute_sanglante',      // XP loss (destruction roll = 2-3)
+  'banner_lost',      // Banner lost on unit destruction
+])
+
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash'),
-  displayName: text('display_name').notNull(),
   isAdmin: boolean('is_admin').notNull().default(false),
   isGuest: boolean('is_guest').notNull().default(false),
   inviteToken: text('invite_token').unique(),
@@ -40,7 +53,7 @@ export const armies = pgTable('armies', {
   name: text('name').notNull(),
   faction: text('faction').notNull(),
   playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
-  needsInitialXp: boolean('needs_initial_xp').notNull().default(true),
+  initialXpCompletedAt: timestamp('initial_xp_completed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
   // One army per player max — nullable unique allows multiple unassigned armies
@@ -72,6 +85,7 @@ export const subProfiles = pgTable('sub_profiles', {
     .references(() => units.id, { onDelete: 'cascade' }),
   sortOrder: integer('sort_order').notNull().default(0),
   label: text('label').notNull(),
+  // Stats are text representations (e.g., "3+", "2d6", "-"). Format validated at insert time via Zod (addUnitsSubProfileSchema).
   m: text('m'),
   cc: text('cc'),
   ct: text('ct'),
@@ -96,6 +110,7 @@ export const statModifiers = pgTable('stat_modifiers', {
   source: text('source').notNull(),
   temporary: boolean('temporary').notNull().default(false),
   cleared: boolean('cleared').notNull().default(false),
+  // Invariant: always non-null in practice — set null is a safety net for cascade cleanup only
   matchParticipantId: text('match_participant_id')
     .references(() => matchParticipants.id, { onDelete: 'set null' }),
 })
@@ -104,6 +119,7 @@ export const unitGains = pgTable('unit_gains', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   unitId: text('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
+  type: unitGainTypeEnum('type').notNull().default('tier_up'),
   cleared: boolean('cleared').notNull().default(false),
   matchParticipantId: text('match_participant_id').references(() => matchParticipants.id, { onDelete: 'set null' }),
   thresholdXp: integer('threshold_xp'),
@@ -131,6 +147,7 @@ export const matchParticipants = pgTable('match_participants', {
   // evolutionsEnteredAt: null means evolutions not yet entered (post-match flow in epic 4)
   // nullable timestamp — set when the post-match evolution flow is completed
   evolutionsEnteredAt: timestamp('evolutions_entered_at'),
+  bonusXp: integer('bonus_xp'),
   // createdAt tracks when the participant record was inserted (not the match date)
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [

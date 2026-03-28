@@ -35,12 +35,12 @@ async function resetData() {
 
   // Show remaining players
   const remaining = await db.execute(
-    sql`SELECT username, display_name, is_admin, is_guest FROM players ORDER BY username`
+    sql`SELECT username, is_admin, is_guest FROM players ORDER BY username`
   )
   console.log(`[reset-data] Remaining players (${remaining.rowCount}):`)
   for (const row of remaining.rows) {
     const roles = [row.is_admin && 'admin', row.is_guest && 'guest'].filter(Boolean).join(', ')
-    console.log(`  ${row.display_name} (${row.username}) [${roles}]`)
+    console.log(`  ${row.username} [${roles}]`)
   }
 
   console.log('[reset-data] Done.')

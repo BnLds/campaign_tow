@@ -49,6 +49,7 @@ function makeGain(overrides: Partial<UnitGain> & { description: string }): UnitG
   return {
     id: 'gain-1',
     unitId: 'unit-1',
+    type: 'tier_up',
     ...overrides,
   }
 }
@@ -732,19 +733,30 @@ describe('[CAP] composeUnitView — stat cap at 10', () => {
 describe('[CAP] computeEffectiveStats', () => {
   it('[CAP-006] base CC=8, gains=["+1 CC", "+1 CC"] → CC=10', () => {
     const base = { m: 4, cc: 8, ct: 3, f: 3, e: 3, pv: 1, i: 3, a: 1, cd: 7 }
-    const result = computeEffectiveStats(base, ['+1 CC', '+1 CC'])
+    const gains: UnitGain[] = [
+      { id: 'g1', unitId: 'u1', description: '+1 CC', type: 'tier_up' },
+      { id: 'g2', unitId: 'u1', description: '+1 CC', type: 'tier_up' },
+    ]
+    const result = computeEffectiveStats(base, gains)
     expect(result.cc).toBe(10)
   })
 
   it('[CAP-007] base null (non-numeric) stays null', () => {
     const base = { m: null, cc: 4, ct: 3, f: 3, e: 3, pv: 1, i: 3, a: 1, cd: 7 }
-    const result = computeEffectiveStats(base, ['+1 Mouvement (unique)'])
+    const gains: UnitGain[] = [
+      { id: 'g1', unitId: 'u1', description: '+1 Mouvement (unique)', type: 'tier_up' },
+    ]
+    const result = computeEffectiveStats(base, gains)
     expect(result.m).toBeNull()
   })
 
   it('[CAP-008] gains with non-stat descriptions are ignored', () => {
     const base = { m: 4, cc: 4, ct: 3, f: 3, e: 3, pv: 1, i: 3, a: 1, cd: 7 }
-    const result = computeEffectiveStats(base, ['Champion', 'Bannière de guerre'])
+    const gains: UnitGain[] = [
+      { id: 'g1', unitId: 'u1', description: 'Champion', type: 'honour_champion' },
+      { id: 'g2', unitId: 'u1', description: 'Bannière de guerre', type: 'honour_banner' },
+    ]
+    const result = computeEffectiveStats(base, gains)
     expect(result.cc).toBe(4)
   })
 })

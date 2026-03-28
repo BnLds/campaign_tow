@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../format'
+import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain, HONOUR_CHAMPION_LABEL, HONOUR_BANNER_LABEL } from '../format'
 
 describe('stripConstraintHint', () => {
   describe('strips constraint hints', () => {
@@ -65,34 +65,64 @@ describe('stripConstraintHint', () => {
   })
 
 describe('isNegativeConsequenceGain', () => {
-  it('Mort is negative', () => {
-    expect(isNegativeConsequenceGain('Mort (MHC)')).toBe(true)
+  it('death is negative', () => {
+    expect(isNegativeConsequenceGain('death')).toBe(true)
   })
 
-  it('Bannière perdue is negative', () => {
-    expect(isNegativeConsequenceGain('Bannière perdue (destruction)')).toBe(true)
+  it('banner_lost is negative', () => {
+    expect(isNegativeConsequenceGain('banner_lost')).toBe(true)
   })
 
-  it('Pertes Catastrophiques is NOT negative (it is temporary)', () => {
-    expect(isNegativeConsequenceGain('Pertes Catastrophiques (effectif réduit de moitié pour la prochaine bataille)')).toBe(false)
+  it('deroute_sanglante is negative', () => {
+    expect(isNegativeConsequenceGain('deroute_sanglante')).toBe(true)
   })
 
-  it('+1 CC is not negative', () => {
-    expect(isNegativeConsequenceGain('+1 CC')).toBe(false)
+  it('haine is negative', () => {
+    expect(isNegativeConsequenceGain('haine')).toBe(true)
+  })
+
+  it('pertes_catastrophiques is NOT negative (it is temporary)', () => {
+    expect(isNegativeConsequenceGain('pertes_catastrophiques')).toBe(false)
+  })
+
+  it('tier_up is not negative', () => {
+    expect(isNegativeConsequenceGain('tier_up')).toBe(false)
   })
 })
 
 describe('isTemporaryConsequenceGain', () => {
-  it('Pertes Catastrophiques is temporary', () => {
-    expect(isTemporaryConsequenceGain('Pertes Catastrophiques (effectif réduit de moitié pour la prochaine bataille)')).toBe(true)
+  it('pertes_catastrophiques is temporary', () => {
+    expect(isTemporaryConsequenceGain('pertes_catastrophiques')).toBe(true)
   })
 
-  it('Mort is not temporary', () => {
-    expect(isTemporaryConsequenceGain('Mort (MHC)')).toBe(false)
+  it('death is not temporary', () => {
+    expect(isTemporaryConsequenceGain('death')).toBe(false)
   })
 
-  it('+1 CC is not temporary', () => {
-    expect(isTemporaryConsequenceGain('+1 CC')).toBe(false)
+  it('tier_up is not temporary', () => {
+    expect(isTemporaryConsequenceGain('tier_up')).toBe(false)
+  })
+})
+
+describe('HONOUR_CHAMPION_LABEL / HONOUR_BANNER_LABEL', () => {
+  it('HONOUR_CHAMPION_LABEL is "Champion gratuit"', () => {
+    expect(HONOUR_CHAMPION_LABEL).toBe('Champion gratuit')
+  })
+
+  it('HONOUR_BANNER_LABEL is "Bannière gratuite"', () => {
+    expect(HONOUR_BANNER_LABEL).toBe('Bannière gratuite')
+  })
+
+  it('honour champion label is not negative', () => {
+    expect(isNegativeConsequenceGain('honour_champion')).toBe(false)
+  })
+
+  it('honour banner label is not negative', () => {
+    expect(isNegativeConsequenceGain('honour_banner')).toBe(false)
+  })
+
+  it('honour champion label is not temporary', () => {
+    expect(isTemporaryConsequenceGain('honour_champion')).toBe(false)
   })
 })
 

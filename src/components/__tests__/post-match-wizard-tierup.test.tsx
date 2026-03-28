@@ -12,8 +12,20 @@
 // Covers Tasks 12.1–12.6 (AC: 1, 6, 8, 9)
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from 'react'
 import { PostMatchWizard } from '../post-match-wizard'
+
+function render(ui: React.ReactElement, options?: Parameters<typeof rtlRender>[1]) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return rtlRender(ui, { wrapper: Wrapper, ...options })
+}
 
 // ---------------------------------------------------------------------------
 // Helpers — test fixtures
@@ -447,39 +459,40 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
 // ---------------------------------------------------------------------------
 
 describe('[AC1][P0] PostMatchWizard — source contract for Phase 2 (story 4.2)', () => {
-  it('[4.2-WIZ-012] post-match-wizard.tsx has pendingGainsRef for batch commit', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toMatch(/pendingGainsRef/)
+  // After refactor: post-match-wizard is a directory — read all source files.
+  function readWizardSource(): string {
+    const { readFileSync, readdirSync } = require('node:fs')
+    const { resolve: resolvePath, join } = require('node:path')
+    const dir = resolvePath(__dirname, '..', 'post-match-wizard')
+    return readdirSync(dir)
+      .filter((f: string) => /\.(tsx?|ts)$/.test(f))
+      .map((f: string) => readFileSync(join(dir, f), 'utf-8'))
+      .join('\n')
+  }
+
+  it('[4.2-WIZ-012] post-match-wizard source has pendingGains accumulator for batch commit', () => {
+    const code = readWizardSource()
+    expect(code).toMatch(/pendingGains/)
   })
 
   it('[4.2-WIZ-013] post-match-wizard.tsx contains phase state (xp/tierup)', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/['"]xp['"][\s\S]{0,200}['"]tierup['"]|['"]tierup['"][\s\S]{0,200}['"]xp['"]/)
   })
 
   it('[4.2-WIZ-014] post-match-wizard.tsx imports TierUpStep component', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/import[\s\S]{0,200}TierUpStep[\s\S]{0,100}tier-up-step/)
   })
 
   it('[4.2-WIZ-015] post-match-wizard.tsx calls detectTierCrossings', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
+    const code = readWizardSource()
     expect(code).toMatch(/detectTierCrossings/)
   })
 
   it('[4.2-WIZ-016] post-match-wizard.tsx unit type includes hasMount field', () => {
-    const { readFileSync } = require('node:fs')
-    const { resolve: resolvePath } = require('node:path')
-    const code = readFileSync(resolvePath(__dirname, '..', 'post-match-wizard.tsx'), 'utf-8')
-    expect(code).toMatch(/hasMount\s*[:\?]/)
+    const code = readWizardSource()
+    expect(code).toMatch(/hasMount\s*[?:]/)
   })
 })
 
@@ -495,7 +508,7 @@ describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
       {
         id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base',
         xp: 0, previousXpGained: null, hasMount: false,
-        existingGains: ['+1 Mouvement (unique)'],
+        existingGains: [{ description: '+1 Mouvement (unique)', type: 'tier_up' }],
         commandement: 8,
       },
     ]

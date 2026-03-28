@@ -17,15 +17,15 @@ const root = resolve(__dirname, '../..')
 // AC1 — Validator: deleteMatchSchema
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P0] Validator — deleteMatchSchema — src/lib/validators.ts', () => {
-  const validators = () => readFileSync(resolve(root, 'src/lib/validators.ts'), 'utf-8')
+describe('[AC1][P0] Validator — deleteMatchSchema — src/lib/validators/match.ts', () => {
+  const validators = () => readFileSync(resolve(root, 'src/lib/validators/match.ts'), 'utf-8')
 
-  it('[DEL-001] validators.ts exports deleteMatchSchema with matchId z.string().min(1)', () => {
+  it('[DEL-001] validators/match.ts exports deleteMatchSchema with matchId z.string().min(1)', () => {
     const code = validators()
     expect(code).toMatch(/export const deleteMatchSchema\s*=\s*z\.object\(\{\s*matchId:\s*z\.string\(\)\.min\(1\)/)
   })
 
-  it('[DEL-002] validators.ts exports DeleteMatchInput type from deleteMatchSchema', () => {
+  it('[DEL-002] validators/match.ts exports DeleteMatchInput type from deleteMatchSchema', () => {
     const code = validators()
     expect(code).toMatch(/export type DeleteMatchInput\s*=\s*z\.infer<typeof deleteMatchSchema>/)
   })
@@ -35,7 +35,7 @@ describe('[AC1][P0] Validator — deleteMatchSchema — src/lib/validators.ts', 
 // AC1 / AC6 — DB query: deleteMatchWithXpRollback
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC6][P0] DB query — deleteMatchWithXpRollback — src/db/queries/matches.ts', () => {
+describe('[AC1][AC6][P0] DB query — deleteMatchWithXpRollback — src/db/queries/matches/', () => {
   const queries = () => readAllQueries()
 
   it('[DEL-003] deleteMatchWithXpRollback is exported and uses db.transaction', () => {
@@ -128,14 +128,14 @@ describe('[AC4][AC5][P0] Campaign view — toast + router.invalidate — src/rou
     expect(code).toMatch(/setToast[\s\S]{0,100}setTimeout/)
   })
 
-  it('[DEL-017] Toast uses displayName from session for success message (AC4)', () => {
+  it('[DEL-017] Toast uses username from session for success message (AC4)', () => {
     const code = indexRoute()
-    expect(code).toMatch(/displayName[\s\S]{0,100}supprimé le match|supprimé le match[\s\S]{0,100}displayName/)
+    expect(code).toMatch(/username[\s\S]{0,100}supprimé le match|supprimé le match[\s\S]{0,100}username/)
   })
 
   it('[DEL-018] Campaign view calls router.invalidate after deleteMatchFn (AC5)', () => {
     const code = indexRoute()
-    expect(code).toMatch(/deleteMatchFn[\s\S]{0,600}router\.invalidate/)
+    expect(code).toMatch(/deleteMatchFn[\s\S]{0,600}invalidateArmyState/)
   })
 })
 
@@ -143,16 +143,14 @@ describe('[AC4][AC5][P0] Campaign view — toast + router.invalidate — src/rou
 // AC7 — Admin: deleteMatchAdminFn
 // ---------------------------------------------------------------------------
 
-describe('[AC7][P0] Admin server fn — deleteMatchAdminFn — src/routes/admin/index.tsx', () => {
-  const adminRoute = () => readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-
+describe('[AC7][P0] Admin server fn — deleteMatchAdminFn — src/server-fns/admin-matches.ts', () => {
   it('[DEL-019] deleteMatchAdminFn uses adminMiddleware (not authMiddleware)', () => {
-    const code = adminRoute()
+    const code = readFileSync(resolve(root, 'src/server-fns/admin-matches.ts'), 'utf-8')
     expect(code).toMatch(/deleteMatchAdminFn[\s\S]{0,200}adminMiddleware/)
   })
 
   it('[DEL-020] deleteMatchAdminFn calls deleteMatchWithXpRollback directly without participant check', () => {
-    const code = adminRoute()
+    const code = readFileSync(resolve(root, 'src/server-fns/admin-matches.ts'), 'utf-8')
     // Should have deleteMatchAdminFn calling deleteMatchWithXpRollback
     expect(code).toMatch(/deleteMatchAdminFn[\s\S]{0,500}deleteMatchWithXpRollback/)
     // Should NOT have getMatchParticipantByMatchAndPlayer inside deleteMatchAdminFn context
@@ -160,7 +158,7 @@ describe('[AC7][P0] Admin server fn — deleteMatchAdminFn — src/routes/admin/
   })
 
   it('[DEL-021] Admin uses window.confirm before deletion (follows admin pattern)', () => {
-    const code = adminRoute()
+    const code = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
     expect(code).toMatch(/window\.confirm[\s\S]{0,300}deleteMatchAdminFn|deleteMatchAdminFn[\s\S]{0,300}window\.confirm/)
   })
 })

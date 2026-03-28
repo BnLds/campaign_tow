@@ -1,6 +1,9 @@
 // Campaign TOW — Delta Composer
 // PURE FUNCTION MODULE: no DB imports, no side effects.
 
+import type { UnitGainType } from '../db/queries/units'
+import { stripConstraintHint } from './format'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -18,6 +21,7 @@ export interface UnitGain {
   id: string
   unitId: string
   description: string
+  type: UnitGainType
 }
 
 export interface StatDelta {
@@ -25,6 +29,14 @@ export interface StatDelta {
   delta: number
   source: string
   temporary: boolean
+}
+
+export interface GroupedStatDelta extends StatDelta {
+  count: number
+}
+
+export interface GroupedUnitGain extends UnitGain {
+  count: number
 }
 
 export interface StatEntry {
@@ -41,8 +53,8 @@ export interface ComposedSubProfile {
 
 export interface ComposedUnitView {
   subProfiles: ComposedSubProfile[]
-  deltas: StatDelta[]       // Flat list of all stat modifiers (for delta chips)
-  gains: UnitGain[]
+  deltas: GroupedStatDelta[]  // Stat modifiers grouped by stat|delta|temporary (for delta chips)
+  gains: GroupedUnitGain[]    // Unit gains grouped by display label|type
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +141,27 @@ function isNumeric(value: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// groupItems — deduplicate items by key, preserving first-occurrence order
+// ---------------------------------------------------------------------------
+
+function groupItems<T>(items: T[], keyFn: (item: T) => string): (T & { count: number })[] {
+  const map = new Map<string, T & { count: number }>()
+  const result: (T & { count: number })[] = []
+  for (const item of items) {
+    const key = keyFn(item)
+    const existing = map.get(key)
+    if (existing) {
+      existing.count++
+    } else {
+      const grouped = { ...item, count: 1 }
+      map.set(key, grouped)
+      result.push(grouped)
+    }
+  }
+  return result
+}
+
+// ---------------------------------------------------------------------------
 // composeUnitView — main pure function
 // ---------------------------------------------------------------------------
 
@@ -210,7 +243,10 @@ export function composeUnitView(
     return { label: sp.label, isMount: sp.isMount, stats }
   })
 
-  return { subProfiles: composedSubProfiles, deltas, gains }
+  const groupedDeltas = groupItems(deltas, (d) => `${d.stat}|${d.delta}|${d.temporary}`)
+  const groupedGains = groupItems(gains, (g) => `${stripConstraintHint(g.description)}|${g.type}`)
+
+  return { subProfiles: composedSubProfiles, deltas: groupedDeltas, gains: groupedGains }
 }
 
 // ---------------------------------------------------------------------------
@@ -219,12 +255,12 @@ export function composeUnitView(
 
 export function computeEffectiveStats(
   baseStats: Record<string, number | null>,
-  gains: string[],
+  gains: UnitGain[],
 ): Record<string, number | null> {
   const result: Record<string, number | null> = { ...baseStats }
 
   for (const gain of gains) {
-    const parsed = parseGainStat(gain)
+    const parsed = parseGainStat(gain.description)
     if (!parsed) continue
     const current = result[parsed.stat]
     if (current == null) continue

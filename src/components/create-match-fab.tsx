@@ -4,12 +4,15 @@
 // Player-first: select an opponent player, not an army.
 
 import { useState, useEffect, useRef } from 'react'
+import { FabBlockerMessage } from './fab-blocker-message'
+import { FAB_BOTTOM } from '../lib/layout-constants'
 import { useRouter } from '@tanstack/react-router'
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { authMiddleware } from '../lib/middleware'
 import { STALE_TIME_SESSION } from '../lib/query-constants'
+import { invalidateArmyState } from '../lib/invalidation-helpers'
 import {
   Dialog,
   DialogContent,
@@ -46,7 +49,7 @@ export const loadOpponentsFn = createServerFn({ method: 'GET' })
       .filter((p) => p.playerId !== context.session.playerId)
       .map((p) => ({
         playerId: p.playerId,
-        playerDisplayName: p.displayName,
+        playerUsername: p.username,
         armyId: p.armyId,
         armyName: p.armyName,
         faction: p.faction,
@@ -75,6 +78,11 @@ export const createMatchFn = createServerFn({ method: 'POST' })
     const playerArmy = await getPlayerArmy(session.playerId)
     if (!playerArmy) {
       throw new Error('Vous devez avoir une armée pour créer une partie')
+    }
+
+    // Reject players who haven't completed initial XP
+    if (!playerArmy.initialXpCompletedAt) {
+      throw new Error("Complétez d'abord l'XP initiale de votre armée")
     }
 
     // AC8 — Reject self-match
@@ -120,11 +128,12 @@ export const createMatchFn = createServerFn({ method: 'POST' })
 type CreateMatchFabProps = {
   session: { playerId: string; isGuest: boolean }
   armyId: string | null
+  initialXpCompleted: boolean
 }
 
 type OpponentItem = {
   playerId: string
-  playerDisplayName: string
+  playerUsername: string
   armyName: string | null
   faction: string | null
   hasArmy: boolean
@@ -134,12 +143,14 @@ type OpponentItem = {
 // CreateMatchFab component
 // ---------------------------------------------------------------------------
 
-export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProps) {
+export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }: CreateMatchFabProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [noArmyMessage, setNoArmyMessage] = useState(false)
   const noArmyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [noXpMessage, setNoXpMessage] = useState(false)
+  const noXpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Dialog state
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
@@ -180,15 +191,23 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
   useEffect(() => {
     return () => {
       if (noArmyTimeoutRef.current) clearTimeout(noArmyTimeoutRef.current)
+      if (noXpTimeoutRef.current) clearTimeout(noXpTimeoutRef.current)
     }
   }, [])
 
   const handleFabClick = () => {
     if (!armyId) {
+      setNoXpMessage(false)
       setNoArmyMessage(true)
-      // M3 — store timeout id for cleanup
       if (noArmyTimeoutRef.current) clearTimeout(noArmyTimeoutRef.current)
       noArmyTimeoutRef.current = setTimeout(() => setNoArmyMessage(false), 3000)
+      return
+    }
+    if (!initialXpCompleted) {
+      setNoArmyMessage(false)
+      setNoXpMessage(true)
+      if (noXpTimeoutRef.current) clearTimeout(noXpTimeoutRef.current)
+      noXpTimeoutRef.current = setTimeout(() => setNoXpMessage(false), 3000)
       return
     }
     setOpen(true)
@@ -210,8 +229,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
       setIsSubmitting(false)
       queryClient.invalidateQueries({ queryKey: ['opponents'] })
       queryClient.invalidateQueries({ queryKey: ['session'] })
-      queryClient.invalidateQueries({ queryKey: ['army-info'] })
-      await router.invalidate({ filter: (d) => d.routeId === '/' })
+      await invalidateArmyState(queryClient, router)
       await router.navigate({ to: '/' })
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la création de la partie.')
@@ -223,26 +241,9 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
 
   return (
     <>
-      {/* No-army inline message */}
-      {noArmyMessage && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 130,
-            right: 16,
-            background: '#1e293b',
-            color: '#fff',
-            padding: '8px 14px',
-            borderRadius: 8,
-            fontSize: 13,
-            zIndex: 3,
-            maxWidth: 260,
-            textAlign: 'right',
-          }}
-        >
-          Vous devez avoir une armée pour créer une partie
-        </div>
-      )}
+      {/* Blocker messages */}
+      <FabBlockerMessage visible={noArmyMessage} message="Vous devez avoir une armée pour créer une partie" />
+      <FabBlockerMessage visible={noXpMessage} message="Complétez d'abord l'XP initiale de votre armée" />
 
       {/* FAB button */}
       <button
@@ -252,7 +253,7 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
         style={{
           position: 'absolute',
           right: 16,
-          bottom: 62,
+          bottom: FAB_BOTTOM,
           zIndex: 2,
           width: 56,
           height: 56,
@@ -334,9 +335,9 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
                       cursor: 'pointer',
                     }}
                   >
-                    {/* playerDisplayName displayed with Cinzel (font-display) */}
+                    {/* playerUsername displayed with Cinzel (font-display) */}
                     <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>
-                      {opponent.playerDisplayName}
+                      {opponent.playerUsername}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       {opponent.hasArmy
@@ -410,16 +411,16 @@ export function CreateMatchFab({ session: _session, armyId }: CreateMatchFabProp
           {/* Confirm button — disabled until opponent is selected */}
           <button
             onClick={handleConfirm}
-            disabled={!selectedOpponent || isSubmitting} // disabled when no opponent selected
+            disabled={!selectedOpponent || isSubmitting || isLoading} // disabled when no opponent selected, loading, or submitting
             style={{
-              background: !selectedOpponent || isSubmitting ? '#94a3b8' : '#334155',
+              background: !selectedOpponent || isSubmitting || isLoading ? '#94a3b8' : '#334155',
               color: '#fff',
               border: 'none',
               borderRadius: 12,
               minHeight: 44,
               fontSize: 15,
               fontWeight: 700,
-              cursor: !selectedOpponent || isSubmitting ? 'not-allowed' : 'pointer',
+              cursor: !selectedOpponent || isSubmitting || isLoading ? 'not-allowed' : 'pointer',
               width: '100%',
             }}
           >

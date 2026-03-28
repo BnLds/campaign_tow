@@ -25,8 +25,8 @@ function getCampaignRoute() {
   return readFileSync(resolve(root, 'src/routes/index.tsx'), 'utf-8')
 }
 
-function getArmyRoute() {
-  return readFileSync(resolve(root, 'src/routes/armies/$armyId.tsx'), 'utf-8')
+function getCampaignServerFn() {
+  return readFileSync(resolve(root, 'src/server-fns/campaign-queries.ts'), 'utf-8')
 }
 
 function getArmiesListRoute() {
@@ -42,36 +42,35 @@ function getArmiesListRoute() {
 // Task 7.18: guest sees "Connectez-vous" message, no army header
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC2][AC5][AC8][P0] Campaign view — loadCampaignTimelineFn — src/routes/index.tsx', () => {
-  it('[3.1-CMP-001] index.tsx defines loadCampaignTimelineFn using createServerFn', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn/)
+describe('[AC1][AC2][AC5][AC8][P0] Campaign view — loadCampaignTimelineFn — src/server-fns/campaign-queries.ts', () => {
+  it('[3.1-CMP-001] campaign-queries.ts defines loadCampaignTimelineFn using createServerFn', () => {
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn/)
   })
 
   it('[3.1-CMP-002] loadCampaignTimelineFn uses authMiddleware', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[authMiddleware\]\)/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/loadCampaignTimelineFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[authMiddleware\]\)/)
   })
 
   it('[3.1-CMP-003] loadCampaignTimelineFn returns isGuest + empty timeline for guest session', () => {
-    const route = getCampaignRoute()
-    // Guest path: returns { isGuest: true, army: null, timeline: [] }
-    expect(route).toMatch(/loadCampaignTimelineFn[\s\S]{0,1500}isGuest/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/isGuest/)
   })
 
   it('[3.1-CMP-004] loadCampaignTimelineFn calls getPlayerArmy using dynamic import', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/getPlayerArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/getPlayerArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
   it('[3.1-CMP-005] loadCampaignTimelineFn calls getTimelineForArmy using dynamic import', () => {
-    const route = getCampaignRoute()
-    expect(route).toMatch(/getTimelineForArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    const serverFn = getCampaignServerFn()
+    expect(serverFn).toMatch(/getTimelineForArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
-  it('[3.1-CMP-006] index.tsx defines a route loader that calls loadCampaignTimelineFn', () => {
+  it('[3.1-CMP-006] index.tsx route loader uses ensureQueryData with campaignTimelineQueryOptions', () => {
     const route = getCampaignRoute()
-    expect(route).toMatch(/loader[\s\S]{0,300}loadCampaignTimelineFn/)
+    expect(route).toMatch(/ensureQueryData\(campaignTimelineQueryOptions/)
   })
 })
 
@@ -81,14 +80,14 @@ describe('[AC1][AC2][P0] Campaign view — header with army name and army detail
     expect(route).toMatch(/import[\s\S]{0,200}Link[\s\S]{0,100}@tanstack\/react-router/)
   })
 
-  it('[3.1-CMP-008] __root.tsx AppHeader renders army name (Cinzel font via var(--font-display))', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toMatch(/(font-display|fontFamily[\s\S]{0,100}display)/)
+  it('[3.1-CMP-008] app-header.tsx AppHeader renders army name (Cinzel font via var(--font-display))', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toMatch(/(font-display|fontFamily[\s\S]{0,100}display)/)
   })
 
-  it('[3.1-CMP-009] __root.tsx AppHeader navigates to /armies/$armyId via hamburger menu (army detail navigation — AC2)', () => {
-    const rootRoute = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootRoute).toMatch(/router\.navigate\(\{[\s\S]{0,80}\/armies\/\$armyId/)
+  it('[3.1-CMP-009] app-header.tsx AppHeader navigates to /armies/$armyId via hamburger menu (army detail navigation — AC2)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toMatch(/router\.navigate\(\{[\s\S]{0,80}\/armies\/\$armyId/)
   })
 })
 
@@ -184,9 +183,9 @@ describe('[AC4][AC7][P0] Armies list route — list rendering', () => {
   it('[3.1-LST-009] armies/index.tsx renders army name, faction, and player display name per item (Task 6.5)', () => {
     const route = getArmiesListRoute()
     // All three fields must be referenced in the component rendering
-    expect(route).toMatch(/(army\.name|\.name)/)
-    expect(route).toMatch(/(army\.faction|\.faction)/)
-    expect(route).toMatch(/(playerDisplayName|displayName)/)
+    expect(route).toMatch(/army\.name/)
+    expect(route).toMatch(/army\.faction/)
+    expect(route).toMatch(/playerUsername/)
   })
 
   it('[3.1-LST-010] armies/index.tsx links each army to /armies/$armyId (Task 6.3)', () => {

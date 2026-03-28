@@ -59,7 +59,7 @@ export const playerImportArmyFn = createServerFn({ method: 'POST' })
       const confirmedArmy = await getPlayerArmy(context.session.playerId)
       if (!confirmedArmy || confirmedArmy.id !== armyId) {
         // Race lost — clean up orphaned army
-        try { await deleteArmy(armyId) } catch { /* best-effort */ }
+        try { await deleteArmy(armyId) } catch (cleanupErr) { console.error('[army-import] cleanup failed:', cleanupErr) }
         return { success: false, error: { code: 'CONFLICT', message: 'Vous avez deja une armee' } }
       }
 
@@ -75,7 +75,7 @@ export const playerImportArmyFn = createServerFn({ method: 'POST' })
     } catch (err) {
       // Attempt cleanup on unexpected failure
       if (armyId) {
-        try { await deleteArmy(armyId) } catch { /* best-effort */ }
+        try { await deleteArmy(armyId) } catch (cleanupErr) { console.error('[army-import] cleanup failed:', cleanupErr) }
       }
       console.error('[playerImportArmyFn] unexpected error', err)
       return {

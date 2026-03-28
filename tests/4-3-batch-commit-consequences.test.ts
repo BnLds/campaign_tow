@@ -84,12 +84,27 @@ describe('[AC4][P0] completeEvolutionsWithGainsSchema — consequences field (Ta
       'rancune',
       'fureur_vengeresse',
     ]
+    // Each type needs its required fields to pass validation
+    const typeData: Record<string, Record<string, unknown>> = {
+      death: {},
+      permanent_injury: { stat: 'cc', delta: -1 },
+      grave_injury: { stat: 'e', delta: -1 },
+      no_effect: {},
+      haine: {},
+      miracule: {},
+      deroute_sanglante: { xpLostAmount: 5 },
+      pertes_catastrophiques: {},
+      moral_brise: {},
+      survivants_endurcis: {},
+      rancune: {},
+      fureur_vengeresse: {},
+    }
     for (const type of validTypes) {
       const input = {
         matchId: 'match-1',
         matchParticipantId: 'mp-1',
         gains: [],
-        consequences: [{ unitId: 'unit-1', type }],
+        consequences: [{ unitId: 'unit-1', type, ...typeData[type] }],
       }
       const result = completeEvolutionsWithGainsSchema.safeParse(input)
       expect(result.success).toBe(true)
@@ -115,7 +130,7 @@ describe('[AC4][P0] completeEvolutionsWithGainsSchema — consequences field (Ta
       matchParticipantId: 'mp-1',
       gains: [],
       consequences: [
-        { unitId: 'unit-1', type: 'deroute_sanglante', bannerLost: true },
+        { unitId: 'unit-1', type: 'deroute_sanglante', bannerLost: true, xpLostAmount: 5 },
       ],
     }
     const result = completeEvolutionsWithGainsSchema.safeParse(input)
@@ -430,12 +445,14 @@ describe('[AC1][AC6][P0] completeEvolutionsWithGainsTransaction — deroute tier
     expect(code).toMatch(/cleared:\s*false[\s\S]{0,100}clearedByMatchParticipantId:\s*null/)
   })
 
-  it('[DS-TXN-002] deroute_sanglante case locks unit row with FOR UPDATE', async () => {
+  it('[DS-TXN-002] deroute_sanglante case delegates to handleDerouteTierDown which locks unit row with FOR UPDATE', async () => {
     const { readFileSync } = await import('node:fs')
     const code = readFileSync('src/db/queries/evolutions.ts', 'utf-8')
-    // The deroute case must use FOR UPDATE on the units table
+    // The deroute case must call handleDerouteTierDown
     expect(code).toContain("case 'deroute_sanglante'")
-    expect(code).toMatch(/deroute_sanglante[\s\S]{0,1200}\.for\('update'\)/)
+    expect(code).toMatch(/deroute_sanglante[\s\S]{0,200}handleDerouteTierDown/)
+    // handleDerouteTierDown must use FOR UPDATE on the units table
+    expect(code).toMatch(/handleDerouteTierDown[\s\S]{0,1500}\.for\('update'\)/)
   })
 
   it('[DS-TXN-003] deroute case calls detectLostThresholds imported from tier.ts', async () => {

@@ -24,22 +24,22 @@ const root = resolve(__dirname, '../..')
 // AC1 — Admin link in AppHeader: src/routes/__root.tsx
 // ---------------------------------------------------------------------------
 
-describe('[AC1][P0] Admin link in AppHeader — src/routes/__root.tsx', () => {
-  it('[1.6-INT-001] __root.tsx renders "Administration" link gated behind session.isAdmin (absent from DOM for non-admin)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+describe('[AC1][P0] Admin link in AppHeader — src/components/app-header.tsx', () => {
+  it('[1.6-INT-001] app-header.tsx renders "Administration" link gated behind session.isAdmin (absent from DOM for non-admin)', () => {
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // session.isAdmin condition and admin-link testid must be coupled — absent from DOM for non-admin
-    expect(rootTsx).toMatch(/session\.isAdmin[\s\S]{0,100}data-testid="admin-link"/)
+    expect(appHeader).toMatch(/session\.isAdmin[\s\S]{0,100}data-testid="admin-link"/)
   })
 
   it('[1.6-INT-002] Administration link has data-testid="admin-link" (E2E selector contract)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(rootTsx).toContain('data-testid="admin-link"')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
+    expect(appHeader).toContain('data-testid="admin-link"')
   })
 
   it('[1.6-INT-003] data-testid="admin-link" and /admin navigation are in the same element (coupled)', () => {
-    const rootTsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
+    const appHeader = readFileSync(resolve(root, 'src/components/app-header.tsx'), 'utf-8')
     // admin-link testid and /admin route must be on the same element — not two independent occurrences
-    expect(rootTsx).toMatch(/admin-link[\s\S]{0,200}\/admin/)
+    expect(appHeader).toMatch(/admin-link[\s\S]{0,200}\/admin/)
   })
 })
 
@@ -87,22 +87,22 @@ describe('[AC2][AC4][P0] DB queries — src/db/queries.ts', () => {
 // AC2 — listPlayersFn server function: src/routes/admin/index.tsx
 // ---------------------------------------------------------------------------
 
-describe('[AC2][P0] listPlayersFn server function — src/routes/admin/index.tsx', () => {
+describe('[AC2][P0] listPlayersFn server function — src/server-fns/admin-players.ts', () => {
   it('[1.6-INT-009] listPlayersFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/listPlayersFn\s*=\s*createServerFn/)
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toMatch(/listPlayersFn\s*=\s*createServerFn/)
   })
 
   it('[1.6-INT-010] listPlayersFn uses .middleware([adminMiddleware]) — enforces admin-only access (coupled chain)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // listPlayersFn and .middleware([adminMiddleware]) must be in the same call chain
-    expect(adminRoute).toMatch(/listPlayersFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    expect(adminPlayers).toMatch(/listPlayersFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[1.6-INT-011] listPlayersFn uses GET method (loader pattern — returns data directly, no ServerResult wrapper)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // method: 'GET' must be coupled with listPlayersFn declaration
-    expect(adminRoute).toMatch(/listPlayersFn[\s\S]{0,200}method:\s*['"]GET['"]/)
+    expect(adminPlayers).toMatch(/listPlayersFn[\s\S]{0,200}method:\s*['"]GET['"]/)
   })
 })
 
@@ -110,40 +110,40 @@ describe('[AC2][P0] listPlayersFn server function — src/routes/admin/index.tsx
 // AC4 / AC5 — deletePlayerFn server function: src/routes/admin/index.tsx
 // ---------------------------------------------------------------------------
 
-describe('[AC4][AC5][P0] deletePlayerFn server function — src/routes/admin/index.tsx', () => {
+describe('[AC4][AC5][P0] deletePlayerFn server function — src/server-fns/admin-players.ts', () => {
   it('[1.6-INT-012] deletePlayerFn is assigned to createServerFn (same declaration)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/deletePlayerFn\s*=\s*createServerFn/)
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
+    expect(adminPlayers).toMatch(/deletePlayerFn\s*=\s*createServerFn/)
   })
 
   it('[1.6-INT-013] deletePlayerFn uses .middleware([adminMiddleware]) — enforces admin-only access (coupled chain)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // deletePlayerFn and .middleware([adminMiddleware]) must be in the same call chain
-    expect(adminRoute).toMatch(/deletePlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
+    expect(adminPlayers).toMatch(/deletePlayerFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[1.6-INT-014] deletePlayerFn uses POST method (mutation pattern — returns ServerResult)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // method: 'POST' must be coupled with deletePlayerFn declaration
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,200}method:\s*['"]POST['"]/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,200}method:\s*['"]POST['"]/)
   })
 
   it('[1.6-INT-015] deletePlayerFn has .inputValidator() with z.object (input validation — playerId required)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // .inputValidator and z.object must be coupled in the deletePlayerFn chain
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,600}\.inputValidator\(z\.object/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,600}\.inputValidator\(z\.object/)
   })
 
   it('[1.6-INT-016] deletePlayerFn self-delete guard returns FORBIDDEN error code (AC5 — server-side protection)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // FORBIDDEN must be coupled with deletePlayerFn handler — guard must be inside the function
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,800}FORBIDDEN/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,800}FORBIDDEN/)
   })
 
   it('[1.6-INT-017] deletePlayerFn self-delete guard compares playerId to session.playerId (coupled comparison)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // data.playerId and context.session.playerId must be compared in deletePlayerFn handler
-    expect(adminRoute).toMatch(/deletePlayerFn[\s\S]{0,800}data\.playerId[\s\S]{0,100}context\.session\.playerId/)
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,800}data\.playerId[\s\S]{0,100}context\.session\.playerId/)
   })
 })
 
@@ -153,19 +153,19 @@ describe('[AC4][AC5][P0] deletePlayerFn server function — src/routes/admin/ind
 
 describe('[AC2][AC3][P1] Player list UI — src/routes/admin/index.tsx', () => {
   it('[1.6-INT-018] admin page renders a "Joueurs" section for the player list (AC2)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/admin-players-section.tsx'), 'utf-8')
     expect(adminRoute).toContain('Joueurs')
   })
 
   it('[1.6-INT-019] player delete buttons use data-testid="delete-player-{id}" pattern (E2E selector contract)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/admin-players-section.tsx'), 'utf-8')
     // Template literal with player ID — required for E2E tests to target specific player rows
     expect(adminRoute).toMatch(/delete-player-\$\{[^}]*[Ii][Dd][^}]*\}/)
   })
 
   it('[1.6-INT-020] deletePlayerFn and listPlayersFn handlers use dynamic import for DB queries (import-protection)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
     // Dynamic import inside .handler() — prevents server-only code from leaking into client bundle
-    expect(adminRoute).toMatch(/import\(['"`][^'"]+db\/queries/)
+    expect(adminPlayers).toMatch(/import\(['"`][^'"]+db\/queries/)
   })
 })

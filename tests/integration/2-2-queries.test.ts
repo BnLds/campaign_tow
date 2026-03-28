@@ -149,80 +149,80 @@ describe('[AC2][P0] DB queries — getUnitsForArmy — src/db/queries.ts', () =>
 // AC1 / AC2 / AC3 — Server functions: admin route (Task 3)
 // ---------------------------------------------------------------------------
 
-describe('[AC1][AC2][AC3][P0] Server functions — src/routes/admin/index.tsx', () => {
+describe('[AC1][AC2][AC3][P0] Server functions — src/server-fns/admin-armies.ts', () => {
   it('[2.2-SFN-001] addUnitFn is assigned to createServerFn (Task 3.1)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/addUnitFn\s*=\s*createServerFn/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/addUnitFn\s*=\s*createServerFn/)
   })
 
   it('[2.2-SFN-002] addUnitFn uses .middleware([adminMiddleware]) — admin-only (AC3)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/addUnitFn\s*=\s*createServerFn[\s\S]{0,600}\.middleware\(\[adminMiddleware\]\)/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/addUnitFn\s*=\s*createServerFn[\s\S]{0,600}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[2.2-SFN-003] addUnitFn uses addUnitSchema as validator (coupled in same call chain)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/addUnitFn[\s\S]{0,800}addUnitSchema/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/addUnitFn[\s\S]{0,800}addUnitSchema/)
   })
 
   it('[2.2-SFN-004] addUnitFn uses dynamic import of insertUnit from queries (import-protection pattern)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
     // insertUnit destructured from dynamic import inside handler
-    expect(adminRoute).toMatch(/insertUnit[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    expect(adminArmies).toMatch(/insertUnit[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
   it('[2.2-SFN-005] updateSubProfileFn is assigned to createServerFn (Task 3.2)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/updateSubProfileFn\s*=\s*createServerFn/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/updateSubProfileFn\s*=\s*createServerFn/)
   })
 
   it('[2.2-SFN-006] updateSubProfileFn uses .middleware([adminMiddleware]) — admin-only (AC3)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/updateSubProfileFn\s*=\s*createServerFn[\s\S]{0,600}\.middleware\(\[adminMiddleware\]\)/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/updateSubProfileFn\s*=\s*createServerFn[\s\S]{0,600}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[2.2-SFN-007] updateSubProfileFn uses updateSubProfileSchema as validator (coupled in same call chain)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/updateSubProfileFn[\s\S]{0,800}updateSubProfileSchema/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/updateSubProfileFn[\s\S]{0,800}updateSubProfileSchema/)
   })
 
   it('[2.2-SFN-008] updateSubProfileFn uses dynamic import of updateSubProfileStats from queries', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/updateSubProfileStats[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/updateSubProfileStats[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
   it('[2.2-SFN-009] updateSubProfileFn returns NOT_FOUND when updateSubProfileStats returns false (Task 3.2)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
     // NOT_FOUND must be inside the updateSubProfileFn handler
-    expect(adminRoute).toMatch(/updateSubProfileFn[\s\S]{0,1200}NOT_FOUND/)
+    expect(adminArmies).toMatch(/updateSubProfileFn[\s\S]{0,1200}NOT_FOUND/)
   })
 
   it('[2.2-SFN-010] addUnitFn catches FK violation and returns NOT_FOUND with French message (Task 3.1)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
     // NOT_FOUND and French army message must appear in addUnitFn handler
-    expect(adminRoute).toMatch(/addUnitFn[\s\S]{0,1500}NOT_FOUND/)
-    expect(adminRoute).toMatch(/addUnitFn[\s\S]{0,1500}Arm[eé]e introuvable/)
+    expect(adminArmies).toMatch(/addUnitFn[\s\S]{0,1500}NOT_FOUND/)
+    expect(adminArmies).toMatch(/addUnitFn[\s\S]{0,1500}Arm[eé]e introuvable/)
   })
 
   it('[2.2-SFN-011] getArmyUnitsFn is assigned to createServerFn (Task 3.3)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/getArmyUnitsFn\s*=\s*createServerFn/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/getArmyUnitsFn\s*=\s*createServerFn/)
   })
 
   it('[2.2-SFN-012] getArmyUnitsFn uses .middleware([adminMiddleware]) — admin-only (AC3)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/getArmyUnitsFn\s*=\s*createServerFn[\s\S]{0,600}\.middleware\(\[adminMiddleware\]\)/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/getArmyUnitsFn\s*=\s*createServerFn[\s\S]{0,600}\.middleware\(\[adminMiddleware\]\)/)
   })
 
   it('[2.2-SFN-013] getArmyUnitsFn uses dynamic import of getUnitsForArmy from queries (Task 3.4)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/getUnitsForArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
+    expect(adminArmies).toMatch(/getUnitsForArmy[\s\S]{0,300}import\(['"][\s\S]{0,80}queries['"]/)
   })
 
-  it('[2.2-SFN-014] all new server functions use dynamic imports — no top-level db import in route file (Task 3.4)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+  it('[2.2-SFN-014] all new server functions use dynamic imports — no top-level db import in server-fns file (Task 3.4)', () => {
+    const adminArmies = readFileSync(resolve(root, 'src/server-fns/admin-armies.ts'), 'utf-8')
     // Must NOT have a top-level static import from db/queries for the new functions
-    expect(adminRoute).not.toMatch(/^import\s+\{[^}]*(insertUnit|updateSubProfileStats|getUnitsForArmy)[^}]*\}\s*from/m)
+    expect(adminArmies).not.toMatch(/^import\s+\{[^}]*(insertUnit|updateSubProfileStats|getUnitsForArmy)[^}]*\}\s*from/m)
   })
 })
 

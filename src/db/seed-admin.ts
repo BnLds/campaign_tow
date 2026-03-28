@@ -26,7 +26,6 @@ async function seedAdmin() {
   await db.insert(players).values({
     username: ADMIN_USERNAME,
     passwordHash,
-    displayName: ADMIN_USERNAME,
     isAdmin: true,
   })
 

@@ -105,7 +105,7 @@ function ArmiesListView() {
                 id={army.id}
                 name={army.name}
                 faction={army.faction}
-                playerDisplayName={army.playerDisplayName ?? null}
+                playerUsername={army.playerUsername ?? null}
                 record={army.record}
                 isOwn={isOwn}
               />

@@ -3,14 +3,16 @@
 // Server functions: loadPostMatchDataFn, submitUnitXpFn, completeEvolutionsWithGainsFn
 
 import { createFileRoute, useRouter, Link, redirect } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
 import { submitInitialXpSchema, loadPostMatchDataSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
 import type { ConsequenceEntry } from '../../../lib/validators'
 import { PostMatchWizard } from '../../../components/post-match-wizard'
 import type { ServerResult } from '../../../lib/types'
+import { invalidateArmyState } from '../../../lib/invalidation-helpers'
 
 // ---------------------------------------------------------------------------
 // Loader data type
@@ -23,8 +25,10 @@ type PostMatchLoaderData = {
   matchParticipantId: string
   opponentPlayerName: string
   mode: 'post-match' | 'initial-xp'
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: Array<{description: string; type: string}>; commandement: number; effectiveStats: Record<string, number | null> }>
   campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
+  catchupBonusXp: number
+  catchupDeltaXp: number
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +42,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo, getArmyXpAndPointsTotalsBatch } = await import('../../../db/queries')
 
     // Load drizzle deps before round 1 (needed for match type + opponent query)
     const [
@@ -60,7 +64,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       getPlayerArmy(context.session.playerId),
       getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId),
       db
-        .select({ playerName: oppPlayerAlias.displayName })
+        .select({ playerName: oppPlayerAlias.username, oppArmyId: oppParticipant.armyId })
         .from(oppParticipant)
         .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
         .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
@@ -85,9 +89,10 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     const opponentPlayerName = matchType === 'initial_setup' ? '' : (oppRows[0]?.playerName ?? 'Adversaire')
 
     // Check re-entry eligibility: only the army's latest match can be re-entered
+    // Skip for initial_setup — it's a one-off match whose 1993 date is always excluded by the gte filter
     const isReentry = participant.evolutionsEnteredAt !== null
-    if (isReentry) {
-      const latestMatchId = await getLatestMatchIdForArmy(army.id)
+    if (isReentry && matchType !== 'initial_setup') {
+      const latestMatchId = await getLatestMatchIdForArmy(army.id, army.initialXpCompletedAt)
       if (data.matchId !== latestMatchId) {
         return {
           alreadyCompleted: true,
@@ -97,11 +102,38 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
           opponentPlayerName,
           mode,
           units: [],
+          catchupBonusXp: 0,
+          catchupDeltaXp: 0,
         }
       }
     }
     // Returns all army units (no per-match composition tracking exists yet).
     // The player enters 0 XP for units that didn't participate.
+
+    // Compute catchup bonus XP from live army totals
+    const oppArmyId = oppRows[0]?.oppArmyId ?? null
+    const catchupArmyIds = [army.id, ...(oppArmyId ? [oppArmyId] : [])]
+    const totalsMap = await getArmyXpAndPointsTotalsBatch(catchupArmyIds)
+    const playerTotal = totalsMap.get(army.id) ?? { totalXp: 0, totalPoints: 0 }
+    const opponentTotal = oppArmyId ? (totalsMap.get(oppArmyId) ?? { totalXp: 0, totalPoints: 0 }) : { totalXp: 0, totalPoints: 0 }
+    const catchupDeltaXp = mode === 'initial-xp' ? 0 : Math.max(0, opponentTotal.totalXp - playerTotal.totalXp)
+    const catchupBonusXp = Math.floor(catchupDeltaXp / 10)
+
+    // Reentry: restore persisted bonusXp instead of live-computed value
+    let finalCatchupBonusXp = catchupBonusXp
+    let finalCatchupDeltaXp = catchupDeltaXp
+    if (isReentry) {
+      const participantRows = await db
+        .select({ bonusXp: mpTable.bonusXp })
+        .from(mpTable)
+        .where(dbEq(mpTable.id, participant.id))
+        .limit(1)
+      const persistedBonus = participantRows[0]?.bonusXp
+      if (persistedBonus != null) {
+        finalCatchupBonusXp = persistedBonus
+        finalCatchupDeltaXp = 0
+      }
+    }
 
     // Round 2 (parallel): units + xp entries
     const [unitsRaw, existingEntries] = await Promise.all([
@@ -117,10 +149,10 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       ? await getUnitDeltas(unitIds)
       : { statModifiers: [], unitGains: [] }
     const historicalGains = allExistingGains.filter((g) => g.matchParticipantId !== participant.id)
-    const gainsByUnit = new Map<string, string[]>()
+    const gainsByUnit = new Map<string, Array<{description: string; type: string}>>()
     for (const g of historicalGains) {
       const arr = gainsByUnit.get(g.unitId) ?? []
-      arr.push(g.description)
+      arr.push({ description: g.description, type: g.type })
       gainsByUnit.set(g.unitId, arr)
     }
     // Group stat modifiers by unit
@@ -139,7 +171,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       const riderProfile = u.subProfiles.find((sp) => !sp.isMount) ?? u.subProfiles[0]
       if (!riderProfile) {
         return {
-          id: u.id, name: u.name, type: u.type, xp: u.xp,
+          id: u.id, name: u.name, nickname: u.nickname, type: u.type, xp: u.xp,
           previousXpGained: entryMap.get(u.id)?.xpGained ?? null,
           previousDerouteXpLost: entryMap.get(u.id)?.derouteXpLost ?? 0,
           hasMount: false, existingGains: unitGains, commandement: 0,
@@ -147,7 +179,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
         }
       }
       const baseCd = riderProfile.cd ? parseInt(riderProfile.cd, 10) : 0
-      const cdGains = unitGains.filter((g) => /^\+\d+ Commandement/i.test(g)).length
+      const cdGains = unitGains.filter((g) => /^\+\d+ Commandement/i.test(g.description)).length
 
       // Compute effectiveStats: base numeric stats + stat_modifiers + historical gains
       const STAT_KEYS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as const
@@ -171,8 +203,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       }
 
       // Apply historical gain deltas
-      for (const gainDesc of unitGains) {
-        const parsed = parseGainStat(gainDesc)
+      for (const gain of unitGains) {
+        const parsed = parseGainStat(gain.description)
         if (parsed && baseStats[parsed.stat] != null) {
           baseStats[parsed.stat] = (baseStats[parsed.stat] as number) + parsed.delta
         }
@@ -181,6 +213,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       return {
         id: u.id,
         name: u.name,
+        nickname: u.nickname,
         type: u.type,
         xp: u.xp,
         previousXpGained: entryMap.get(u.id)?.xpGained ?? null,
@@ -197,7 +230,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       const allPlayers = await getAllPlayersWithArmyInfo()
       campaignPlayers = allPlayers
         .filter((p) => p.playerId !== context.session.playerId)
-        .map((p) => ({ playerId: p.playerId, playerDisplayName: p.displayName }))
+        .map((p) => ({ playerId: p.playerId, playerDisplayName: p.username }))
     }
 
     return {
@@ -209,6 +242,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       mode,
       units,
       campaignPlayers,
+      catchupBonusXp: finalCatchupBonusXp,
+      catchupDeltaXp: finalCatchupDeltaXp,
     }
   })
 
@@ -226,7 +261,7 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
     const { getPlayerArmy, getUnitById, getMatchParticipantArmyId, upsertMatchXpEntryWithIncrement } = await import('../../../db/queries')
 
     // Server-side gate: look up matchType to enforce max 99 XP for standard matches
-    const [{ db }, { matches: matchesTable, matchParticipants: mpTable }, { eq: dbEq }] = await Promise.all([
+    const [{ db }, { matches: matchesTable, matchParticipants: mpTable }, { eq: dbEq, and: dbAnd, isNull: dbIsNull }] = await Promise.all([
       import('../../../db/index'),
       import('../../../db/schema'),
       import('drizzle-orm'),
@@ -238,8 +273,8 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
       .where(dbEq(mpTable.id, data.matchParticipantId))
       .limit(1)
     const matchType = matchRows[0]?.matchType ?? 'standard'
-    if (matchType === 'standard' && data.xpGained > 99) {
-      return { success: false, error: { code: 'VALIDATION_ERROR', message: 'XP maximum 99 pour une partie standard' } }
+    if (matchType === 'standard' && data.xpGained > 200) {
+      return { success: false, error: { code: 'VALIDATION_ERROR', message: 'XP maximum 200 pour une partie standard' } }
     }
 
     const army = await getPlayerArmy(context.session.playerId)
@@ -255,6 +290,10 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
       return { success: false, error: { code: 'FORBIDDEN', message: "Cette unité n'appartient pas à votre armée" } }
     }
     const { newUnitXp } = await upsertMatchXpEntryWithIncrement(data.matchParticipantId, data.unitId, data.xpGained, data.derouteXpLost)
+    // Persist bonusXp on first unit submission (idempotent: WHERE bonus_xp IS NULL)
+    if (data.bonusXp != null) {
+      await db.update(mpTable).set({ bonusXp: data.bonusXp }).where(dbAnd(dbEq(mpTable.id, data.matchParticipantId), dbIsNull(mpTable.bonusXp)))
+    }
     return { success: true, data: { unitId: data.unitId, newXp: newUnitXp } }
   })
 
@@ -291,9 +330,20 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
     if (data.matchParticipantId !== participant.id) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Participant invalide' } }
     }
+    // Load matchType server-side (do not trust client input) for initial_setup flag handling
+    const { db: dbInst } = await import('../../../db/index')
+    const { matches: matchesTable } = await import('../../../db/schema')
+    const { eq: dbEqFn } = await import('drizzle-orm')
+    const matchTypeRows = await dbInst
+      .select({ matchType: matchesTable.matchType })
+      .from(matchesTable)
+      .where(dbEqFn(matchesTable.id, data.matchId))
+      .limit(1)
+    const resolvedMatchType = matchTypeRows[0]?.matchType ?? 'standard'
     // Re-entry guard: only the army's latest match can be re-entered
-    if (participant.evolutionsEnteredAt !== null) {
-      const latestMatchId = await getLatestMatchIdForArmy(army.id)
+    // Skip for initial_setup — it's a one-off match whose 1993 date is always excluded by the gte filter
+    if (participant.evolutionsEnteredAt !== null && resolvedMatchType !== 'initial_setup') {
+      const latestMatchId = await getLatestMatchIdForArmy(army.id, army.initialXpCompletedAt)
       if (data.matchId !== latestMatchId) {
         return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la dernière partie peut être modifiée' } }
       }
@@ -312,16 +362,6 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
         return { success: false, error: { code: 'FORBIDDEN', message: "Une unité des conséquences n'appartient pas à votre armée" } }
       }
     }
-    // Load matchType server-side (do not trust client input) for initial_setup flag handling
-    const { db: dbInst } = await import('../../../db/index')
-    const { matches: matchesTable } = await import('../../../db/schema')
-    const { eq: dbEqFn } = await import('drizzle-orm')
-    const matchTypeRows = await dbInst
-      .select({ matchType: matchesTable.matchType })
-      .from(matchesTable)
-      .where(dbEqFn(matchesTable.id, data.matchId))
-      .limit(1)
-    const resolvedMatchType = matchTypeRows[0]?.matchType ?? 'standard'
 
     // Story 4.3: pass consequences, armyId, championKilledIds for full post-match processing
     try {
@@ -330,10 +370,23 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
       if (err instanceof Error && err.message === 'NOT_LATEST_MATCH') {
         return { success: false, error: { code: 'FORBIDDEN', message: 'Seule la dernière partie peut être modifiée' } }
       }
-      throw err
+      return { success: false, error: { code: 'SERVER_ERROR', message: 'Une erreur inattendue est survenue. Veuillez réessayer.' } }
     }
     return { success: true, data: { matchId: data.matchId } }
   })
+
+// ---------------------------------------------------------------------------
+// Error boundary for PostMatchWizard
+// ---------------------------------------------------------------------------
+
+class PostMatchErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  render() {
+    if (this.state.error) return <div style={{ padding: '2rem', textAlign: 'center' }}><h2>Une erreur est survenue</h2><p>{this.state.error.message}</p><button onClick={() => this.setState({ error: null })}>Réessayer</button></div>
+    return this.props.children
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Route definition
@@ -355,6 +408,7 @@ function PostMatchRoute() {
   const { alreadyCompleted, reentry: _reentry, matchId, matchParticipantId, opponentPlayerName, mode, units, campaignPlayers } = loaderData as PostMatchLoaderData
   const hydrated = useHydrated()
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (hydrated) {
@@ -389,12 +443,12 @@ function PostMatchRoute() {
   }
 
   const handleComplete = async () => {
-    await router.invalidate({ filter: (d) => d.routeId === '/' })
+    await invalidateArmyState(queryClient, router)
     await router.navigate({ to: '/' })
   }
 
-  const handleSubmitUnitXp = async (unitId: string, xpGained: number, mParticipantId: string, derouteXpLost?: number) => {
-    return submitUnitXpFn({ data: { matchParticipantId: mParticipantId, unitId, xpGained, derouteXpLost: derouteXpLost ?? 0 } })
+  const handleSubmitUnitXp = async (unitId: string, xpGained: number, mParticipantId: string, derouteXpLost?: number, bonusXpParam?: number) => {
+    return submitUnitXpFn({ data: { matchParticipantId: mParticipantId, unitId, xpGained, derouteXpLost: derouteXpLost ?? 0, bonusXp: bonusXpParam } })
   }
 
   const handleCompleteEvolutions = async (
@@ -409,18 +463,22 @@ function PostMatchRoute() {
 
   return (
     <main style={{ padding: '1rem', maxWidth: '480px', margin: '0 auto' }}>
-      <PostMatchWizard
-        matchId={matchId}
-        matchParticipantId={matchParticipantId}
-        opponentPlayerName={opponentPlayerName}
-        mode={mode}
-        units={units}
-        campaignPlayers={campaignPlayers}
-        onComplete={handleComplete}
-        onCancel={handleComplete}
-        onSubmitUnitXp={handleSubmitUnitXp}
-        onCompleteEvolutions={handleCompleteEvolutions}
-      />
+      <PostMatchErrorBoundary>
+        <PostMatchWizard
+          matchId={matchId}
+          matchParticipantId={matchParticipantId}
+          opponentPlayerName={opponentPlayerName}
+          mode={mode}
+          units={units}
+          campaignPlayers={campaignPlayers}
+          catchupBonusXp={loaderData.catchupBonusXp}
+          catchupDeltaXp={loaderData.catchupDeltaXp}
+          onComplete={handleComplete}
+          onCancel={handleComplete}
+          onSubmitUnitXp={handleSubmitUnitXp}
+          onCompleteEvolutions={handleCompleteEvolutions}
+        />
+      </PostMatchErrorBoundary>
     </main>
   )
 }

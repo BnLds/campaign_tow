@@ -3,6 +3,7 @@
 // Active state determined by currentPath prop
 
 import { Link } from '@tanstack/react-router'
+import { TAB_BAR_HEIGHT } from '../lib/layout-constants'
 
 interface TabBarProps {
   currentPath: string
@@ -16,8 +17,9 @@ export function TabBar({ currentPath }: TabBarProps) {
   const containerStyle: React.CSSProperties = {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr 1fr',
-    height: 58,
+    height: TAB_BAR_HEIGHT,
     flexShrink: 0,
+    // TODO: extract to CSS variable when design tokens support rgba()
     backgroundColor: 'rgba(236,228,216,0.96)',
     borderTop: '1px solid #d2c3af',
     backdropFilter: 'blur(12px)',

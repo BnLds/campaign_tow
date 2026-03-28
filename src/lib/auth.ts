@@ -14,7 +14,7 @@ const SESSION_DURATION_DAYS = 30
 export type SessionData = {
   playerId: string
   isAdmin: boolean
-  displayName: string
+  username: string
   isGuest: boolean
 }
 
@@ -30,7 +30,7 @@ export async function getSession(): Promise<SessionData | null> {
       expiresAt: sessions.expiresAt,
       isAdmin: players.isAdmin,
       isGuest: players.isGuest,
-      displayName: players.displayName,
+      username: players.username,
     })
     .from(sessions)
     .innerJoin(players, eq(sessions.playerId, players.id))
@@ -44,7 +44,7 @@ export async function getSession(): Promise<SessionData | null> {
     playerId: row.playerId,
     isAdmin: row.isAdmin,
     isGuest: row.isGuest,
-    displayName: row.displayName,
+    username: row.username,
   }
 }
 

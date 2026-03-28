@@ -22,6 +22,7 @@ export const getPlayerArmyInfoFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ playerId: z.string() }))
   .handler(async ({ context, data: { playerId } }) => {
+    if (!context.session) throw new Error('UNAUTHORIZED')
     if (context.session.isGuest || context.session.playerId !== playerId) {
       return { army: null, record: null }
     }
@@ -30,7 +31,7 @@ export const getPlayerArmyInfoFn = createServerFn({ method: 'GET' })
     if (!army) return { army: null, record: null }
     const record = await getArmyRecord(army.id)
     return {
-      army: { id: army.id, name: army.name, faction: army.faction },
+      army: { id: army.id, name: army.name, faction: army.faction, initialXpCompleted: !!army.initialXpCompletedAt },
       record,
     }
   })

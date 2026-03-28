@@ -17,6 +17,7 @@ export interface TierUpStepProps {
   majorCount: number
   minorCount: number
   unitName: string
+  unitNickname?: string | null
   onConfirm: (result: { descriptions: string[] }) => void
   isMounted?: boolean
   /** Button label override for the last step (default: 'Confirmer') */
@@ -38,6 +39,7 @@ export function TierUpStep({
   majorCount,
   minorCount,
   unitName,
+  unitNickname,
   onConfirm,
   isMounted,
   confirmLabel = 'Confirmer',
@@ -315,7 +317,7 @@ export function TierUpStep({
             margin: 0,
           }}
         >
-          {unitName}
+          {unitNickname ? `${unitNickname}, ${unitName}` : unitName}
         </p>
       </div>
 
