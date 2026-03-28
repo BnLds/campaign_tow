@@ -87,3 +87,55 @@ describe('TimelineEntry — bouton "Passer l\'XP initiale"', () => {
     expect(onSkip).toHaveBeenCalledOnce()
   })
 })
+
+describe('TimelineEntry — état skippé (initialXpSkipped)', () => {
+  const skippedProps = {
+    ...baseProps,
+    matchType: 'initial_setup' as const,
+    isEditable: true,
+    initialXpSkipped: true,
+  }
+
+  it('affiche le message "Pas d\'xp initiale, c\'est une nouvelle armée !"', () => {
+    render(<TimelineEntry {...skippedProps} />)
+    expect(screen.getByText(/Pas d'xp initiale, c'est une nouvelle armée/)).toBeInTheDocument()
+  })
+
+  it("n'affiche PAS le bouton \"Au rapport !\"", () => {
+    render(
+      <TimelineEntry
+        {...skippedProps}
+        onEvolutionStart={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('evolution-start')).toBeNull()
+  })
+
+  it("n'affiche PAS le bouton \"Passer l'XP initiale\"", () => {
+    render(<TimelineEntry {...skippedProps} />)
+    expect(screen.queryByTestId('skip-initial-xp')).toBeNull()
+  })
+
+  it('affiche le lien "Modifier" en haut à droite quand isEditable et onEvolutionStart fourni', () => {
+    render(
+      <TimelineEntry
+        {...skippedProps}
+        onEvolutionStart={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('modify-result')).toBeInTheDocument()
+    expect(screen.getByTestId('modify-result')).toHaveTextContent('Modifier')
+  })
+
+  it('appelle onEvolutionStart au clic sur "Modifier"', async () => {
+    const onEvolutionStart = vi.fn()
+    render(
+      <TimelineEntry
+        {...skippedProps}
+        onEvolutionStart={onEvolutionStart}
+      />
+    )
+    await userEvent.click(screen.getByTestId('modify-result'))
+    expect(onEvolutionStart).toHaveBeenCalledWith('match-1')
+  })
+})

@@ -23,6 +23,7 @@ export type TimelineEntryProps = {
   onPostMatchReentry?: (matchId: string) => void
   onDelete?: (matchId: string) => void
   onSkipInitialXp?: () => void
+  initialXpSkipped?: boolean
   unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: Array<{ description: string; type: string }>; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
   armyTotals?: {
     playerXp: number
@@ -95,6 +96,7 @@ export function TimelineEntry({
   onPostMatchReentry,
   onDelete,
   onSkipInitialXp,
+  initialXpSkipped = false,
   unitXpEntries,
   armyTotals,
 }: TimelineEntryProps) {
@@ -241,6 +243,42 @@ export function TimelineEntry({
                 setIsSelecting(true)
                 setSubmitError(null)
               }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.75rem',
+                color: 'var(--color-text-secondary)',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              Modifier
+            </button>
+          )}
+          {isEditable && isInitialSetup && initialXpSkipped && !hasEvolutions && onEvolutionStart && (
+            <button
+              data-testid="modify-result"
+              onClick={() => onEvolutionStart(matchId)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.75rem',
+                color: 'var(--color-text-secondary)',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
+            >
+              Modifier
+            </button>
+          )}
+          {isEditable && isInitialSetup && hasEvolutions && isLatestMatch && onPostMatchReentry && (
+            <button
+              data-testid="modify-result"
+              onClick={() => onPostMatchReentry(matchId)}
               style={{
                 background: 'none',
                 border: 'none',
@@ -449,8 +487,23 @@ export function TimelineEntry({
         ) : null
       })()}
 
+      {/* Message for skipped initial XP */}
+      {isInitialSetup && initialXpSkipped && !hasEvolutions && (
+        <p
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.8125rem',
+            color: 'var(--color-text-secondary)',
+            fontStyle: 'italic',
+            margin: '0.25rem 0 0',
+          }}
+        >
+          Pas d&apos;xp initiale, c&apos;est une nouvelle armée !
+        </p>
+      )}
+
       {/* "Au rapport !" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
-      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && onEvolutionStart && (
+      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && onEvolutionStart && (
         <button
           type="button"
           data-testid="evolution-start"
@@ -502,7 +555,7 @@ export function TimelineEntry({
 
       {/* "Modifier le dernier rapport" — shown on latest match with completed post-match.
            For standard matches: only after clicking "Modifier". For initial_setup: always visible. */}
-      {isEditable && (result !== null || isInitialSetup) && hasEvolutions && isLatestMatch && (isSelecting || isInitialSetup) && onPostMatchReentry && (
+      {isEditable && !isInitialSetup && result !== null && hasEvolutions && isLatestMatch && isSelecting && onPostMatchReentry && (
         <button
           type="button"
           data-testid="post-match-reentry"

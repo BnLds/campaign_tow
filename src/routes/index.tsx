@@ -80,27 +80,17 @@ const skipInitialXpFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getInitialSetupMatchForArmy } = await import('../db/queries')
+    const { getPlayerArmy } = await import('../db/queries')
     const { db } = await import('../db/index')
-    const { armies: armiesTable, matches: matchesTable, matchParticipants: mpTable } = await import('../db/schema')
-    const { eq: dbEq, and: dbAnd } = await import('drizzle-orm')
+    const { armies: armiesTable } = await import('../db/schema')
+    const { eq: dbEq } = await import('drizzle-orm')
 
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
     }
 
-    await db.transaction(async (tx) => {
-      // Set initialXpCompletedAt timestamp
-      await tx.update(armiesTable).set({ initialXpCompletedAt: new Date() }).where(dbEq(armiesTable.id, army.id))
-
-      // Delete incomplete initial_setup match if it exists
-      const existing = await getInitialSetupMatchForArmy(army.id)
-      if (existing && existing.evolutionsEnteredAt === null) {
-        await tx.delete(mpTable).where(dbEq(mpTable.matchId, existing.matchId))
-        await tx.delete(matchesTable).where(dbAnd(dbEq(matchesTable.id, existing.matchId), dbEq(matchesTable.matchType, 'initial_setup')))
-      }
-    })
+    await db.update(armiesTable).set({ initialXpCompletedAt: new Date() }).where(dbEq(armiesTable.id, army.id))
 
     return { success: true, data: undefined }
   })
@@ -465,7 +455,8 @@ function CampaignView() {
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}
                       onPostMatchReentry={handlePostMatchReentry}
-                      onSkipInitialXp={entry.matchType === 'initial_setup' ? handleSkipInitialXp : undefined}
+                      initialXpSkipped={entry.matchType === 'initial_setup' && !!army.initialXpCompletedAt && !entry.hasEvolutions}
+                      onSkipInitialXp={entry.matchType === 'initial_setup' && !army.initialXpCompletedAt ? handleSkipInitialXp : undefined}
                       onDelete={!entry.hasEvolutions ? (matchId) => {
                         const opponent = entry.opponent
                         const opponentName = opponent?.name ?? opponent?.playerName ?? 'Adversaire'
