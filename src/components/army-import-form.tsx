@@ -63,7 +63,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
           marginBottom: '0.75rem',
         }}
       >
-        Collez ici l'export de votre armée depuis Old World Builder
+        Dans Old World Builder, ouvrez la fenêtre d'export et cochez l'option «&nbsp;<strong>Afficher les caractéristiques</strong>&nbsp;», puis collez le résultat ici.
       </p>
 
       <form.Field name="owbText">
@@ -75,7 +75,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
               onChange={(e) => field.handleChange(e.target.value)}
               onBlur={field.handleBlur}
               disabled={mutation.isPending}
-              placeholder="Collez ici l'export de votre armée depuis Old World Builder..."
+              placeholder="Collez ici l'export OWB (avec caractéristiques)..."
               rows={6}
               maxLength={50000}
               style={{
