@@ -203,6 +203,7 @@ export function PhaseTierUp({
         majorCount={currentTierUp.majorCount}
         minorCount={currentTierUp.minorCount}
         unitName={currentTierUp.unitName}
+        unitNickname={currentTierUp.unitNickname}
         isMounted={currentTierUp.hasMount}
         confirmLabel={isLastStep ? 'Terminer' : 'Suivant'}
         disabledImprovementIds={disabledIds}

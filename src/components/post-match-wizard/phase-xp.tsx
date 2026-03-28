@@ -180,7 +180,7 @@ export function PhaseXp({
             margin: '0 0 0.25rem',
           }}
         >
-          {unit.name}
+          {unit.nickname ? `${unit.nickname}, ${unit.name}` : unit.name}
         </p>
         <p
           style={{

@@ -171,7 +171,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       const riderProfile = u.subProfiles.find((sp) => !sp.isMount) ?? u.subProfiles[0]
       if (!riderProfile) {
         return {
-          id: u.id, name: u.name, type: u.type, xp: u.xp,
+          id: u.id, name: u.name, nickname: u.nickname, type: u.type, xp: u.xp,
           previousXpGained: entryMap.get(u.id)?.xpGained ?? null,
           previousDerouteXpLost: entryMap.get(u.id)?.derouteXpLost ?? 0,
           hasMount: false, existingGains: unitGains, commandement: 0,
@@ -213,6 +213,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       return {
         id: u.id,
         name: u.name,
+        nickname: u.nickname,
         type: u.type,
         xp: u.xp,
         previousXpGained: entryMap.get(u.id)?.xpGained ?? null,

@@ -23,6 +23,7 @@ export type ExtendedDestructionResult = DestructionResult & { xpLostAmount?: num
 export type TierUpQueueEntry = ThresholdEntry & {
   unitId: string
   unitName: string
+  unitNickname?: string | null
   unitType: string
   hasMount: boolean  // defaults to false when not provided
   commandement: number  // current CD value for constraint checks
@@ -38,6 +39,7 @@ export type FlaggedUnit = {
 export type WizardUnit = {
   id: string
   name: string
+  nickname?: string | null
   type: string
   xp: number
   previousXpGained?: number | null

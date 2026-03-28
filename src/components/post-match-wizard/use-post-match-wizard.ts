@@ -393,6 +393,7 @@ export function usePostMatchWizard({
           minorCount: 1,
           unitId: currentTierUp.unitId,
           unitName: currentTierUp.unitName,
+          unitNickname: currentTierUp.unitNickname,
           unitType: currentTierUp.unitType,
           hasMount: currentTierUp.hasMount,
           commandement: currentTierUp.commandement,

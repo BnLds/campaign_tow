@@ -86,6 +86,7 @@ export function buildTierUpQueue(
         minorImprovements: isHonour ? filteredMinor : crossing.minorImprovements,
         unitId: unit.id,
         unitName: unit.name,
+        unitNickname: unit.nickname,
         unitType: unit.type,
         hasMount: unit.hasMount ?? false,
         commandement: unit.commandement ?? 0,
