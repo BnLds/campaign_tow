@@ -327,13 +327,13 @@ describe('[AC4][P1] TimelineEntry — compact XP line display (Story 4-1b)', () 
     expect(screen.queryByText('B')).toBeNull()
   })
 
-  it('[4.1b-TLE-007] XP line uses small font (0.75rem) and secondary text color', () => {
+  it('[4.1b-TLE-007] XP line uses small font (0.75rem or text-xs) and secondary text color', () => {
     const { readFileSync } = require('node:fs')
     const { resolve: resolvePath } = require('node:path')
     const filePath = resolvePath(__dirname, '..', 'timeline-entry.tsx')
     const code = readFileSync(filePath, 'utf-8')
-    // The XP line element should use 0.75rem and the secondary text color token
-    expect(code).toMatch(/0\.75rem/)
+    // The XP line element should use 0.75rem (or Tailwind text-xs) and the secondary text color token
+    expect(code).toMatch(/0\.75rem|text-xs/)
     expect(code).toMatch(/text-secondary|#6b5f52|color-secondary/)
   })
 })
@@ -360,12 +360,12 @@ describe('[AC4][P1] TimelineEntry — source contract for unitXpEntries (Story 4
     expect(code).toMatch(/unitXpEntries\?/)
   })
 
-  it('[4.1b-TLE-010] timeline-entry.tsx renders one line per unit (flex-direction column)', () => {
+  it('[4.1b-TLE-010] timeline-entry.tsx renders one line per unit (flex column layout)', () => {
     const { readFileSync } = require('node:fs')
     const { resolve: resolvePath } = require('node:path')
     const filePath = resolvePath(__dirname, '..', 'timeline-entry.tsx')
     const code = readFileSync(filePath, 'utf-8')
-    // Uses flex column layout for per-unit display
-    expect(code).toMatch(/flexDirection.*column/)
+    // Uses flex column layout for per-unit display (Tailwind: flex-col)
+    expect(code).toMatch(/flex.col|flexDirection.*column/)
   })
 })
