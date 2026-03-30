@@ -1,1 +1,0 @@
-ALTER TABLE "unit_gains" DROP COLUMN "active";

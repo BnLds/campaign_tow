@@ -1,2 +1,0 @@
-ALTER TABLE "stat_modifiers" ADD COLUMN "match_participant_id" text;--> statement-breakpoint
-ALTER TABLE "stat_modifiers" ADD CONSTRAINT "stat_modifiers_match_participant_id_match_participants_id_fk" FOREIGN KEY ("match_participant_id") REFERENCES "public"."match_participants"("id") ON DELETE set null ON UPDATE no action;
