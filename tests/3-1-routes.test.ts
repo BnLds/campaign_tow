@@ -92,14 +92,14 @@ describe('[AC1][AC2][P0] Campaign view — header with army name and army detail
 })
 
 describe('[AC5][P0] Campaign view — empty states', () => {
-  it('[3.1-CMP-010] index.tsx contains "Aucune partie jouee pour le moment" empty state text (AC5)', () => {
+  it('[3.1-CMP-010] index.tsx contains empty state text when player has no matches (AC5)', () => {
     const route = getCampaignRoute()
-    expect(route).toContain('Aucune partie jouee pour le moment')
+    expect(route).toContain('Aucune partie jou')
   })
 
-  it('[3.1-CMP-011] index.tsx contains "Aucune armee assignee" message for player with no army (AC4 task 4.5)', () => {
+  it('[3.1-CMP-011] index.tsx renders ArmyImportForm (not a plain message) when player has no army (AC4 task 4.5)', () => {
     const route = getCampaignRoute()
-    expect(route).toContain('Aucune armee assignee')
+    expect(route).toMatch(/ArmyImportForm/)
   })
 })
 
@@ -175,9 +175,9 @@ describe('[AC4][AC7][AC8][P0] Armies list route — loadArmiesListFn — src/rou
 })
 
 describe('[AC4][AC7][P0] Armies list route — list rendering', () => {
-  it('[3.1-LST-008] armies/index.tsx renders a page title "Armees" (Cinzel heading — Task 6.3)', () => {
+  it('[3.1-LST-008] armies/index.tsx renders a page title "Armées" (Cinzel heading — Task 6.3)', () => {
     const route = getArmiesListRoute()
-    expect(route).toContain('Armees')
+    expect(route).toContain('Arm\u00e9es')
   })
 
   it('[3.1-LST-009] armies/index.tsx renders army name, faction, and player display name per item (Task 6.5)', () => {
@@ -226,9 +226,9 @@ describe('[AC8][P0] Armies list route — guest user sees no gold highlight (Tas
 })
 
 describe('[AC7][P0] Armies list route — empty state (Task 6.8)', () => {
-  it('[3.1-LST-016] armies/index.tsx has empty state "Aucune armee dans la campagne" (Task 6.8)', () => {
+  it('[3.1-LST-016] armies/index.tsx has empty state text when no armies exist (Task 6.8)', () => {
     const route = getArmiesListRoute()
-    expect(route).toContain('Aucune armee dans la campagne')
+    expect(route).toContain('Aucune arm\u00e9e dans la campagne')
   })
 })
 

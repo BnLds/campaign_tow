@@ -493,7 +493,7 @@ describe('[AC1][AC6][P0] completeEvolutionsWithGainsTransaction — deroute tier
 describe('[AC3][AC4][AC5][P0] Wizard — deroute XP loss (structural)', () => {
   it('[DS-WIZ-001] wizard deroute branch uses full tierLoss not capped at match gain', async () => {
     const { readFileSync } = await import('node:fs')
-    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    const code = readFileSync('src/components/post-match-wizard/use-post-match-wizard.ts', 'utf-8')
     // The old actualLoss = Math.min(tierLoss, currentXpGained) must NOT be present
     expect(code).not.toContain('Math.min(tierLoss')
     // tierLoss is passed to server via derouteXpLost; server applies GREATEST(0, ...) floor
@@ -502,20 +502,20 @@ describe('[AC3][AC4][AC5][P0] Wizard — deroute XP loss (structural)', () => {
 
   it('[DS-WIZ-002] wizard passes derouteXpLost to submitUnitXpFn (not adjusted xpGained)', async () => {
     const { readFileSync } = await import('node:fs')
-    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    const code = readFileSync('src/components/post-match-wizard/use-post-match-wizard.ts', 'utf-8')
     expect(code).toContain('derouteXpLost: tierLoss')
   })
 
   it('[DS-WIZ-003] preMatchXp calculation accounts for previousDerouteXpLost', async () => {
     const { readFileSync } = await import('node:fs')
-    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    const code = readFileSync('src/components/post-match-wizard/use-post-match-wizard.ts', 'utf-8')
     expect(code).toContain('previousDerouteXpLost')
     expect(code).toMatch(/previousXpGained.*previousDerouteXpLost|previousDerouteXpLost.*previousXpGained/)
   })
 
   it('[DS-WIZ-004] transitionToPhase2OrComplete contains AC12 invariant guard (throw, not console.assert)', async () => {
     const { readFileSync } = await import('node:fs')
-    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
+    const code = readFileSync('src/components/post-match-wizard/use-post-match-wizard.ts', 'utf-8')
     expect(code).toContain('AC12 invariant violated')
     expect(code).toMatch(/throw new Error.*AC12/)
     expect(code).not.toContain('console.assert')
@@ -523,9 +523,9 @@ describe('[AC3][AC4][AC5][P0] Wizard — deroute XP loss (structural)', () => {
 
   it('[DS-WIZ-005] xpResultsRef is updated with server-returned newXp (post-deroute) after deroute processing', async () => {
     const { readFileSync } = await import('node:fs')
-    const code = readFileSync('src/components/post-match-wizard.tsx', 'utf-8')
-    // xpResultsRef must use the authoritative server value (submitResult.data.newXp), not client-computed newTotalXp
-    expect(code).toMatch(/xpResultsRef\.current\.set\(currentFlaggedUnit\.id[\s\S]{0,100}submitResult\.data\.newXp/)
+    const code = readFileSync('src/components/post-match-wizard/use-post-match-wizard.ts', 'utf-8')
+    // acc.current.recordXp must use the authoritative server value (data.newXp), not client-computed newTotalXp
+    expect(code).toMatch(/acc\.current\.recordXp\(currentFlaggedUnit\.id[\s\S]{0,100}data\.newXp/)
   })
 })
 

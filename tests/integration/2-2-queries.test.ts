@@ -231,32 +231,36 @@ describe('[AC1][AC2][AC3][P0] Server functions — src/server-fns/admin-armies.t
 // ---------------------------------------------------------------------------
 
 describe('[AC1][AC2][P1] Admin UI — unit forms — src/routes/admin/index.tsx', () => {
-  it('[2.2-UI-001] admin page renders AddUnitSection only when session.isAdmin is true (AC3 — element absent for non-admin)', () => {
+  it('[2.2-UI-001] admin page access-controlled by isAdmin in beforeLoad (AC3 — non-admin redirected)', () => {
+    // The admin route uses beforeLoad to redirect non-admins (access control is route-level).
+    // AdminAddUnitSection is imported unconditionally in -admin-page.tsx since beforeLoad already guards.
     const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    // Conditional render pattern: isAdmin && <AddUnitSection
-    expect(adminRoute).toMatch(/isAdmin[\s\S]{0,100}AddUnitSection/)
+    // beforeLoad must check isAdmin and redirect
+    expect(adminRoute).toMatch(/beforeLoad[\s\S]{0,300}isAdmin/)
   })
 
-  it('[2.2-UI-002] admin page renders correction section only when session.isAdmin is true (AC3)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    // isAdmin guard must wrap correction section too
-    expect(adminRoute).toMatch(/isAdmin[\s\S]{0,400}(CorrectionSection|Corriger les stats)/)
+  it('[2.2-UI-002] admin page renders correction section (Corriger les stats) in -admin-correction-section.tsx (AC3)', () => {
+    const correctionSection = readFileSync(resolve(root, 'src/routes/admin/-admin-correction-section.tsx'), 'utf-8')
+    // Correction section heading must contain the French label
+    expect(correctionSection).toMatch(/Corriger les stats/)
   })
 
   it('[2.2-UI-003] unit entry form has army selector populated from armiesQuery (Task 4.2)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    const addUnitSection = readFileSync(resolve(root, 'src/routes/admin/-admin-add-unit-section.tsx'), 'utf-8')
     // armiesQuery.data must be referenced in the unit entry form context
-    expect(adminRoute).toMatch(/AddUnitSection|armiesQuery[\s\S]{0,1000}armiesQuery\.data/)
+    expect(addUnitSection).toMatch(/armiesQuery\.data/)
   })
 
   it('[2.2-UI-004] after addUnitFn success admin route invalidates ["admin", "armies"] query key (Task 4.5)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
+    // invalidation logic is in -use-add-unit.ts (custom hook)
+    const useAddUnit = readFileSync(resolve(root, 'src/routes/admin/-use-add-unit.ts'), 'utf-8')
     // Already tested for story 2.1 invalidation — now we verify addUnitFn also invalidates
-    expect(adminRoute).toMatch(/invalidateQueries[\s\S]{0,200}['"]armies['"]/)
+    expect(useAddUnit).toMatch(/invalidateQueries[\s\S]{0,200}['"]armies['"]/)
   })
 
   it('[2.2-UI-005] correction form uses ["admin", "army-units", armyId] query key (Task 5.3)', () => {
-    const adminRoute = readFileSync(resolve(root, 'src/routes/admin/index.tsx'), 'utf-8')
-    expect(adminRoute).toMatch(/army-units/)
+    // query key is defined in -use-correction.ts (custom hook)
+    const useCorrection = readFileSync(resolve(root, 'src/routes/admin/-use-correction.ts'), 'utf-8')
+    expect(useCorrection).toMatch(/army-units/)
   })
 })
