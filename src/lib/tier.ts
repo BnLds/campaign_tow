@@ -46,16 +46,6 @@ export function getTierLabel(tier: TierLevel, unitType?: string): string {
   }
 }
 
-export function getTierColor(tier: TierLevel): string {
-  switch (tier) {
-    case 4: return 'var(--color-gold)'
-    case 3: return 'var(--color-gold)'
-    case 2: return 'var(--color-silver)'
-    case 1: return 'var(--color-bronze)'
-    default: return 'var(--color-neutral)'
-  }
-}
-
 export function tierColorClass(tier: TierLevel): string {
   switch (tier) {
     case 4:
