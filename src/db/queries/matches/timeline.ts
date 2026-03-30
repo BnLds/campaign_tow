@@ -112,6 +112,10 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
       matchType: matches.matchType,
       result: matchParticipants.result,
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
+      snapshotXp: matchParticipants.snapshotXp,
+      snapshotPoints: matchParticipants.snapshotPoints,
+      oppSnapshotXp: oppParticipant.snapshotXp,
+      oppSnapshotPoints: oppParticipant.snapshotPoints,
       opponentName: oppArmy.name,
       opponentFaction: oppArmy.faction,
       opponentPlayerName: oppPlayer.username,
@@ -135,14 +139,22 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
 
   const entries = rows.map((row) => {
     const oppTotals = row.oppArmyId ? totalsMap.get(row.oppArmyId) : null
-    const armyTotals = (row.matchType !== 'initial_setup' && oppTotals) ? {
+    const hasSnapshot = row.snapshotXp != null && row.snapshotPoints != null && row.oppSnapshotXp != null && row.oppSnapshotPoints != null
+    const armyTotals = (row.matchType !== 'initial_setup' && (hasSnapshot || oppTotals)) ? (hasSnapshot ? {
+      playerXp: row.snapshotXp!,
+      playerPoints: row.snapshotPoints!,
+      opponentXp: row.oppSnapshotXp!,
+      opponentPoints: row.oppSnapshotPoints!,
+      deltaXp: row.snapshotXp! - row.oppSnapshotXp!,
+      deltaPoints: row.snapshotPoints! - row.oppSnapshotPoints!,
+    } : {
       playerXp: playerTotals.totalXp,
       playerPoints: playerTotals.totalPoints,
-      opponentXp: oppTotals.totalXp,
-      opponentPoints: oppTotals.totalPoints,
-      deltaXp: playerTotals.totalXp - oppTotals.totalXp,
-      deltaPoints: playerTotals.totalPoints - oppTotals.totalPoints,
-    } : undefined
+      opponentXp: oppTotals!.totalXp,
+      opponentPoints: oppTotals!.totalPoints,
+      deltaXp: playerTotals.totalXp - oppTotals!.totalXp,
+      deltaPoints: playerTotals.totalPoints - oppTotals!.totalPoints,
+    }) : undefined
     return {
       matchId: row.matchId,
       matchParticipantId: row.matchParticipantId,

@@ -151,397 +151,265 @@ export function PhaseXp({
   const modeHeader = mode === 'initial-xp' ? 'XP initiale' : undefined
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Progress row with optional back button */}
-      <WizardHeader
-        onBack={onBack}
-        onCancel={onCancel}
-        progressLabel={`Unité ${currentStep + 1} / ${total}`}
-        backAriaLabel="Unité précédente"
-        modeHeader={modeHeader}
-      />
+    <div className="flex flex-col">
+      {/* Sticky wrapper: WizardHeader + unit info */}
+      <div className="sticky top-0 z-10 bg-[var(--color-bg)] pb-5">
+        {/* Progress row with optional back button */}
+        <WizardHeader
+          onBack={onBack}
+          onCancel={onCancel}
+          progressLabel={`Unité ${currentStep + 1} / ${total}`}
+          backAriaLabel="Unité précédente"
+          modeHeader={modeHeader}
+        />
 
-      {/* Unit info */}
-      <div
-        style={{
-          background: '#fffbf5',
-          border: '1px solid #e0d5c8',
-          borderRadius: '8px',
-          padding: '1rem',
-        }}
-      >
-        <p
-          data-testid="wizard-unit-name"
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 700,
-            fontSize: '1.25rem',
-            color: 'var(--color-text-primary)',
-            margin: '0 0 0.25rem',
-          }}
-        >
-          {unit.nickname ? `${unit.nickname}, ${unit.name}` : unit.name}
-        </p>
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-text-secondary)',
-            margin: '0 0 0.5rem',
-          }}
-        >
-          {unit.type}
-        </p>
+        {/* Unit info */}
+        <div className="mt-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4">
+          <p
+            data-testid="wizard-unit-name"
+            className="font-[family-name:var(--font-display)] font-bold text-xl text-[var(--color-text-primary)] mb-1"
+          >
+            {unit.nickname ? `${unit.nickname}, ${unit.name}` : unit.name}
+          </p>
+          <p className="font-[family-name:var(--font-body)] text-sm text-[var(--color-text-secondary)] mb-2">
+            {unit.type}
+          </p>
+        </div>
       </div>
 
-      {/* Bonus rattrapage stepper — post-match mode only */}
-      {mode === 'post-match' && (
-        <div data-testid="bonus-xp-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text-primary)', margin: 0 }}>
-            Bonus rattrapage
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              type="button"
-              data-testid="bonus-xp-decrement"
-              disabled={bonusXp === 0}
-              onClick={() => setBonusXp((v) => Math.max(0, v - 1))}
-              style={{
-                width: 44, height: 44, minWidth: 44, borderRadius: 8,
-                background: '#334155',
-                color: '#fff', border: 'none', fontSize: '1.25rem', fontWeight: 700,
-                cursor: bonusXp === 0 ? 'not-allowed' : 'pointer',
-                opacity: bonusXp === 0 ? 0.4 : 1,
-                display: 'grid', placeItems: 'center',
-              }}
-            >
-              −
-            </button>
-            <span
-              data-testid="bonus-xp-value"
-              style={{ fontWeight: 700, fontSize: '1rem', minWidth: '2rem', textAlign: 'center' }}
-            >
-              {bonusXp}
-            </span>
-            <button
-              type="button"
-              data-testid="bonus-xp-increment"
-              onClick={() => setBonusXp((v) => Math.min(50, v + 1))}
-              style={{
-                width: 44, height: 44, minWidth: 44, borderRadius: 8,
-                background: '#334155', color: '#fff', border: 'none',
-                fontSize: '1.25rem', fontWeight: 700, cursor: 'pointer',
-                display: 'grid', placeItems: 'center',
-              }}
-            >
-              +
-            </button>
-          </div>
-          {(catchupBonusXp ?? 0) > 0 && (
-            <p data-testid="bonus-xp-hint" style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-              Suggestion : +{catchupBonusXp} (écart de {catchupDeltaXp} XP)
+      {/* Content wrapper */}
+      <div className="flex flex-col gap-5">
+        {/* Bonus rattrapage stepper — post-match mode only */}
+        {mode === 'post-match' && (
+          <div data-testid="bonus-xp-section" className="flex flex-col gap-1">
+            <p className="font-[family-name:var(--font-body)] font-semibold text-sm text-[var(--color-text-primary)] m-0">
+              Bonus rattrapage
             </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                data-testid="bonus-xp-decrement"
+                disabled={bonusXp === 0}
+                onClick={() => setBonusXp((v) => Math.max(0, v - 1))}
+                className={`size-11 min-w-11 rounded-lg bg-[var(--color-brand)] text-white border-none text-xl font-bold grid place-items-center${bonusXp === 0 ? ' opacity-40 cursor-not-allowed' : ' cursor-pointer'}`}
+              >
+                −
+              </button>
+              <span
+                data-testid="bonus-xp-value"
+                className="font-bold text-base min-w-8 text-center"
+              >
+                {bonusXp}
+              </span>
+              <button
+                type="button"
+                data-testid="bonus-xp-increment"
+                onClick={() => setBonusXp((v) => Math.min(50, v + 1))}
+                className="size-11 min-w-11 rounded-lg bg-[var(--color-brand)] text-white border-none text-xl font-bold grid place-items-center cursor-pointer"
+              >
+                +
+              </button>
+            </div>
+            {(catchupBonusXp ?? 0) > 0 && (
+              <p data-testid="bonus-xp-hint" className="font-[family-name:var(--font-body)] text-xs text-[var(--color-text-secondary)] m-0">
+                Suggestion : +{catchupBonusXp} (écart de {catchupDeltaXp} XP)
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* XP section — numeric input (initial-xp mode) or checkboxes (post-match mode) */}
+        <div className="flex flex-col gap-2">
+          {mode === 'initial-xp' ? (
+            <div data-testid="wizard-xp-numeric">
+              <label
+                className="block font-[family-name:var(--font-body)] text-sm text-[var(--color-text-secondary)] mb-1.5"
+              >
+                XP totale
+              </label>
+              <input
+                data-testid="wizard-xp-numeric-input"
+                type="number"
+                min={0}
+                max={999}
+                value={numericXpValue}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setNumericXpValue(Math.min(999, Math.max(0, parseInt(e.target.value, 10) || 0)))}
+                className="font-[family-name:var(--font-body)] text-base px-3 py-2 rounded-md border border-[var(--color-separator)] bg-[var(--color-bg)] text-[var(--color-text-primary)] w-full"
+              />
+            </div>
+          ) : (
+            <>
+              {showPreviousXpHint && unit.previousXpGained != null && (
+                <>
+                  <p
+                    data-testid="wizard-previous-xp"
+                    className="font-[family-name:var(--font-body)] text-[0.8rem] text-[var(--color-info)] m-0"
+                  >
+                    Précédemment : {unit.previousXpGained} XP
+                  </p>
+                  {unit.previousXpGained > 0 && xpGained === 0 && (
+                    <p
+                      data-testid="wizard-xp-warning"
+                      className="font-[family-name:var(--font-body)] text-[0.8rem] text-[var(--color-malus)] m-0"
+                    >
+                      Attention : vous aviez précédemment gagné {unit.previousXpGained} XP. Soumettre 0 XP remplacera cette valeur.
+                    </p>
+                  )}
+                </>
+              )}
+
+              <div data-testid="wizard-xp-checkboxes" role="group" aria-label="Conditions d'XP">
+                <div className="flex flex-col gap-2">
+                  {baseConditions.map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex items-start gap-2 font-[family-name:var(--font-body)] text-[0.85rem] text-[var(--color-text-secondary)] cursor-pointer"
+                    >
+                      <input
+                        data-testid={`xp-condition-${c.id}`}
+                        type="checkbox"
+                        checked={checkedConditions.has(c.id)}
+                        onChange={() => toggleCondition(c.id)}
+                        className="mt-[0.15rem]"
+                      />
+                      <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                    </label>
+                  ))}
+
+                  {generalConditions.length > 0 && (
+                    <fieldset
+                      role="group"
+                      aria-label="Général (un seul choix possible)"
+                      className="border-none m-0 py-1 px-0 flex flex-col gap-2"
+                    >
+                      {generalConditions.map((c) => (
+                        <label
+                          key={c.id}
+                          className="flex items-start gap-2 font-[family-name:var(--font-body)] text-[0.85rem] text-[var(--color-text-secondary)] cursor-pointer"
+                        >
+                          <input
+                            data-testid={`xp-condition-${c.id}`}
+                            type="checkbox"
+                            checked={checkedConditions.has(c.id)}
+                            onChange={() => toggleGeneralCondition(c.id)}
+                            className="mt-[0.15rem]"
+                          />
+                          <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
+
+                  {exploitOrFeatConditions.length > 0 && (
+                    <>
+                      <p
+                        className="font-[family-name:var(--font-body)] text-[0.8rem] font-semibold text-[var(--color-text-primary)] mt-1 uppercase tracking-[0.03em]"
+                      >
+                        {exploitFeatLabel}
+                      </p>
+                      {exploitOrFeatConditions.map((c) => (
+                        <label
+                          key={c.id}
+                          className="flex items-start gap-2 font-[family-name:var(--font-body)] text-[0.85rem] text-[var(--color-text-secondary)] cursor-pointer"
+                        >
+                          <input
+                            data-testid={`xp-condition-${c.id}`}
+                            type="checkbox"
+                            checked={checkedConditions.has(c.id)}
+                            onChange={() => toggleCondition(c.id)}
+                            className="mt-[0.15rem]"
+                          />
+                          <span>{c.label} <strong>+{c.xp} XP</strong></span>
+                        </label>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <p
+                data-testid="wizard-xp-total"
+                aria-live="polite"
+                className="font-[family-name:var(--font-body)] text-base font-semibold text-[var(--color-text-primary)] mt-1"
+              >
+                {bonusXp > 0 ? `Total : ${xpGained} + ${bonusXp} bonus = ${xpGained + bonusXp} XP` : `Total : ${xpGained} XP`}
+              </p>
+            </>
           )}
         </div>
-      )}
 
-      {/* XP section — numeric input (initial-xp mode) or checkboxes (post-match mode) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {mode === 'initial-xp' ? (
-          <div data-testid="wizard-xp-numeric">
-            <label
-              style={{
-                display: 'block',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.875rem',
-                color: 'var(--color-text-secondary)',
-                marginBottom: '0.375rem',
-              }}
-            >
-              XP totale
-            </label>
+        {/* Past consequences inline — initial-xp mode only */}
+        {mode === 'initial-xp' && campaignPlayers && onAddInitialConsequence && onRemoveInitialConsequence && (
+          <InitialConsequenceStep
+            unitId={unit.id}
+            unitType={unit.type}
+            campaignPlayers={campaignPlayers}
+            consequences={(initialConsequences ?? []).filter((c) => c.unitId === unit.id)}
+            onAdd={onAddInitialConsequence}
+            onRemove={(localId) => onRemoveInitialConsequence(localId)}
+          />
+        )}
+
+        {/* Consequence toggle — MHC for characters, Détruite for units (post-match only) */}
+        {mode !== 'initial-xp' && (
+          <label
+            className="flex items-center gap-2 cursor-pointer font-[family-name:var(--font-body)] text-sm font-semibold text-[var(--color-malus)]"
+          >
             <input
-              data-testid="wizard-xp-numeric-input"
-              type="number"
-              min={0}
-              max={999}
-              value={numericXpValue}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => setNumericXpValue(Math.min(999, Math.max(0, parseInt(e.target.value, 10) || 0)))}
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '1rem',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid var(--color-separator)',
-                background: 'var(--color-background)',
-                color: 'var(--color-text-primary)',
-                width: '100%',
-                boxSizing: 'border-box',
+              data-testid="consequence-toggle"
+              type="checkbox"
+              checked={isConsequenceChecked}
+              onChange={(e) => {
+                setIsConsequenceChecked(e.target.checked)
+                onConsequenceChange?.(unit.id, e.target.checked)
               }}
             />
-          </div>
-        ) : (
-          <>
-            {showPreviousXpHint && unit.previousXpGained != null && (
-              <>
-                <p
-                  data-testid="wizard-previous-xp"
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.8rem',
-                    color: 'var(--color-info)',
-                    margin: 0,
-                  }}
-                >
-                  Précédemment : {unit.previousXpGained} XP
-                </p>
-                {unit.previousXpGained > 0 && xpGained === 0 && (
-                  <p
-                    data-testid="wizard-xp-warning"
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.8rem',
-                      color: 'var(--color-malus)',
-                      margin: 0,
-                    }}
-                  >
-                    Attention : vous aviez précédemment gagné {unit.previousXpGained} XP. Soumettre 0 XP remplacera cette valeur.
-                  </p>
-                )}
-              </>
-            )}
-
-            <div data-testid="wizard-xp-checkboxes" role="group" aria-label="Conditions d'XP">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {baseConditions.map((c) => (
-                  <label
-                    key={c.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '0.5rem',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.85rem',
-                      color: 'var(--color-text-secondary)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      data-testid={`xp-condition-${c.id}`}
-                      type="checkbox"
-                      checked={checkedConditions.has(c.id)}
-                      onChange={() => toggleCondition(c.id)}
-                      style={{ marginTop: '0.15rem' }}
-                    />
-                    <span>{c.label} <strong>+{c.xp} XP</strong></span>
-                  </label>
-                ))}
-
-                {generalConditions.length > 0 && (
-                  <fieldset
-                    role="group"
-                    aria-label="Général (un seul choix possible)"
-                    style={{
-                      border: 'none',
-                      margin: 0,
-                      padding: '0.25rem 0',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.5rem',
-                    }}
-                  >
-                    {generalConditions.map((c) => (
-                      <label
-                        key={c.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '0.5rem',
-                          fontFamily: 'var(--font-body)',
-                          fontSize: '0.85rem',
-                          color: 'var(--color-text-secondary)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <input
-                          data-testid={`xp-condition-${c.id}`}
-                          type="checkbox"
-                          checked={checkedConditions.has(c.id)}
-                          onChange={() => toggleGeneralCondition(c.id)}
-                          style={{ marginTop: '0.15rem' }}
-                        />
-                        <span>{c.label} <strong>+{c.xp} XP</strong></span>
-                      </label>
-                    ))}
-                  </fieldset>
-                )}
-
-                {exploitOrFeatConditions.length > 0 && (
-                  <>
-                    <p
-                      style={{
-                        fontFamily: 'var(--font-body)',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        color: 'var(--color-text-primary)',
-                        margin: '0.25rem 0 0 0',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.03em',
-                      }}
-                    >
-                      {exploitFeatLabel}
-                    </p>
-                    {exploitOrFeatConditions.map((c) => (
-                      <label
-                        key={c.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '0.5rem',
-                          fontFamily: 'var(--font-body)',
-                          fontSize: '0.85rem',
-                          color: 'var(--color-text-secondary)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <input
-                          data-testid={`xp-condition-${c.id}`}
-                          type="checkbox"
-                          checked={checkedConditions.has(c.id)}
-                          onChange={() => toggleCondition(c.id)}
-                          style={{ marginTop: '0.15rem' }}
-                        />
-                        <span>{c.label} <strong>+{c.xp} XP</strong></span>
-                      </label>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
-
-            <p
-              data-testid="wizard-xp-total"
-              aria-live="polite"
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '1rem',
-                fontWeight: 600,
-                color: 'var(--color-text-primary)',
-                margin: '0.25rem 0 0 0',
-              }}
-            >
-              {bonusXp > 0 ? `Total : ${xpGained} + ${bonusXp} bonus = ${xpGained + bonusXp} XP` : `Total : ${xpGained} XP`}
-            </p>
-          </>
+            {unit.type === 'Personnages' ? 'Mis Hors de Combat' : 'Détruite'}
+          </label>
         )}
+
+        {/* Champion killed in challenge — only for non-Personnages units that have a champion (post-match only) */}
+        {mode !== 'initial-xp' && unit.type !== 'Personnages' && (unit.existingGains ?? []).some((g) => g.type === 'honour_champion') && (
+          <label
+            className="flex items-center gap-2 cursor-pointer font-[family-name:var(--font-body)] text-sm font-semibold text-[var(--color-malus)]"
+          >
+            <input
+              data-testid="champion-killed-toggle"
+              type="checkbox"
+              checked={isChampionKilledChecked}
+              onChange={(e) => {
+                setIsChampionKilledChecked(e.target.checked)
+                onChampionKilledChange?.(unit.id, e.target.checked)
+              }}
+            />
+            Champion tué en défi
+          </label>
+        )}
+
+        {/* Error message */}
+        {error && (
+          <p
+            data-testid="wizard-error"
+            className="font-[family-name:var(--font-body)] text-sm text-[var(--color-malus)] m-0"
+          >
+            {error}
+          </p>
+        )}
+
+        {/* Submit button */}
+        <button
+          data-testid="wizard-next-button"
+          onClick={() => void handleSubmit()}
+          disabled={isSubmitting}
+          className={`font-[family-name:var(--font-body)] font-semibold text-base min-h-11 px-4 py-2.5 rounded-lg text-white border-none ${isSubmitting ? 'bg-[var(--color-silver)] cursor-not-allowed opacity-70' : 'bg-[var(--color-brand)] cursor-pointer'}`}
+        >
+          Suivant
+        </button>
+
+        {/* Completion marker */}
+        <span data-testid="wizard-complete" className="hidden" />
       </div>
-
-      {/* Past consequences inline — initial-xp mode only */}
-      {mode === 'initial-xp' && campaignPlayers && onAddInitialConsequence && onRemoveInitialConsequence && (
-        <InitialConsequenceStep
-          unitId={unit.id}
-          unitType={unit.type}
-          campaignPlayers={campaignPlayers}
-          consequences={(initialConsequences ?? []).filter((c) => c.unitId === unit.id)}
-          onAdd={onAddInitialConsequence}
-          onRemove={(localId) => onRemoveInitialConsequence(localId)}
-        />
-      )}
-
-      {/* Consequence toggle — MHC for characters, Détruite for units (post-match only) */}
-      {mode !== 'initial-xp' && (
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: 'var(--color-malus)',
-          }}
-        >
-          <input
-            data-testid="consequence-toggle"
-            type="checkbox"
-            checked={isConsequenceChecked}
-            onChange={(e) => {
-              setIsConsequenceChecked(e.target.checked)
-              onConsequenceChange?.(unit.id, e.target.checked)
-            }}
-          />
-          {unit.type === 'Personnages' ? 'Mis Hors de Combat' : 'Détruite'}
-        </label>
-      )}
-
-      {/* Champion killed in challenge — only for non-Personnages units that have a champion (post-match only) */}
-      {mode !== 'initial-xp' && unit.type !== 'Personnages' && (unit.existingGains ?? []).some((g) => g.type === 'honour_champion') && (
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: 'var(--color-malus)',
-          }}
-        >
-          <input
-            data-testid="champion-killed-toggle"
-            type="checkbox"
-            checked={isChampionKilledChecked}
-            onChange={(e) => {
-              setIsChampionKilledChecked(e.target.checked)
-              onChampionKilledChange?.(unit.id, e.target.checked)
-            }}
-          />
-          Champion tué en défi
-        </label>
-      )}
-
-      {/* Error message */}
-      {error && (
-        <p
-          data-testid="wizard-error"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: 'var(--color-malus)',
-            margin: 0,
-          }}
-        >
-          {error}
-        </p>
-      )}
-
-      {/* Submit button */}
-      <button
-        data-testid="wizard-next-button"
-        onClick={() => void handleSubmit()}
-        disabled={isSubmitting}
-        style={{
-          fontFamily: 'var(--font-body)',
-          fontWeight: 600,
-          fontSize: '1rem',
-          minHeight: '44px',
-          padding: '0.625rem 1rem',
-          borderRadius: '8px',
-          background: isSubmitting ? '#9aa0a6' : '#334155',
-          color: '#fff',
-          border: 'none',
-          cursor: isSubmitting ? 'not-allowed' : 'pointer',
-          opacity: isSubmitting ? 0.7 : 1,
-        }}
-      >
-        Suivant
-      </button>
-
-      {/* Completion marker */}
-      <span data-testid="wizard-complete" style={{ display: 'none' }} />
     </div>
   )
 }

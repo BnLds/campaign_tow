@@ -172,47 +172,46 @@ export function PhaseTierUp({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="flex flex-col">
       {/* Progress row with back and cancel buttons */}
-      <WizardHeader
-        onBack={onBack}
-        onCancel={onCancel}
-        progressLabel={`Amélioration ${tierUpStep + 1} / ${totalTierUps}`}
-      />
+      <div className="sticky top-0 z-10 bg-[var(--color-bg)] pb-5">
+        <WizardHeader
+          onBack={onBack}
+          onCancel={onCancel}
+          progressLabel={`Amélioration ${tierUpStep + 1} / ${totalTierUps}`}
+        />
+      </div>
 
-      {/* Error message */}
-      {error && (
-        <p
-          data-testid="wizard-error"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.875rem',
-            color: '#b82c2c',
-            margin: 0,
-          }}
-        >
-          {error}
-        </p>
-      )}
+      <div className="flex flex-col gap-5">
+        {/* Error message */}
+        {error && (
+          <p
+            data-testid="wizard-error"
+            className="font-[family-name:var(--font-body)] text-sm text-[var(--color-malus)] m-0"
+          >
+            {error}
+          </p>
+        )}
 
-      {/* TierUpStep — key resets internal useState when advancing to next step (C1) */}
-      <TierUpStep
-        tierLabel={currentTierUp.tierLabel}
-        majorImprovements={currentTierUp.majorImprovements}
-        minorImprovements={dynamicMinorImprovements}
-        majorCount={currentTierUp.majorCount}
-        minorCount={currentTierUp.minorCount}
-        unitName={currentTierUp.unitName}
-        unitNickname={currentTierUp.unitNickname}
-        isMounted={currentTierUp.hasMount}
-        confirmLabel={isLastStep ? 'Terminer' : 'Suivant'}
-        disabledImprovementIds={disabledIds}
-        capBlockedImprovementIds={capBlockedIds}
-        onConfirm={(result) => void handleConfirm(result)}
-      />
+        {/* TierUpStep — key resets internal useState when advancing to next step (C1) */}
+        <TierUpStep
+          tierLabel={currentTierUp.tierLabel}
+          majorImprovements={currentTierUp.majorImprovements}
+          minorImprovements={dynamicMinorImprovements}
+          majorCount={currentTierUp.majorCount}
+          minorCount={currentTierUp.minorCount}
+          unitName={currentTierUp.unitName}
+          unitNickname={currentTierUp.unitNickname}
+          isMounted={currentTierUp.hasMount}
+          confirmLabel={isLastStep ? 'Terminer' : 'Suivant'}
+          disabledImprovementIds={disabledIds}
+          capBlockedImprovementIds={capBlockedIds}
+          onConfirm={(result) => void handleConfirm(result)}
+        />
 
-      {/* Completion marker */}
-      <span data-testid="wizard-complete" style={{ display: 'none' }} />
+        {/* Completion marker */}
+        <span data-testid="wizard-complete" className="hidden" />
+      </div>
     </div>
   )
 }

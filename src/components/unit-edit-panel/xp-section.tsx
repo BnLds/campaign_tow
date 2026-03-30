@@ -8,8 +8,9 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { updateXpFn } from '../../server-fns/unit-mutations'
 import { useFeedback, FeedbackMsg } from './use-feedback'
-import { getTierLabel, getTierColor } from '../../lib/tier'
+import { getTierLabel, tierColorClass } from '../../lib/tier'
 import type { TierLevel } from '../../lib/tier'
+import { cn } from '../../lib/utils'
 
 interface XpSectionProps {
   armyId: string
@@ -47,7 +48,6 @@ export function XpSection({ armyId, unitId, unitType, currentXp }: XpSectionProp
   }, [currentXp])
 
   const tierLabel = currentTier !== null ? getTierLabel(currentTier, unitType) : null
-  const tierColor = currentTier !== null ? getTierColor(currentTier) : undefined
 
   function handleUpdateXp(e: React.FormEvent) {
     e.preventDefault()
@@ -60,8 +60,8 @@ export function XpSection({ armyId, unitId, unitType, currentXp }: XpSectionProp
   }
 
   return (
-    <section data-testid="section-xp" className="border-t border-[var(--color-border)] mt-4 pt-4">
-      <h4 className="font-[family-name:var(--font-body)] font-bold text-xs uppercase tracking-wider text-[var(--color-section-label)] mb-3">
+    <section data-testid="section-xp" className="border-t border-cw-border mt-4 pt-4">
+      <h4 className="font-bold text-xs uppercase tracking-wider text-cw-section-label mb-3">
         Points d'expérience
       </h4>
       <form onSubmit={handleUpdateXp} className="flex flex-col gap-2">
@@ -85,10 +85,10 @@ export function XpSection({ armyId, unitId, unitType, currentXp }: XpSectionProp
           </Button>
         </div>
         {confirmedXpUpdate && currentTier !== null && currentTier > 0 && tierLabel && (
-          <p className="text-xs font-semibold" style={{ color: tierColor }}>{tierLabel}</p>
+          <p className={cn('text-xs font-semibold', tierColorClass(currentTier))}>{tierLabel}</p>
         )}
         {confirmedXpUpdate && currentTier === 0 && (
-          <p className="text-xs text-[var(--color-text-secondary)]">Aucun palier atteint</p>
+          <p className="text-xs text-cw-text-secondary">Aucun palier atteint</p>
         )}
         <FeedbackMsg message={xpFeedback.message} />
       </form>

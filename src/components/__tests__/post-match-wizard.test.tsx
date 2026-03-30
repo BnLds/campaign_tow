@@ -555,7 +555,7 @@ describe('[AC6][P0] PostMatchWizard — source file contract (data-testid attrib
 
   it('[4.1-WIZ-028] post-match-wizard.tsx wizard-next-button has minHeight 44px for tap target (AC6)', () => {
     const code = readWizardSource()
-    expect(code).toMatch(/wizard-next-button[\s\S]{0,800}minHeight.*44|44.*minHeight[\s\S]{0,400}wizard-next-button/)
+    expect(code).toMatch(/wizard-next-button[\s\S]{0,800}(minHeight.*44|min-h-11)/)
   })
 })
 

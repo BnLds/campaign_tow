@@ -1,6 +1,7 @@
 import { eq, and, ne, desc, isNull, gte } from 'drizzle-orm'
 import { db } from '../../index'
 import { matches, matchParticipants } from '../../schema'
+import { getArmyXpAndPointsTotalsBatch } from '../units'
 
 export async function createMatchWithParticipants(params: {
   player1Id: string
@@ -142,4 +143,29 @@ export async function updateMatchResultOnLatest(
 
     return opp.length === 1
   })
+}
+
+// Write-once snapshot: capture army XP & points totals at first result selection.
+// Skips participants with armyId null or snapshot already set.
+export async function snapshotArmyTotalsForMatch(matchId: string): Promise<void> {
+  const rows = await db
+    .select({ id: matchParticipants.id, armyId: matchParticipants.armyId, snapshotXp: matchParticipants.snapshotXp })
+    .from(matchParticipants)
+    .where(eq(matchParticipants.matchId, matchId))
+
+  const eligible = rows.filter((r) => r.armyId != null && r.snapshotXp == null)
+  if (eligible.length === 0) return
+
+  const armyIds = eligible.map((r) => r.armyId!)
+  const totalsMap = await getArmyXpAndPointsTotalsBatch(armyIds)
+
+  await Promise.all(
+    eligible.map((r) => {
+      const totals = totalsMap.get(r.armyId!) ?? { totalXp: 0, totalPoints: 0 }
+      return db
+        .update(matchParticipants)
+        .set({ snapshotXp: totals.totalXp, snapshotPoints: totals.totalPoints })
+        .where(eq(matchParticipants.id, r.id))
+    }),
+  )
 }

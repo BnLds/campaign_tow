@@ -18,6 +18,7 @@ import {
   AlertDialogTrigger,
 } from './ui/alert-dialog'
 import { Button } from './ui/button'
+import { LinkButton } from '#/components/link-button'
 import {
   deleteUnitFn,
   restoreUnitFn,
@@ -53,61 +54,24 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
   const allHavePoints = unitCards.length > 0 && unitCards.every((c) => c.unit.points !== null)
 
   return (
-    <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
+    <main className="p-4 max-w-[720px] mx-auto">
       {/* Army header */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+      <div className="mb-6">
+        <div className="flex items-center gap-2.5 mb-2 flex-wrap">
           <Link
             to="/armies"
-            className="nav-btn-brand"
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 999,
-              border: 'none',
-              background: 'var(--color-brand)',
-              color: '#fff',
-              fontWeight: 800,
-              display: 'grid',
-              placeItems: 'center',
-              textDecoration: 'none',
-              flexShrink: 0,
-              fontSize: '1rem',
-            }}
+            className="nav-btn-brand size-[30px] rounded-[999px] border-none bg-cw-brand text-white font-extrabold grid place-items-center no-underline shrink-0 text-base"
             aria-label="Retour aux armées"
           >
             ‹
           </Link>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              fontSize: '1.5rem',
-              color: 'var(--color-text-primary)',
-              margin: 0,
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <h1 className="font-cw-display font-bold text-2xl text-cw-text-primary m-0 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
             {army.name}
           </h1>
           {allHavePoints && (
             <span
               data-testid="army-total-points"
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                color: 'var(--color-brand)',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-brand)',
-                borderRadius: 999,
-                padding: '0.125rem 0.5rem',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
+              className="font-semibold text-xs text-cw-brand bg-cw-surface border border-cw-brand rounded-full px-2 py-0.5 whitespace-nowrap shrink-0"
             >
               {totalPoints} pts
             </span>
@@ -115,24 +79,13 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
           {unitCards.length > 0 && (
             <span
               data-testid="army-total-xp"
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                color: 'var(--color-gold)',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-gold)',
-                borderRadius: 999,
-                padding: '0.125rem 0.5rem',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
+              className="font-semibold text-xs text-cw-gold bg-cw-surface border border-cw-gold rounded-full px-2 py-0.5 whitespace-nowrap shrink-0"
             >
               {totalXp} XP
             </span>
           )}
         </div>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+        <p className="text-cw-text-secondary text-sm">
           {army.faction}
           {army.player && ` — ${army.player.username}`}
         </p>
@@ -142,16 +95,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
       {successMessage && (
         <div
           data-testid="add-units-success"
-          style={{
-            padding: '0.625rem 1rem',
-            borderRadius: '0.375rem',
-            background: 'var(--color-bonus-bg)',
-            color: 'var(--color-bonus)',
-            border: '1px solid var(--color-bonus)',
-            fontSize: '0.875rem',
-            fontFamily: 'var(--font-body)',
-            marginBottom: '1rem',
-          }}
+          className="px-2.5 py-4 rounded-md bg-cw-bonus-bg text-cw-bonus border border-cw-bonus text-sm mb-4"
         >
           {successMessage}
         </div>
@@ -159,25 +103,14 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
 
       {/* Add units button — owner only */}
       {isOwner && (
-        <button
+        <Button
           data-testid="add-units-button"
+          variant="brand"
+          className="w-full mb-6"
           onClick={() => setAddUnitsOpen(true)}
-          style={{
-            background: 'var(--color-brand)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '0.5rem 1rem',
-            fontFamily: 'var(--font-body)',
-            fontWeight: 600,
-            fontSize: '0.8125rem',
-            cursor: 'pointer',
-            width: '100%',
-            marginBottom: '1.5rem',
-          }}
         >
           Ajouter des unités
-        </button>
+        </Button>
       )}
 
       <AddUnitsSheet
@@ -193,18 +126,8 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
 
       {/* Units grouped by type */}
       {groups.map(({ type, cards }) => (
-        <section key={type} style={{ marginBottom: '1.5rem' }}>
-          <h2
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--color-section-label)',
-              marginBottom: '0.75rem',
-            }}
-          >
+        <section key={type} className="mb-6">
+          <h2 className="font-semibold text-sm uppercase tracking-wide text-cw-section-label mb-3">
             {type}
           </h2>
           {cards.map((card) => (
@@ -214,24 +137,16 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                 composedView={card.composedView}
                 tier={card.tier}
                 action={isOwner ? (
-                  <button
+                  <LinkButton
                     data-testid={`edit-unit-${card.unit.id}`}
                     onClick={() =>
                       setEditingUnitId(
                         editingUnitId === card.unit.id ? null : card.unit.id,
                       )
                     }
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: 'var(--color-text-secondary)',
-                      fontSize: '0.75rem',
-                      padding: '0.25rem 0.5rem',
-                    }}
                   >
                     ✏ Modifier
-                  </button>
+                  </LinkButton>
                 ) : undefined}
               />
               {isOwner && editingUnitId === card.unit.id && (
@@ -254,31 +169,16 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
       ))}
 
       {unitCards.length === 0 && graveyardUnits.length === 0 && (
-        <p style={{ color: 'var(--color-text-secondary)' }}>
+        <p className="text-cw-text-secondary">
           Cette armée ne contient aucune unité.
         </p>
       )}
 
       {/* Graveyard section — owner only */}
       {isOwner && graveyardUnits.length > 0 && (
-        <section data-testid="graveyard-section" style={{ marginTop: '2rem' }}>
-          <div
-            style={{
-              borderTop: '1px solid var(--color-border)',
-              paddingTop: '1rem',
-              marginBottom: '0.75rem',
-            }}
-          >
-            <h2
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
+        <section data-testid="graveyard-section" className="mt-8">
+          <div className="border-t border-cw-border pt-4 mb-3">
+            <h2 className="font-semibold text-sm uppercase tracking-wide text-cw-text-secondary">
               Cimetière
             </h2>
           </div>
@@ -286,55 +186,22 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
             <div
               key={gu.id}
               data-testid={`graveyard-unit-${gu.id}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 0',
-                borderBottom: '1px solid var(--color-separator)',
-              }}
+              className="flex items-center gap-2 py-2 border-b border-cw-separator"
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                    color: 'var(--color-text-secondary)',
-                  }}
-                >
+              <div className="flex-1 min-w-0">
+                <span className="font-cw-display font-semibold text-sm text-cw-text-secondary">
                   {gu.nickname ?? gu.name}
                 </span>
                 {gu.nickname && (
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--color-text-secondary)',
-                      fontStyle: 'italic',
-                      marginLeft: '0.25rem',
-                    }}
-                  >
+                  <span className="text-xs text-cw-text-secondary italic ml-1">
                     ({gu.name})
                   </span>
                 )}
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--color-text-secondary)',
-                    marginLeft: '0.5rem',
-                  }}
-                >
+                <span className="text-xs text-cw-text-secondary ml-2">
                   {gu.type}
                 </span>
                 {gu.graveyardReason && (
-                  <p
-                    style={{
-                      fontSize: '0.75rem',
-                      fontStyle: 'italic',
-                      color: 'var(--color-text-secondary)',
-                      margin: '0.125rem 0 0',
-                    }}
-                  >
+                  <p className="text-xs italic text-cw-text-secondary mt-0.5">
                     {gu.graveyardReason}
                   </p>
                 )}
@@ -357,12 +224,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                     setRestoringUnitId(null)
                   }
                 }}
-                style={{
-                  borderColor: 'var(--color-brand)',
-                  color: 'var(--color-brand)',
-                  fontSize: '0.75rem',
-                  flexShrink: 0,
-                }}
+                className="border-cw-brand text-cw-brand text-xs shrink-0"
               >
                 {restoringUnitId === gu.id ? '...' : 'Restaurer'}
               </Button>
@@ -370,15 +232,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                 <AlertDialogTrigger asChild>
                   <button
                     data-testid={`delete-graveyard-unit-${gu.id}`}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: 'var(--color-malus)',
-                      fontSize: '1rem',
-                      padding: '0.25rem',
-                      flexShrink: 0,
-                    }}
+                    className="bg-transparent border-none cursor-pointer text-cw-malus text-base p-1 shrink-0"
                     aria-label="Supprimer définitivement"
                   >
                     🗑
@@ -393,7 +247,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel style={{ borderColor: 'var(--color-brand)', color: 'var(--color-brand)' }}>
+                    <AlertDialogCancel className="border-cw-brand text-cw-brand">
                       Annuler
                     </AlertDialogCancel>
                     <AlertDialogAction
@@ -406,7 +260,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
                           await router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
                         }
                       }}
-                      style={{ background: 'var(--color-malus)', color: '#fff' }}
+                      className="bg-cw-malus text-white"
                     >
                       Détruire
                     </AlertDialogAction>

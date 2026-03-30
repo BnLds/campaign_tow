@@ -5,106 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1773405120231,
-      "tag": "0000_abandoned_dracula",
+      "when": 1774855267881,
+      "tag": "0000_sour_ben_parker",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1773413952748,
-      "tag": "0001_gorgeous_whistler",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1773417574896,
-      "tag": "0002_parallel_triathlon",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1773481589442,
-      "tag": "0003_smiling_patriot",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1773650232900,
-      "tag": "0004_silent_mesmero",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1773653426663,
-      "tag": "0005_lazy_doctor_strange",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1773656730675,
-      "tag": "0006_worthless_true_believers",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1773658342019,
-      "tag": "0007_skinny_living_tribunal",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1773907975778,
-      "tag": "0008_public_dorian_gray",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1773997217772,
-      "tag": "0009_loud_mother_askani",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1774001790421,
-      "tag": "0010_goofy_electro",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1774016175477,
-      "tag": "0011_bizarre_giant_girl",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1774081591141,
-      "tag": "0012_late_nightshade",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1774274336410,
-      "tag": "0013_fat_zarda",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1774350057713,
-      "tag": "0014_public_tombstone",
+      "when": 1774857242725,
+      "tag": "0001_smooth_swarm",
       "breakpoints": true
     }
   ]

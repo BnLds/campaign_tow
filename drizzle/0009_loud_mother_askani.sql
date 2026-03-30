@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "armies_player_id_unique" ON "armies" USING btree ("player_id");

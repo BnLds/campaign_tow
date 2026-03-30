@@ -19,7 +19,7 @@ export const createMatchFn = createServerFn({ method: 'POST' })
         return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Résultats incohérents (victoire/victoire ou défaite/défaite non autorisé)' } }
       }
     }
-    const { createMatchWithParticipants, getArmyById } = await import('../db/queries')
+    const { createMatchWithParticipants, getArmyById, snapshotArmyTotalsForMatch } = await import('../db/queries')
     const matchDate = new Date(`${data.date}T${data.time}:00Z`)
     if (isNaN(matchDate.getTime())) {
       return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Date invalide' } }
@@ -43,6 +43,9 @@ export const createMatchFn = createServerFn({ method: 'POST' })
       evolutionsEntered: data.evolutionsEntered,
       createdByPlayerId: context.session.playerId,
     })
+    if (data.result1 !== null && data.result2 !== null) {
+      await snapshotArmyTotalsForMatch(result.matchId)
+    }
     return { success: true, data: result }
   })
 

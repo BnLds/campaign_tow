@@ -55,6 +55,8 @@
   --color-bronze: #cd7f32;
   --color-silver: #9aa0a6;
   --color-neutral: #9ca3af;
+  --color-neutral-bg: #f3f4f6;
+  --color-neutral-border: #d1d5db;
 
   /* Semantic — results / deltas */
   --color-bonus: #2d7a3a;
@@ -117,6 +119,14 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-body);
+}
+
+/* Tier glow shadows */
+@utility shadow-tier-gold {
+  box-shadow: 0 0 8px 2px #fffcf3;
+}
+@utility shadow-tier-gold-lg {
+  box-shadow: 0 0 12px 4px #fffcf3;
 }
 
 @keyframes addUnitsSlideUp {

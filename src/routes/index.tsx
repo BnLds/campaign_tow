@@ -18,7 +18,7 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults, updateMatchResultOnLatest } = await import('../db/queries')
+    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults, updateMatchResultOnLatest, snapshotArmyTotalsForMatch } = await import('../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
@@ -31,11 +31,16 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
       }
     }
     // First-time result entry (result is null) or re-edit on latest match
-    const updated = participant.result === null
+    const isFirstTime = participant.result === null
+    const updated = isFirstTime
       ? await updateMatchResults(data.matchId, context.session.playerId, data.result)
       : await updateMatchResultOnLatest(data.matchId, context.session.playerId, army.id, army.initialXpCompletedAt, data.result)
     if (!updated) {
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Échec de la mise à jour du résultat' } }
+    }
+    // Write-once snapshot: freeze army XP & points deltas at first result selection
+    if (isFirstTime) {
+      await snapshotArmyTotalsForMatch(data.matchId)
     }
     return { success: true, data: { participantId: participant.id, result: data.result } }
   })
@@ -342,7 +347,7 @@ function CampaignView() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, maxWidth: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
             <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--color-text-primary)' }}>
-              Passer l&apos;XP initiale ?
+              Pas d&apos;xp, que de la bleusaille ?
             </p>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
               Les unités ne recevront aucune XP de départ. Cette action ne peut pas être annulée depuis l&apos;interface.

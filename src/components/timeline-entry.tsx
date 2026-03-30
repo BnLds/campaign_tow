@@ -4,6 +4,10 @@
 
 import { useState } from 'react'
 import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
+import { cn } from '#/lib/utils'
+import { chipClasses } from '#/lib/chip-styles'
+import { LinkButton } from '#/components/link-button'
+import { Button } from '#/components/ui/button'
 
 export type TimelineEntryProps = {
   matchId: string
@@ -40,46 +44,42 @@ const RESULT_CONFIG = {
     label: 'V',
     ariaLabel: 'Victoire',
     buttonLabel: 'Victoire',
-    color: '#2d7a3a',
-    background: '#edf8ef',
-    className: 'victory',
+    badgeClasses: 'text-cw-victory-text bg-cw-victory-bg',
+    buttonClasses: 'text-cw-victory-text bg-cw-victory-bg',
+    selectedBorder: 'border-2 border-cw-victory-text',
   },
   defeat: {
     label: 'D',
     ariaLabel: 'Défaite',
     buttonLabel: 'Défaite',
-    color: '#b82c2c',
-    background: '#fdf0f0',
-    className: 'defeat',
+    badgeClasses: 'text-cw-defeat-text bg-cw-defeat-bg',
+    buttonClasses: 'text-cw-defeat-text bg-cw-defeat-bg',
+    selectedBorder: 'border-2 border-cw-defeat-text',
   },
   draw: {
     label: 'E',
     ariaLabel: 'Égalité',
     buttonLabel: 'Égalité',
-    color: '#9ca3af',
-    background: '#f3f4f6',
-    className: 'draw',
+    badgeClasses: 'text-cw-draw-text bg-cw-draw-bg',
+    buttonClasses: 'text-cw-draw-text bg-cw-draw-bg',
+    selectedBorder: 'border-2 border-cw-draw-text',
   },
 } as const
 
 function formatDate(isoDate: string): string {
   const d = new Date(isoDate)
-  if (isNaN(d.getTime())) return isoDate // fallback: return raw string
-  const tz = 'UTC' // Paris wall-clock stored as UTC — display as-is
-  const datePart = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: tz,
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(d)
-  // Don't show "00:00" for legacy matches stored at midnight
+  if (isNaN(d.getTime())) return isoDate
+  const currentYear = new Date().getFullYear()
+  const dateYear = d.getUTCFullYear()
+  const dateOptions: Intl.DateTimeFormatOptions = dateYear !== currentYear
+    ? { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }
+    : { timeZone: 'UTC', day: 'numeric', month: 'short' }
+  const datePart = new Intl.DateTimeFormat('fr-FR', dateOptions).format(d)
+  // Don't show time for legacy matches stored at midnight
   if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return datePart
-  const timePart = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: tz,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
-  return `${datePart}, ${timePart}`
+  const hh = String(d.getUTCHours()).padStart(2, '0')
+  const min = String(d.getUTCMinutes()).padStart(2, '0')
+  return `${datePart} · ${hh}h${min}`
 }
 
 export function TimelineEntry({
@@ -128,217 +128,102 @@ export function TimelineEntry({
   return (
     <div
       data-testid="timeline-entry"
-      style={{
-        background: '#fffbf5',
-        border: '1px solid #e0d5c8',
-        borderRadius: '8px',
-        padding: '0.75rem 1rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.25rem',
-      }}
+      className="bg-cw-surface border border-cw-border rounded-lg px-4 py-3 flex flex-col gap-1"
     >
       {/* Header row: result badge + opponent name + date */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.625rem',
-          minHeight: '44px',
-        }}
-      >
+      <div className="flex items-start gap-2.5">
         {/* Result badge — only shown when result is set and not in selection mode */}
         {resultConfig && !showSelectionButtons && (
           <span
             data-testid="result-badge"
             aria-label={resultConfig.ariaLabel}
-            className={resultConfig.className}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '2rem',
-              height: '2rem',
-              borderRadius: '4px',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 700,
-              fontSize: '0.875rem',
-              color: resultConfig.color,
-              background: resultConfig.background,
-              flexShrink: 0,
-            }}
+            className={cn('inline-flex items-center justify-center size-8 rounded font-bold text-sm shrink-0', resultConfig.badgeClasses)}
           >
             {resultConfig.label}
           </span>
         )}
 
         {/* Opponent info (or "XP Initiale" label for initial_setup matches) */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              color: 'var(--color-text-primary)',
-              margin: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+        <div className="flex-1 min-w-0">
+          <p className="font-cw-display font-semibold text-[0.9375rem] text-cw-text-primary m-0 overflow-hidden text-ellipsis whitespace-nowrap">
             {isInitialSetup ? 'XP Initiale' : (opponent?.name ?? 'Adversaire')}
           </p>
           {!isInitialSetup && opponent && (
-            <p
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.8125rem',
-                color: 'var(--color-text-secondary)',
-                margin: 0,
-              }}
-            >
+            <p className="text-[0.8125rem] text-cw-text-secondary m-0">
               {opponent.playerName?.trim() ? `${opponent.faction} · ${opponent.playerName.trim()}` : opponent.faction}
             </p>
           )}
           {!isInitialSetup && opponent && armyTotals && (
-            <div data-testid="army-totals-delta" style={{ display: 'flex', flexDirection: 'column', gap: '1px', margin: 0 }}>
-              <p style={{
-                fontFamily: 'var(--font-body)', fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)', margin: 0,
-              }}>
-                Vous {armyTotals.playerXp} XP · {armyTotals.playerPoints} pts — Adv. {armyTotals.opponentXp} XP · {armyTotals.opponentPoints} pts
-              </p>
-              <p style={{
-                fontFamily: 'var(--font-body)', fontSize: '0.75rem', margin: 0,
-                display: 'flex', flexWrap: 'wrap', gap: '0.375rem',
-              }}>
-                <span style={{ color: armyTotals.deltaXp > 0 ? 'var(--color-bonus)' : armyTotals.deltaXp < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
+            <p className="text-xs m-0 flex flex-wrap gap-1.5">
+                <span className={cn('', armyTotals.deltaXp > 0 ? 'text-cw-bonus' : armyTotals.deltaXp < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
                   Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
                 </span>
-                <span style={{ color: armyTotals.deltaPoints > 0 ? 'var(--color-bonus)' : armyTotals.deltaPoints < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
+                <span className={cn('', armyTotals.deltaPoints > 0 ? 'text-cw-bonus' : armyTotals.deltaPoints < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
                   Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
                 </span>
               </p>
-            </div>
           )}
         </div>
 
         {/* Date + Modifier link */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+        <div className="shrink-0 flex flex-col items-end gap-1">
           {!isInitialSetup && (
-            <span
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.8125rem',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
+            <span className="text-xs text-cw-text-secondary text-right">
               {formattedDate}
             </span>
           )}
-          {isEditable && !isInitialSetup && result !== null && !isSelecting && (
-            <button
-              data-testid="modify-result"
-              onClick={() => {
-                setIsSelecting(true)
-                setSubmitError(null)
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Modifier
-            </button>
-          )}
-          {isEditable && isInitialSetup && initialXpSkipped && !hasEvolutions && onEvolutionStart && (
-            <button
-              data-testid="modify-result"
-              onClick={() => onEvolutionStart(matchId)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Modifier
-            </button>
-          )}
-          {isEditable && isInitialSetup && hasEvolutions && isLatestMatch && onPostMatchReentry && (
-            <button
-              data-testid="modify-result"
-              onClick={() => onPostMatchReentry(matchId)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Modifier
-            </button>
-          )}
-          {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
-            <button
-              type="button"
-              data-testid="delete-match"
-              onClick={() => onDelete(matchId)}
-              aria-label="Supprimer la partie"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-malus)',
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                padding: '0 2px',
-                lineHeight: 1,
-                minWidth: 28,
-                minHeight: 28,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              ✕
-            </button>
-          )}
-          {isEditable && !isInitialSetup && result !== null && isSelecting && (
-            <button
-              data-testid="cancel-modify"
-              onClick={() => {
-                setIsSelecting(false)
-                setSubmitError(null)
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: '#b82c2c',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Fermer
-            </button>
-          )}
+          <div className="flex flex-row items-center gap-1.5">
+            {isEditable && !isInitialSetup && result !== null && !isSelecting && (
+              <LinkButton
+                data-testid="modify-result"
+                onClick={() => {
+                  setIsSelecting(true)
+                  setSubmitError(null)
+                }}
+              >
+                Modifier
+              </LinkButton>
+            )}
+            {isEditable && isInitialSetup && initialXpSkipped && !hasEvolutions && onEvolutionStart && (
+              <LinkButton
+                data-testid="modify-result"
+                onClick={() => onEvolutionStart(matchId)}
+              >
+                Modifier
+              </LinkButton>
+            )}
+            {isEditable && isInitialSetup && hasEvolutions && isLatestMatch && onPostMatchReentry && (
+              <LinkButton
+                data-testid="modify-result"
+                onClick={() => onPostMatchReentry(matchId)}
+              >
+                Modifier
+              </LinkButton>
+            )}
+            {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
+              <button
+                type="button"
+                data-testid="delete-match"
+                onClick={() => onDelete(matchId)}
+                aria-label="Supprimer la partie"
+                className="bg-transparent border-none cursor-pointer text-cw-malus text-sm font-bold p-0 leading-none min-w-7 min-h-7 inline-flex items-center justify-center"
+              >
+                ✕
+              </button>
+            )}
+            {isEditable && !isInitialSetup && result !== null && isSelecting && (
+              <LinkButton
+                data-testid="cancel-modify"
+                variant="danger"
+                onClick={() => {
+                  setIsSelecting(false)
+                  setSubmitError(null)
+                }}
+              >
+                Fermer
+              </LinkButton>
+            )}
+          </div>
         </div>
       </div>
 
@@ -346,11 +231,11 @@ export function TimelineEntry({
       {showSelectionButtons && (
         <>
         {hasEvolutions && isLatestMatch && isSelecting && (
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0.25rem 0 0', fontStyle: 'italic' }}>
+          <p className="text-xs text-cw-text-secondary m-0 mt-1 italic">
             Changer le résultat ne modifie pas le rapport — pensez à le re-saisir si nécessaire.
           </p>
         )}
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+        <div className="flex gap-2 mt-1">
           {(['victory', 'defeat', 'draw'] as const).map((key) => {
             const cfg = RESULT_CONFIG[key]
             return (
@@ -359,20 +244,12 @@ export function TimelineEntry({
                 data-testid={`result-select-${key}`}
                 disabled={isSubmitting}
                 onClick={() => handleResultClick(key)}
-                style={{
-                  flex: 1,
-                  minHeight: '44px',
-                  minWidth: '44px',
-                  borderRadius: '6px',
-                  fontFamily: 'var(--font-body)',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  color: cfg.color,
-                  background: cfg.background,
-                  border: (result === key && isSelecting) ? `2px solid ${cfg.color}` : '1px solid transparent',
-                  opacity: isSubmitting ? 0.6 : 1,
-                }}
+                className={cn(
+                  'flex-1 min-h-11 min-w-11 rounded-md font-semibold text-sm cursor-pointer',
+                  cfg.buttonClasses,
+                  result === key && isSelecting ? cfg.selectedBorder : 'border border-transparent',
+                  isSubmitting && 'opacity-60 cursor-not-allowed',
+                )}
               >
                 {cfg.buttonLabel}
               </button>
@@ -386,13 +263,7 @@ export function TimelineEntry({
       {submitError && (
         <p
           data-testid="result-error"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.8125rem',
-            color: '#b82c2c',
-            margin: 0,
-            marginTop: '0.25rem',
-          }}
+          className="text-[0.8125rem] text-cw-malus m-0 mt-1"
         >
           {submitError}
         </p>
@@ -404,54 +275,28 @@ export function TimelineEntry({
           ? (unitXpEntries ?? []).filter((e) => e.xpGained > 0 || e.gains.length > 0 || (e.statChanges?.length ?? 0) > 0)
           : []
         return xpLines.length > 0 ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              marginTop: '4px',
-            }}
-          >
+          <div className="flex flex-col gap-0.5 mt-1">
             {xpLines.map((e, idx) => (
               <div
                 key={idx}
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '0.75rem',
-                }}
+                className="flex flex-wrap items-center gap-1 text-xs"
               >
-                <span style={{ color: 'var(--color-text-secondary)' }}>
+                <span className="text-cw-text-secondary">
                   {e.unitName}
                 </span>
                 {e.xpGained > 0 && (
-                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                  <span className="text-cw-text-secondary">
                     +{e.xpGained} XP
                   </span>
                 )}
                 {e.gains.map((g, gi) => {
                   const isTemp = isTemporaryConsequenceGain(g.type)
                   const isNeg = isNegativeConsequenceGain(g.type)
-                  const chipColors = isTemp
-                    ? { bg: 'var(--color-temporary-bg)', fg: 'var(--color-temporary)', border: 'var(--color-temporary-border)' }
-                    : isNeg
-                      ? { bg: 'var(--color-malus-bg)', fg: 'var(--color-malus)', border: 'var(--color-malus-border)' }
-                      : { bg: 'var(--color-bonus-bg)', fg: 'var(--color-bonus)', border: 'var(--color-bonus-border)' }
+                  const variant = isTemp ? 'temporary' : isNeg ? 'malus' : 'bonus'
                   return (
                     <span
                       key={gi}
-                      style={{
-                        padding: '0 0.375rem',
-                        borderRadius: '9999px',
-                        background: chipColors.bg,
-                        color: chipColors.fg,
-                        border: `1px solid ${chipColors.border}`,
-                        fontWeight: 600,
-                        fontSize: '0.6875rem',
-                      }}
+                      className={cn('px-1.5 rounded-full font-semibold text-[0.6875rem]', chipClasses(variant))}
                     >
                       {stripConstraintHint(g.description)}
                     </span>
@@ -467,15 +312,7 @@ export function TimelineEntry({
                     <span
                       key={`sc-${si}`}
                       data-testid="timeline-stat-change"
-                      style={{
-                        padding: '0 0.375rem',
-                        borderRadius: '9999px',
-                        background: isTemporary ? 'var(--color-temporary-bg)' : 'var(--color-malus-bg)',
-                        color: isTemporary ? 'var(--color-temporary)' : 'var(--color-malus)',
-                        border: `1px solid ${isTemporary ? 'var(--color-temporary-border)' : 'var(--color-malus-border)'}`,
-                        fontWeight: 600,
-                        fontSize: '0.6875rem',
-                      }}
+                      className={cn('px-1.5 rounded-full font-semibold text-[0.6875rem]', chipClasses(isTemporary ? 'temporary' : 'malus'))}
                     >
                       {label}
                     </span>
@@ -489,98 +326,47 @@ export function TimelineEntry({
 
       {/* Message for skipped initial XP */}
       {isInitialSetup && initialXpSkipped && !hasEvolutions && (
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.8125rem',
-            color: 'var(--color-text-secondary)',
-            fontStyle: 'italic',
-            margin: '0.25rem 0 0',
-          }}
-        >
+        <p className="text-[0.8125rem] text-cw-text-secondary italic mt-1">
           Pas d&apos;xp initiale, c&apos;est une nouvelle armée !
         </p>
       )}
 
       {/* "Au rapport !" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
       {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && onEvolutionStart && (
-        <button
+        <Button
           type="button"
           data-testid="evolution-start"
+          variant="brand"
           onClick={() => onEvolutionStart(matchId)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.375rem',
-            alignSelf: 'center',
-            minHeight: '44px',
-            background: '#334155',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-body)',
-            fontWeight: 600,
-            fontSize: '0.8125rem',
-            padding: '0.5rem 1rem',
-            marginTop: '0.25rem',
-          }}
+          className="self-center mt-1 gap-1.5"
         >
           Au rapport ! <span aria-hidden="true">›</span>
-        </button>
+        </Button>
       )}
 
       {/* "Passer l'XP initiale" button — only for initial_setup, when editable and not yet filled */}
       {isEditable && isInitialSetup && !hasEvolutions && onSkipInitialXp && (
-        <button
-          type="button"
+        <LinkButton
           data-testid="skip-initial-xp"
+          className="self-center py-1 text-[0.8125rem]"
           onClick={onSkipInitialXp}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.8125rem',
-            color: 'var(--color-text-secondary)',
-            textDecoration: 'underline',
-            alignSelf: 'center',
-            padding: '0.25rem 0',
-          }}
         >
           Passer l&apos;XP initiale
-        </button>
+        </LinkButton>
       )}
 
       {/* "Modifier le dernier rapport" — shown on latest match with completed post-match.
            For standard matches: only after clicking "Modifier". For initial_setup: always visible. */}
       {isEditable && !isInitialSetup && result !== null && hasEvolutions && isLatestMatch && isSelecting && onPostMatchReentry && (
-        <button
+        <Button
           type="button"
           data-testid="post-match-reentry"
+          variant="brand"
           onClick={() => onPostMatchReentry(matchId)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.375rem',
-            alignSelf: 'center',
-            minHeight: '44px',
-            background: '#334155',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-body)',
-            fontWeight: 600,
-            fontSize: '0.8125rem',
-            padding: '0.5rem 1rem',
-            marginTop: '0.25rem',
-          }}
+          className="self-center mt-1 gap-1.5"
         >
           Modifier le dernier rapport
-        </button>
+        </Button>
       )}
     </div>
   )

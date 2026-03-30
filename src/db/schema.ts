@@ -148,6 +148,8 @@ export const matchParticipants = pgTable('match_participants', {
   // nullable timestamp — set when the post-match evolution flow is completed
   evolutionsEnteredAt: timestamp('evolutions_entered_at'),
   bonusXp: integer('bonus_xp'),
+  snapshotXp: integer('snapshot_xp'),
+  snapshotPoints: integer('snapshot_points'),
   // createdAt tracks when the participant record was inserted (not the match date)
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
