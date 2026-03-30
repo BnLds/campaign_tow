@@ -116,10 +116,11 @@ describe('TimelineEntry — état skippé (initialXpSkipped)', () => {
     expect(screen.queryByTestId('skip-initial-xp')).toBeNull()
   })
 
-  it('affiche le lien "Modifier" en haut à droite quand isEditable et onEvolutionStart fourni', () => {
+  it('affiche le lien "Modifier" en haut à droite quand isEditable, isLatestMatch et onEvolutionStart fourni', () => {
     render(
       <TimelineEntry
         {...skippedProps}
+        isLatestMatch={true}
         onEvolutionStart={vi.fn()}
       />
     )
@@ -132,10 +133,63 @@ describe('TimelineEntry — état skippé (initialXpSkipped)', () => {
     render(
       <TimelineEntry
         {...skippedProps}
+        isLatestMatch={true}
         onEvolutionStart={onEvolutionStart}
       />
     )
     await userEvent.click(screen.getByTestId('modify-result'))
     expect(onEvolutionStart).toHaveBeenCalledWith('match-1')
+  })
+
+  it('masque "Modifier" quand un match a été entré après (isLatestMatch=false)', () => {
+    render(
+      <TimelineEntry
+        {...skippedProps}
+        isLatestMatch={false}
+        onEvolutionStart={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('modify-result')).toBeNull()
+  })
+
+  it('masque "Modifier" quand isLatestMatch=true mais onEvolutionStart absent', () => {
+    render(
+      <TimelineEntry
+        {...skippedProps}
+        isLatestMatch={true}
+      />
+    )
+    expect(screen.queryByTestId('modify-result')).toBeNull()
+  })
+})
+
+describe('TimelineEntry — initial_setup avec evolutions (condition 3)', () => {
+  const evolvedInitialProps = {
+    ...baseProps,
+    matchType: 'initial_setup' as const,
+    isEditable: true,
+    hasEvolutions: true,
+    isLatestMatch: true,
+  }
+
+  it('affiche "Modifier" quand isLatestMatch=true et onPostMatchReentry fourni', () => {
+    render(
+      <TimelineEntry
+        {...evolvedInitialProps}
+        onPostMatchReentry={vi.fn()}
+      />
+    )
+    expect(screen.getByTestId('modify-result')).toBeInTheDocument()
+  })
+
+  it('masque "Modifier" quand isLatestMatch=false', () => {
+    render(
+      <TimelineEntry
+        {...evolvedInitialProps}
+        isLatestMatch={false}
+        onPostMatchReentry={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('modify-result')).toBeNull()
   })
 })

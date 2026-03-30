@@ -184,7 +184,7 @@ export function TimelineEntry({
                 Modifier
               </LinkButton>
             )}
-            {isEditable && isInitialSetup && initialXpSkipped && !hasEvolutions && onEvolutionStart && (
+            {isEditable && isInitialSetup && initialXpSkipped && !hasEvolutions && isLatestMatch && onEvolutionStart && (
               <LinkButton
                 data-testid="modify-result"
                 onClick={() => onEvolutionStart(matchId)}
