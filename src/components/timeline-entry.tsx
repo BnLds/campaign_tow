@@ -173,7 +173,7 @@ export function TimelineEntry({
             </span>
           )}
           <div className="flex flex-row items-center gap-1.5">
-            {isEditable && !isInitialSetup && result !== null && !isSelecting && (
+            {isEditable && !isInitialSetup && result !== null && !isSelecting && (!hasEvolutions || isLatestMatch) && (
               <LinkButton
                 data-testid="modify-result"
                 onClick={() => {
