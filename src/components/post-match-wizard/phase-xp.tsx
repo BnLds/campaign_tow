@@ -244,25 +244,6 @@ export function PhaseXp({
             </div>
           ) : (
             <>
-              {showPreviousXpHint && unit.previousXpGained != null && (
-                <>
-                  <p
-                    data-testid="wizard-previous-xp"
-                    className="font-[family-name:var(--font-body)] text-[0.8rem] text-[var(--color-info)] m-0"
-                  >
-                    Précédemment : {unit.previousXpGained} XP
-                  </p>
-                  {unit.previousXpGained > 0 && xpGained === 0 && (
-                    <p
-                      data-testid="wizard-xp-warning"
-                      className="font-[family-name:var(--font-body)] text-[0.8rem] text-[var(--color-malus)] m-0"
-                    >
-                      Attention : vous aviez précédemment gagné {unit.previousXpGained} XP. Soumettre 0 XP remplacera cette valeur.
-                    </p>
-                  )}
-                </>
-              )}
-
               <div data-testid="wizard-xp-checkboxes" role="group" aria-label="Conditions d'XP">
                 <div className="flex flex-col gap-2">
                   {baseConditions.map((c) => (
@@ -339,6 +320,16 @@ export function PhaseXp({
               >
                 {bonusXp > 0 ? `Total : ${xpGained} + ${bonusXp} bonus = ${xpGained + bonusXp} XP` : `Total : ${xpGained} XP`}
               </p>
+              {showPreviousXpHint && unit.previousXpGained != null && (
+                <p
+                  data-testid="wizard-previous-xp"
+                  className={`font-[family-name:var(--font-body)] text-[0.8rem] m-0 ${unit.previousXpGained > 0 && xpGained === 0 ? 'text-[var(--color-malus)]' : 'text-[var(--color-info)]'}`}
+                >
+                  {unit.previousXpGained > 0 && xpGained === 0
+                    ? `Précédemment : ${unit.previousXpGained} XP. Soumettre 0 XP remplacera cette valeur.`
+                    : `Précédemment : ${unit.previousXpGained} XP`}
+                </p>
+              )}
             </>
           )}
         </div>
