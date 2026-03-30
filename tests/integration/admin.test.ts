@@ -160,7 +160,7 @@ describe('[AC1][P1] Admin navigation link — src/components/app-header.tsx (ext
 
 describe('[AC11][P0] Orchestrator contract — src/routes/admin/admin-page.tsx', () => {
   it('admin-page.tsx does not import server functions directly (AC11)', () => {
-    const orchestrator = readFileSync(resolve(root, 'src/routes/admin/admin-page.tsx'), 'utf-8')
+    const orchestrator = readFileSync(resolve(root, 'src/routes/admin/-admin-page.tsx'), 'utf-8')
     expect(orchestrator).not.toMatch(/server-fns\/admin/)
   })
 })

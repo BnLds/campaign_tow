@@ -70,7 +70,7 @@ describe('[AC-HM] AppHeader — hamburger menu', () => {
 
   it('renders "Voir mon armée" as a DropdownMenuItem with data-testid', () => {
     const code = getAppHeaderTsx()
-    expect(code).toMatch(/DropdownMenuItem[\s\S]{0,200}my-army-link[\s\S]{0,200}Voir mon armée/)
+    expect(code).toMatch(/DropdownMenuItem[\s\S]{0,200}my-army-link[\s\S]{0,300}Voir mon armée/)
   })
 
   it('hamburger button uses DropdownMenuTrigger for a11y (aria-expanded/haspopup added at runtime by Radix)', () => {

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { TierUpStep } from '../tier-up-step'
 import { parseGainStat, STAT_CAP, UNCAPPED_STATS, CD_STAT } from '../../lib/delta-composer'
 import type { WizardUnit, TierUpQueueEntry } from './types'
+import { useHasScrolled } from './use-has-scrolled'
 import { WizardHeader } from './wizard-header'
 
 // ---------------------------------------------------------------------------
@@ -80,6 +81,7 @@ export function PhaseTierUp({
   onBack,
   onCancel,
 }: PhaseTierUpProps) {
+  const [stickyRef, hasScrolled] = useHasScrolled<HTMLDivElement>()
   const [, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -174,12 +176,13 @@ export function PhaseTierUp({
   return (
     <div className="flex flex-col">
       {/* Progress row with back and cancel buttons */}
-      <div className="sticky top-0 z-10 bg-[var(--color-bg)] pb-5">
+      <div ref={stickyRef} className="relative sticky top-0 z-10 bg-[var(--color-bg)] pb-5">
         <WizardHeader
           onBack={onBack}
           onCancel={onCancel}
           progressLabel={`Amélioration ${tierUpStep + 1} / ${totalTierUps}`}
         />
+        <div className={`absolute left-0 right-0 bottom-0 h-6 translate-y-full pointer-events-none z-10 bg-fade-down transition-opacity duration-200 ${hasScrolled ? 'opacity-100' : 'opacity-0'}`} />
       </div>
 
       <div className="flex flex-col gap-5">

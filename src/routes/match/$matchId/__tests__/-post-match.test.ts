@@ -252,8 +252,8 @@ describe('[AC5][P0] Post-match route — already-completed state (Task 9.1)', ()
 
   it('[4.1-SFN-032] post-match.tsx contains French message for already-completed state', () => {
     const code = getPostMatchRoute()
-    // "Evolutions deja saisies" or similar French message
-    expect(code).toMatch(/(Evolutions|évolutions)[\s\S]{0,100}(saisies|deja|déjà)/)
+    // "Évolutions déjà saisies" or similar French message (capital É accent)
+    expect(code).toMatch(/(Évolutions|Evolutions|évolutions)[\s\S]{0,100}(saisies|deja|déjà)/)
   })
 })
 

@@ -1219,7 +1219,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     expect(screen.getByTestId('wizard-previous-xp').textContent).toContain('3 XP')
   })
 
-  it('[XP-CB-006] re-entry warning appears when previousXpGained > 0 and total is 0', () => {
+  it('[XP-CB-006] re-entry hint shows warning text when previousXpGained > 0 and total is 0', () => {
     const unitsReEntry = [
       { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
     ]
@@ -1232,9 +1232,10 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
         onCancel={vi.fn()}
       />
     )
-    const warning = screen.getByTestId('wizard-xp-warning')
-    expect(warning.textContent).toContain('3 XP')
-    expect(warning.textContent).toContain('0 XP')
+    // The hint element (wizard-previous-xp) shows the re-entry warning when total is 0
+    const hint = screen.getByTestId('wizard-previous-xp')
+    expect(hint.textContent).toContain('3 XP')
+    expect(hint.textContent).toContain('0 XP')
   })
 
   it('[XP-CB-007] total XP is correctly summed — general_win gives +2', () => {
@@ -1409,7 +1410,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     expect(group).not.toBeNull()
   })
 
-  it('[XP-CB-012] re-entry warning disappears when a checkbox is checked', () => {
+  it('[XP-CB-012] re-entry hint warning text disappears when a checkbox is checked (total > 0)', () => {
     const unitsReEntry = [
       { id: 'unit-1', name: 'Hallebardiers', type: 'Infanterie', xp: 8, previousXpGained: 3 },
     ]
@@ -1422,12 +1423,14 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
         onCancel={vi.fn()}
       />
     )
-    // Warning should be visible initially
-    expect(screen.getByTestId('wizard-xp-warning')).not.toBeNull()
+    // Hint element is visible initially and shows the replace-warning text
+    const hint = screen.getByTestId('wizard-previous-xp')
+    expect(hint).not.toBeNull()
+    expect(hint.textContent).toContain('remplacera')
 
-    // Check a condition — total > 0, warning should disappear
+    // Check a condition — total > 0, warning text should change (no longer show "remplacera")
     fireEvent.click(screen.getByTestId('xp-condition-deployed'))
-    expect(screen.queryByTestId('wizard-xp-warning')).toBeNull()
+    expect(screen.getByTestId('wizard-previous-xp').textContent).not.toContain('remplacera')
   })
 
   it('[XP-CB-013] mixed army: character shows character conditions, then unit shows unit conditions', async () => {

@@ -54,7 +54,7 @@ describe('[AC3][P0] TimelineEntry — renders opponent name, faction, and format
     expect(screen.getByText(/Hauts Elfes/)).toBeTruthy()
   })
 
-  it('[3.1-COMP-003] renders date formatted in French locale ("12 mars 2026")', () => {
+  it('[3.1-COMP-003] renders date formatted in French locale with time ("12 mars · 14h00")', () => {
     render(
       <TimelineEntry
         matchId="match-3"
@@ -64,8 +64,8 @@ describe('[AC3][P0] TimelineEntry — renders opponent name, faction, and format
         hasEvolutions={false}
       />
     )
-    // French date format: "12 mars 2026"
-    expect(screen.getByText(/mars 2026/i)).toBeTruthy()
+    // French date format: "12 mars · 14h00" — year omitted when current year, time appended when non-midnight
+    expect(screen.getByText(/12 mars\s*·\s*14h00/i)).toBeTruthy()
   })
 
   it('[3.1-COMP-004] renders data-testid="timeline-entry" on root element', () => {

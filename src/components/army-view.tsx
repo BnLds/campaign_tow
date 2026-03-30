@@ -1,7 +1,9 @@
 // Campaign TOW — ArmyView component (extracted from armies/$armyId route)
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useRouter } from '@tanstack/react-router'
+import { useMutation } from '@tanstack/react-query'
+import { Pencil } from 'lucide-react'
 import { useHydrated } from '../lib/useHydrated'
 import { UnitCard } from './unit-card'
 import { AddUnitsSheet } from './add-units-sheet'
@@ -23,6 +25,7 @@ import {
   deleteUnitFn,
   restoreUnitFn,
 } from '../server-fns/unit-mutations'
+import { updateArmyNameFn } from '../server-fns/army-mutations'
 import type { LoadArmyResult } from '../server-fns/unit-queries'
 import { groupUnitsByType } from '../lib/army-utils'
 
@@ -35,6 +38,33 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
   const [addUnitsOpen, setAddUnitsOpen] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [restoringUnitId, setRestoringUnitId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState(army.name)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  const renameMutation = useMutation({
+    mutationFn: (name: string) => updateArmyNameFn({ data: { armyId: army.id, name } }),
+    onSuccess: (result) => {
+      if (result.success) {
+        void router.invalidate({ filter: (d) => d.routeId === '/armies/$armyId' })
+      }
+      setEditingName(false)
+    },
+    onError: () => {
+      setEditingName(false)
+    },
+  })
+
+  useEffect(() => {
+    setNameInput(army.name)
+  }, [army.name])
+
+  useEffect(() => {
+    if (editingName) {
+      nameInputRef.current?.focus()
+      nameInputRef.current?.select()
+    }
+  }, [editingName])
 
   useEffect(() => {
     if (!successMessage) return
@@ -65,9 +95,48 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
           >
             ‹
           </Link>
-          <h1 className="font-cw-display font-bold text-2xl text-cw-text-primary m-0 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-            {army.name}
-          </h1>
+          {editingName ? (
+            <input
+              ref={nameInputRef}
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onBlur={() => {
+                const trimmed = nameInput.trim()
+                if (!trimmed || trimmed === army.name) {
+                  setNameInput(army.name)
+                  setEditingName(false)
+                  return
+                }
+                renameMutation.mutate(trimmed)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur()
+                if (e.key === 'Escape') {
+                  setNameInput(army.name)
+                  setEditingName(false)
+                }
+              }}
+              disabled={renameMutation.isPending}
+              maxLength={100}
+              className="font-cw-display font-bold text-2xl text-cw-text-primary m-0 min-w-0 bg-transparent border-none outline-none w-full"
+            />
+          ) : (
+            <h1
+              className="font-cw-display font-bold text-2xl text-cw-text-primary m-0 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+            >
+              {army.name}
+            </h1>
+          )}
+          {isOwner && !editingName && (
+            <button
+              data-testid="edit-army-name"
+              onClick={() => setEditingName(true)}
+              className="bg-transparent border-none cursor-pointer p-1 shrink-0"
+              aria-label="Modifier le nom de l'armée"
+            >
+              <Pencil size={16} className="text-cw-text-secondary" />
+            </button>
+          )}
           {allHavePoints && (
             <span
               data-testid="army-total-points"

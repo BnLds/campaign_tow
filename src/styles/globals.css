@@ -121,6 +121,11 @@ body {
   font-family: var(--font-body);
 }
 
+/* Sticky header fade overlay */
+@utility bg-fade-down {
+  background: linear-gradient(to bottom, var(--color-bg), transparent);
+}
+
 /* Tier glow shadows */
 @utility shadow-tier-gold {
   box-shadow: 0 0 8px 2px #fffcf3;
