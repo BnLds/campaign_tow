@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 // ---------------------------------------------------------------------------
 // Query options: opponents list
@@ -153,6 +154,7 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
   const noXpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Dialog state
+  const [searchFilter, setSearchFilter] = useState('')
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [time, setTime] = useState(() => {
@@ -172,11 +174,16 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
     enabled: open, // fetch uniquement quand le dialog est ouvert
   })
 
+  const filteredOpponents = opponents.filter((o) =>
+    o.playerUsername.toLowerCase().includes(searchFilter.toLowerCase())
+  )
+
   // Reset dialog state when it opens/closes; no fetch needed (handled by useQuery)
   useEffect(() => {
     if (!open) {
       // H1 — reset isSubmitting when dialog is closed/reopened
       setIsSubmitting(false)
+      setSearchFilter('')
       return
     }
     // M5 — reset date to today and time to now when dialog opens
@@ -185,6 +192,7 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
     setTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
     setSelectedOpponent(null)
     setSubmitError(null)
+    setSearchFilter('')
   }, [open])
 
   // M3 — cleanup no-army toast timeout on unmount
@@ -321,8 +329,20 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
                 Aucun adversaire disponible
               </p>
             ) : (
+              <>
+                <Input
+                  placeholder="Rechercher un joueur…"
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="mb-2"
+                />
+                {filteredOpponents.length === 0 ? (
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, fontStyle: 'italic' }}>
+                    Aucun résultat
+                  </p>
+                ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto' }}>
-                {opponents.map((opponent) => (
+                {filteredOpponents.map((opponent) => (
                   <button
                     key={opponent.playerId}
                     onClick={() => setSelectedOpponent(opponent.playerId)}
@@ -347,6 +367,8 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
                   </button>
                 ))}
               </div>
+                )}
+              </>
             )}
           </div>
 
