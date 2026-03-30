@@ -11,7 +11,7 @@ const baseProps = {
   hasEvolutions: false,
 }
 
-describe('TimelineEntry — bouton "Passer l\'XP initiale"', () => {
+describe('TimelineEntry — bouton "Pas d\'xp, que de la bleusaille"', () => {
   it('est visible pour initial_setup quand isEditable=true et onSkipInitialXp fourni', () => {
     render(
       <TimelineEntry
@@ -101,7 +101,7 @@ describe('TimelineEntry — état skippé (initialXpSkipped)', () => {
     expect(screen.getByText(/Pas d'xp initiale, c'est une nouvelle armée/)).toBeInTheDocument()
   })
 
-  it("n'affiche PAS le bouton \"Au rapport !\"", () => {
+  it("n'affiche PAS le bouton \"Remplir l'XP\"", () => {
     render(
       <TimelineEntry
         {...skippedProps}
@@ -111,7 +111,7 @@ describe('TimelineEntry — état skippé (initialXpSkipped)', () => {
     expect(screen.queryByTestId('evolution-start')).toBeNull()
   })
 
-  it("n'affiche PAS le bouton \"Passer l'XP initiale\"", () => {
+  it("n'affiche PAS le bouton \"Pas d'xp, que de la bleusaille\"", () => {
     render(<TimelineEntry {...skippedProps} />)
     expect(screen.queryByTestId('skip-initial-xp')).toBeNull()
   })

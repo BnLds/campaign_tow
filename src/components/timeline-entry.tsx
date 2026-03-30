@@ -502,7 +502,7 @@ export function TimelineEntry({
         </p>
       )}
 
-      {/* "Au rapport !" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
+      {/* "Au rapport !" / "Remplir l'XP" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
       {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && onEvolutionStart && (
         <button
           type="button"
@@ -527,11 +527,11 @@ export function TimelineEntry({
             marginTop: '0.25rem',
           }}
         >
-          Au rapport ! <span aria-hidden="true">›</span>
+          {isInitialSetup ? "Remplir l\u2019XP" : 'Au rapport !'} <span aria-hidden="true">›</span>
         </button>
       )}
 
-      {/* "Passer l'XP initiale" button — only for initial_setup, when editable and not yet filled */}
+      {/* "Pas d'xp, que de la bleusaille" button — only for initial_setup, when editable and not yet filled */}
       {isEditable && isInitialSetup && !hasEvolutions && onSkipInitialXp && (
         <button
           type="button"
@@ -549,7 +549,7 @@ export function TimelineEntry({
             padding: '0.25rem 0',
           }}
         >
-          Passer l&apos;XP initiale
+          Pas d&apos;xp, que de la bleusaille
         </button>
       )}
 

@@ -342,7 +342,7 @@ function CampaignView() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: 'var(--color-surface)', borderRadius: 12, padding: '1.5rem', minWidth: 260, maxWidth: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
             <p style={{ fontFamily: 'var(--font-body)', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--color-text-primary)' }}>
-              Passer l&apos;XP initiale ?
+              Pas d&apos;xp, que de la bleusaille ?
             </p>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', lineHeight: 1.4 }}>
               Les unités ne recevront aucune XP de départ. Cette action ne peut pas être annulée depuis l&apos;interface.
