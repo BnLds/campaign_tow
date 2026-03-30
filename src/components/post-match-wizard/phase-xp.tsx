@@ -2,6 +2,7 @@
 // Phase 1 (XP entry): checkbox conditions or numeric input per unit.
 
 import { useState } from 'react'
+import { useHasScrolled } from './use-has-scrolled'
 import { getXpConditionsForType, computeXpTotal } from '../../lib/xp-conditions'
 import { InitialConsequenceStep } from '../initial-consequence-step'
 import type { InitialConsequenceItem } from '../initial-consequence-step'
@@ -69,6 +70,8 @@ export function PhaseXp({
   onBack,
   onCancel,
 }: PhaseXpProps) {
+  const [stickyRef, hasScrolled] = useHasScrolled<HTMLDivElement>()
+
   // Initialize state from saved values (set when component mounts via key reset)
   const [checkedConditions, setCheckedConditions] = useState<Set<string>>(() => {
     if (mode !== 'initial-xp' && savedCheckedConditions !== undefined) {
@@ -153,7 +156,7 @@ export function PhaseXp({
   return (
     <div className="flex flex-col">
       {/* Sticky wrapper: WizardHeader + unit info */}
-      <div className="sticky top-0 z-10 bg-[var(--color-bg)] pb-5">
+      <div ref={stickyRef} className="relative sticky top-0 z-10 bg-[var(--color-bg)] pb-5">
         {/* Progress row with optional back button */}
         <WizardHeader
           onBack={onBack}
@@ -175,6 +178,7 @@ export function PhaseXp({
             {unit.type}
           </p>
         </div>
+        <div className={`absolute left-0 right-0 bottom-0 h-6 translate-y-full pointer-events-none z-10 bg-fade-down transition-opacity duration-200 ${hasScrolled ? 'opacity-100' : 'opacity-0'}`} />
       </div>
 
       {/* Content wrapper */}
