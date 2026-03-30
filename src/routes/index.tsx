@@ -18,7 +18,7 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
-    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults, updateMatchResultOnLatest } = await import('../db/queries')
+    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, updateMatchResults, updateMatchResultOnLatest, snapshotArmyTotalsForMatch } = await import('../db/queries')
     const army = await getPlayerArmy(context.session.playerId)
     if (!army) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
@@ -31,11 +31,16 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
       }
     }
     // First-time result entry (result is null) or re-edit on latest match
-    const updated = participant.result === null
+    const isFirstTime = participant.result === null
+    const updated = isFirstTime
       ? await updateMatchResults(data.matchId, context.session.playerId, data.result)
       : await updateMatchResultOnLatest(data.matchId, context.session.playerId, army.id, army.initialXpCompletedAt, data.result)
     if (!updated) {
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Échec de la mise à jour du résultat' } }
+    }
+    // Write-once snapshot: freeze army XP & points deltas at first result selection
+    if (isFirstTime) {
+      await snapshotArmyTotalsForMatch(data.matchId)
     }
     return { success: true, data: { participantId: participant.id, result: data.result } }
   })
