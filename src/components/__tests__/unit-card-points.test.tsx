@@ -32,9 +32,9 @@ describe('[AC1] UnitCard — renders points when non-null', () => {
     expect(code).toMatch(/\{unit\.points\}\s*pts/)
   })
 
-  it('uses --color-brand for points color', () => {
+  it('uses cw-brand color class for points', () => {
     const code = getUnitCard()
-    expect(code).toContain('var(--color-brand)')
+    expect(code).toContain('text-cw-brand')
   })
 })
 

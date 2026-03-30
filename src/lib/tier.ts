@@ -56,6 +56,16 @@ export function getTierColor(tier: TierLevel): string {
   }
 }
 
+export function tierColorClass(tier: TierLevel): string {
+  switch (tier) {
+    case 4:
+    case 3: return 'text-cw-gold'
+    case 2: return 'text-cw-silver'
+    case 1: return 'text-cw-bronze'
+    default: return 'text-cw-neutral'
+  }
+}
+
 // ---------------------------------------------------------------------------
 // detectTierCrossings — returns all threshold entries crossed between oldXp and newXp
 // Used by PostMatchWizard to build Phase 2 tier-up queue.
