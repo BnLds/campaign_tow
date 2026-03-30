@@ -23,30 +23,35 @@ export function PhaseConsequences({
   const label = isCharacter ? 'Blessure' : 'Destruction'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="flex flex-col">
       {/* Progress row with back button and cancel button */}
-      <WizardHeader
-        onBack={onBack}
-        onCancel={onCancel}
-        progressLabel={`${label} — ${flaggedUnit.name}`}
-      />
-
-      {/* Consequence step — key resets internal state when index changes (caller responsibility) */}
-      {isCharacter ? (
-        <InjuryBonusStep
-          unitName={flaggedUnit.name}
-          onConfirm={(result) => onConfirm(result)}
+      <div className="sticky top-0 z-10 bg-[var(--color-bg)] pb-5">
+        <WizardHeader
+          onBack={onBack}
+          onCancel={onCancel}
+          progressLabel={`${label} — ${flaggedUnit.name}`}
         />
-      ) : (
-        <UnitDestructionStep
-          unitName={flaggedUnit.name}
-          hasBannerGain={flaggedUnit.existingGains.some((g) => g.type === 'honour_banner')}
-          onConfirm={(result) => onConfirm(result)}
-        />
-      )}
+      </div>
 
-      {/* Completion marker */}
-      <span data-testid="wizard-complete" style={{ display: 'none' }} />
+      {/* Content wrapper */}
+      <div className="flex flex-col gap-5">
+        {/* Consequence step — key resets internal state when index changes (caller responsibility) */}
+        {isCharacter ? (
+          <InjuryBonusStep
+            unitName={flaggedUnit.name}
+            onConfirm={(result) => onConfirm(result)}
+          />
+        ) : (
+          <UnitDestructionStep
+            unitName={flaggedUnit.name}
+            hasBannerGain={flaggedUnit.existingGains.some((g) => g.type === 'honour_banner')}
+            onConfirm={(result) => onConfirm(result)}
+          />
+        )}
+
+        {/* Completion marker */}
+        <span data-testid="wizard-complete" className="hidden" />
+      </div>
     </div>
   )
 }
