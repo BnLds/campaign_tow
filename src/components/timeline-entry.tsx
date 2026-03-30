@@ -68,22 +68,18 @@ const RESULT_CONFIG = {
 
 function formatDate(isoDate: string): string {
   const d = new Date(isoDate)
-  if (isNaN(d.getTime())) return isoDate // fallback: return raw string
-  const tz = 'UTC' // Paris wall-clock stored as UTC — display as-is
-  const datePart = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: tz,
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(d)
-  // Don't show "00:00" for legacy matches stored at midnight
+  if (isNaN(d.getTime())) return isoDate
+  const currentYear = new Date().getFullYear()
+  const dateYear = d.getUTCFullYear()
+  const dateOptions: Intl.DateTimeFormatOptions = dateYear !== currentYear
+    ? { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }
+    : { timeZone: 'UTC', day: 'numeric', month: 'short' }
+  const datePart = new Intl.DateTimeFormat('fr-FR', dateOptions).format(d)
+  // Don't show time for legacy matches stored at midnight
   if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return datePart
-  const timePart = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: tz,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
-  return `${datePart}, ${timePart}`
+  const hh = String(d.getUTCHours()).padStart(2, '0')
+  const min = String(d.getUTCMinutes()).padStart(2, '0')
+  return `${datePart} · ${hh}h${min}`
 }
 
 export function TimelineEntry({
@@ -158,11 +154,7 @@ export function TimelineEntry({
             </p>
           )}
           {!isInitialSetup && opponent && armyTotals && (
-            <div data-testid="army-totals-delta" className="flex flex-col gap-[1px] m-0">
-              <p className="text-xs text-cw-text-secondary m-0">
-                Vous {armyTotals.playerXp} XP · {armyTotals.playerPoints} pts — Adv. {armyTotals.opponentXp} XP · {armyTotals.opponentPoints} pts
-              </p>
-              <p className="text-xs m-0 flex flex-wrap gap-1.5">
+            <p className="text-xs m-0 flex flex-wrap gap-1.5">
                 <span className={cn('', armyTotals.deltaXp > 0 ? 'text-cw-bonus' : armyTotals.deltaXp < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
                   Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
                 </span>
@@ -170,7 +162,6 @@ export function TimelineEntry({
                   Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
                 </span>
               </p>
-            </div>
           )}
         </div>
 
