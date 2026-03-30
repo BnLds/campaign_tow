@@ -161,8 +161,8 @@ export function usePostMatchWizard({
     },
   })
 
-  // Derived busy guard — covers both synchronous double-click and in-flight mutations
-  const isBusy = busyRef.current || submitXpMutation.isPending || completeEvolutionsMutation.isPending
+  // NOTE: busy guard is now computed LIVE inside each handler (busyRef.current || mutation.isPending)
+  // to avoid stale-closure bugs when wizardDispatch triggers a re-render mid-handler.
 
   // ---------------------------------------------------------------------------
   // complete phase side-effect: detect phase === 'complete' after dispatch
@@ -214,7 +214,7 @@ export function usePostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const handleNext = async (xpData: XpData, currentUnit: WizardUnit, currentStep: number, isLastXpStep: boolean): Promise<void> => {
-    if (isBusy) return
+    if (busyRef.current || submitXpMutation.isPending || completeEvolutionsMutation.isPending) return
     busyRef.current = true
 
     try {
@@ -283,7 +283,7 @@ export function usePostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const handleConsequenceConfirm = async (result: InjuryResult | DestructionResult): Promise<void> => {
-    if (isBusy) return
+    if (busyRef.current || submitXpMutation.isPending || completeEvolutionsMutation.isPending) return
     busyRef.current = true
 
     try {
@@ -333,6 +333,7 @@ export function usePostMatchWizard({
       }
 
       const nextIndex = consequenceIndex + 1
+
       if (nextIndex < acc.current.flaggedUnits.length) {
         wizardDispatch({ type: 'NEXT_CONSEQUENCE' })
       } else {
@@ -366,7 +367,7 @@ export function usePostMatchWizard({
 
   const handleTierUpConfirm = async (result: { descriptions: string[] }): Promise<void> => {
     if (wizardState.phase !== 'tierup') return
-    if (isBusy) return
+    if (busyRef.current || submitXpMutation.isPending || completeEvolutionsMutation.isPending) return
     busyRef.current = true
 
     try {
@@ -488,7 +489,7 @@ export function usePostMatchWizard({
   // ---------------------------------------------------------------------------
 
   const handleEmptyRetour = async () => {
-    if (isBusy) return
+    if (busyRef.current || submitXpMutation.isPending || completeEvolutionsMutation.isPending) return
     busyRef.current = true
     try {
       completeEvolutionsMutation.reset()
