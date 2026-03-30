@@ -64,22 +64,18 @@ const RESULT_CONFIG = {
 
 function formatDate(isoDate: string): string {
   const d = new Date(isoDate)
-  if (isNaN(d.getTime())) return isoDate // fallback: return raw string
-  const tz = 'UTC' // Paris wall-clock stored as UTC — display as-is
-  const datePart = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: tz,
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(d)
-  // Don't show "00:00" for legacy matches stored at midnight
+  if (isNaN(d.getTime())) return isoDate
+  const currentYear = new Date().getFullYear()
+  const dateYear = d.getUTCFullYear()
+  const dateOptions: Intl.DateTimeFormatOptions = dateYear !== currentYear
+    ? { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }
+    : { timeZone: 'UTC', day: 'numeric', month: 'short' }
+  const datePart = new Intl.DateTimeFormat('fr-FR', dateOptions).format(d)
+  // Don't show time for legacy matches stored at midnight
   if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return datePart
-  const timePart = new Intl.DateTimeFormat('fr-FR', {
-    timeZone: tz,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
-  return `${datePart}, ${timePart}`
+  const hh = String(d.getUTCHours()).padStart(2, '0')
+  const min = String(d.getUTCMinutes()).padStart(2, '0')
+  return `${datePart} · ${hh}h${min}`
 }
 
 export function TimelineEntry({
@@ -142,9 +138,8 @@ export function TimelineEntry({
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           gap: '0.625rem',
-          minHeight: '44px',
         }}
       >
         {/* Result badge — only shown when result is set and not in selection mode */}
@@ -201,143 +196,138 @@ export function TimelineEntry({
             </p>
           )}
           {!isInitialSetup && opponent && armyTotals && (
-            <div data-testid="army-totals-delta" style={{ display: 'flex', flexDirection: 'column', gap: '1px', margin: 0 }}>
-              <p style={{
-                fontFamily: 'var(--font-body)', fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)', margin: 0,
-              }}>
-                Vous {armyTotals.playerXp} XP · {armyTotals.playerPoints} pts — Adv. {armyTotals.opponentXp} XP · {armyTotals.opponentPoints} pts
-              </p>
-              <p style={{
-                fontFamily: 'var(--font-body)', fontSize: '0.75rem', margin: 0,
-                display: 'flex', flexWrap: 'wrap', gap: '0.375rem',
-              }}>
-                <span style={{ color: armyTotals.deltaXp > 0 ? 'var(--color-bonus)' : armyTotals.deltaXp < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
-                  Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
-                </span>
-                <span style={{ color: armyTotals.deltaPoints > 0 ? 'var(--color-bonus)' : armyTotals.deltaPoints < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
-                  Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
-                </span>
-              </p>
-            </div>
+            <p data-testid="army-totals-delta" style={{
+              fontFamily: 'var(--font-body)', fontSize: '0.75rem', margin: 0,
+              display: 'flex', flexWrap: 'wrap', gap: '0.375rem',
+            }}>
+              <span style={{ color: armyTotals.deltaXp > 0 ? 'var(--color-bonus)' : armyTotals.deltaXp < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
+                Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
+              </span>
+              <span style={{ color: armyTotals.deltaPoints > 0 ? 'var(--color-bonus)' : armyTotals.deltaPoints < 0 ? 'var(--color-malus)' : 'var(--color-text-secondary)' }}>
+                Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
+              </span>
+            </p>
           )}
         </div>
 
         {/* Date + Modifier link */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.375rem' }}>
+            {isEditable && !isInitialSetup && result !== null && !isSelecting && (
+              <button
+                data-testid="modify-result"
+                onClick={() => {
+                  setIsSelecting(true)
+                  setSubmitError(null)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.75rem',
+                  color: 'var(--color-text-secondary)',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Modifier
+              </button>
+            )}
+            {isEditable && isInitialSetup && initialXpSkipped && !hasEvolutions && onEvolutionStart && (
+              <button
+                data-testid="modify-result"
+                onClick={() => onEvolutionStart(matchId)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.75rem',
+                  color: 'var(--color-text-secondary)',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Modifier
+              </button>
+            )}
+            {isEditable && isInitialSetup && hasEvolutions && isLatestMatch && onPostMatchReentry && (
+              <button
+                data-testid="modify-result"
+                onClick={() => onPostMatchReentry(matchId)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.75rem',
+                  color: 'var(--color-text-secondary)',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Modifier
+              </button>
+            )}
+            {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
+              <button
+                type="button"
+                data-testid="delete-match"
+                onClick={() => onDelete(matchId)}
+                aria-label="Supprimer la partie"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-malus)',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  padding: '0 2px',
+                  lineHeight: 1,
+                  minWidth: 28,
+                  minHeight: 28,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+            )}
+            {isEditable && !isInitialSetup && result !== null && isSelecting && (
+              <button
+                data-testid="cancel-modify"
+                onClick={() => {
+                  setIsSelecting(false)
+                  setSubmitError(null)
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.75rem',
+                  color: '#b82c2c',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Fermer
+              </button>
+            )}
+          </div>
           {!isInitialSetup && (
             <span
               style={{
                 fontFamily: 'var(--font-body)',
-                fontSize: '0.8125rem',
+                fontSize: '0.75rem',
                 color: 'var(--color-text-secondary)',
+                textAlign: 'right',
               }}
             >
               {formattedDate}
             </span>
-          )}
-          {isEditable && !isInitialSetup && result !== null && !isSelecting && (
-            <button
-              data-testid="modify-result"
-              onClick={() => {
-                setIsSelecting(true)
-                setSubmitError(null)
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Modifier
-            </button>
-          )}
-          {isEditable && isInitialSetup && initialXpSkipped && !hasEvolutions && onEvolutionStart && (
-            <button
-              data-testid="modify-result"
-              onClick={() => onEvolutionStart(matchId)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Modifier
-            </button>
-          )}
-          {isEditable && isInitialSetup && hasEvolutions && isLatestMatch && onPostMatchReentry && (
-            <button
-              data-testid="modify-result"
-              onClick={() => onPostMatchReentry(matchId)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: 'var(--color-text-secondary)',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Modifier
-            </button>
-          )}
-          {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
-            <button
-              type="button"
-              data-testid="delete-match"
-              onClick={() => onDelete(matchId)}
-              aria-label="Supprimer la partie"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-malus)',
-                fontSize: '0.875rem',
-                fontWeight: 700,
-                padding: '0 2px',
-                lineHeight: 1,
-                minWidth: 28,
-                minHeight: 28,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              ✕
-            </button>
-          )}
-          {isEditable && !isInitialSetup && result !== null && isSelecting && (
-            <button
-              data-testid="cancel-modify"
-              onClick={() => {
-                setIsSelecting(false)
-                setSubmitError(null)
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.75rem',
-                color: '#b82c2c',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
-            >
-              Fermer
-            </button>
           )}
         </div>
       </div>
