@@ -170,11 +170,14 @@ export function buildTierUpQueue(
       }
       queue.push(...expandQueueEntry(baseEntry))
     }
-  }
 
-  // Effect B: inject synthetic retrigger entries for lost honours
-  if (lostGainTypes && lostGainTypes.size > 0) {
-    queue.push(...buildHonourRetriggerEntries(units, xpResults, lostGainTypes))
+    // Effect B: inject synthetic retrigger entries for this unit's lost honours
+    // (immediately after its normal crossings so the wizard groups them by unit)
+    const unitLost = lostGainTypes?.get(unit.id)
+    if (unitLost && unitLost.size > 0) {
+      const singleUnitMap = new Map([[unit.id, unitLost]])
+      queue.push(...buildHonourRetriggerEntries(units, xpResults, singleUnitMap))
+    }
   }
 
   return queue
