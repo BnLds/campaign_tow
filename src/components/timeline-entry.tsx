@@ -121,9 +121,9 @@ export function TimelineEntry({
   const playerSelected = unitSelectionCompletedAt !== undefined ? unitSelectionCompletedAt !== null : null
   const opponentSelected = opponentUnitSelectionCompletedAt !== undefined ? opponentUnitSelectionCompletedAt !== null : null
 
-  // Show CTA only for standard matches where unit selection is needed and player hasn't selected yet
+  // Show CTA only for pending matches where unit selection is needed and player hasn't selected yet
   const showUnitSelectionCTA =
-    needsUnitSelection && playerSelected === false
+    needsUnitSelection && playerSelected === false && result === null
 
   // Provisional deltas: player selected but opponent hasn't yet
   const isDeltaProvisional =
