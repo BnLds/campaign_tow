@@ -305,6 +305,157 @@ describe('buildTierUpQueue', () => {
 })
 
 // ---------------------------------------------------------------------------
+// buildTierUpQueue — honour re-selection after loss
+// ---------------------------------------------------------------------------
+
+describe('buildTierUpQueue — honour re-selection after loss', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockDetectTierCrossings.mockReturnValue([])
+    mockExpandQueueEntry.mockImplementation((entry) => [entry])
+  })
+
+  it('test 1: champion killed +4 XP, no threshold crossing → 1 retrigger entry', () => {
+    const units = [makeWizardUnit({ id: 'u1' })]
+    const xpResults = new Map([['u1', { oldXp: 15, newXp: 19 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_champion'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({
+      unitId: 'u1',
+      tierLabel: 'Honneur de bataille',
+      xp: 0,
+      minorCount: 1,
+    })
+    const labels = result[0].minorImprovements.map((m) => m.label)
+    expect(labels).toContain('Champion gratuit')
+    expect(labels).toContain('Non applicable')
+    // IDs inside minorImprovements include unitId and slot index
+    const ids = result[0].minorImprovements.map((m) => m.id)
+    expect(ids.some((id) => /u-retrigger-u1/.test(id))).toBe(true)
+  })
+
+  it('test 2: champion killed +2 XP (floor(2/3)=0) → 0 retrigger entries', () => {
+    const units = [makeWizardUnit({ id: 'u1' })]
+    const xpResults = new Map([['u1', { oldXp: 15, newXp: 17 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_champion'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+    expect(result).toHaveLength(0)
+  })
+
+  it('test 3: both honours lost +7 XP → 2 retrigger entries each with champ+ban+NA', () => {
+    const units = [makeWizardUnit({ id: 'u1' })]
+    const xpResults = new Map([['u1', { oldXp: 20, newXp: 27 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_champion', 'honour_banner'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+    expect(result).toHaveLength(2)
+    for (const entry of result) {
+      expect(entry).toMatchObject({ tierLabel: 'Honneur de bataille', xp: 0, minorCount: 1 })
+      const labels = entry.minorImprovements.map((m) => m.label)
+      expect(labels).toContain('Champion gratuit')
+      expect(labels).toContain('Bannière gratuite')
+      expect(labels).toContain('Non applicable')
+    }
+    // Each retrigger entry has distinct improvement IDs (contain unitId + slot index)
+    const allImprovementIds = result.flatMap((e) => e.minorImprovements.map((m) => m.id))
+    const champIds = allImprovementIds.filter((id) => id.includes('-champ-'))
+    expect(new Set(champIds).size).toBe(2)
+  })
+
+  it('test 4: both honours lost +4 XP → 1 retrigger entry (min(2, floor(4/3)=1))', () => {
+    const units = [makeWizardUnit({ id: 'u1' })]
+    const xpResults = new Map([['u1', { oldXp: 20, newXp: 24 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_champion', 'honour_banner'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ tierLabel: 'Honneur de bataille', xp: 0, minorCount: 1 })
+  })
+
+  it('test 5: champion killed + crosses 9 XP threshold → 2 total entries (Effect A keeps champ visible)', () => {
+    const honourCrossing = makeThresholdEntry({
+      xp: 9,
+      tierLabel: 'Honneur de bataille',
+      majorImprovements: [],
+      minorImprovements: [
+        { id: 'u-hon2-champ', label: 'Champion gratuit', category: 'honour' as const },
+        { id: 'u-hon2-ban', label: 'Bannière gratuite', category: 'honour' as const },
+        { id: 'u-hon2-na', label: 'Non applicable', category: 'honour' as const },
+      ],
+      majorCount: 0,
+      minorCount: 1,
+    })
+    mockDetectTierCrossings.mockReturnValue([honourCrossing])
+    const units = [
+      makeWizardUnit({
+        id: 'u1',
+        existingGains: [{ description: 'Champion gratuit', type: 'honour_champion' }],
+      }),
+    ]
+    const xpResults = new Map([['u1', { oldXp: 7, newXp: 10 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_champion'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+    expect(result).toHaveLength(2)
+    // Normal crossing entry (from expandQueueEntry) — identified by xp threshold value
+    const normalEntry = result.find((e) => e.xp === 9)
+    expect(normalEntry).toBeDefined()
+    expect(normalEntry).toMatchObject({ tierLabel: 'Honneur de bataille' })
+    // Retrigger entry — xp:0 and improvements contain a retrigger id pattern
+    const retriggerEntry = result.find(
+      (e) => e.xp === 0 && e.minorImprovements.some((m) => m.id.includes('u-retrigger'))
+    )
+    expect(retriggerEntry).toBeDefined()
+    expect(retriggerEntry).toMatchObject({ tierLabel: 'Honneur de bataille', minorCount: 1 })
+    // expandQueueEntry called once only (retrigger entries bypass it)
+    expect(mockExpandQueueEntry).toHaveBeenCalledOnce()
+  })
+
+  it('test 6: champion killed + crosses 3 XP threshold → 2 total entries', () => {
+    const honourCrossing = makeThresholdEntry({
+      xp: 3,
+      tierLabel: 'Honneur de bataille',
+      majorImprovements: [],
+      minorImprovements: [
+        { id: 'u-hon2-champ', label: 'Champion gratuit', category: 'honour' as const },
+        { id: 'u-hon2-ban', label: 'Bannière gratuite', category: 'honour' as const },
+        { id: 'u-hon2-na', label: 'Non applicable', category: 'honour' as const },
+      ],
+      majorCount: 0,
+      minorCount: 1,
+    })
+    mockDetectTierCrossings.mockReturnValue([honourCrossing])
+    const units = [makeWizardUnit({ id: 'u1' })]
+    const xpResults = new Map([['u1', { oldXp: 1, newXp: 5 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_champion'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+    expect(result).toHaveLength(2)
+    const normalEntry = result.find((e) => e.xp === 3)
+    expect(normalEntry).toBeDefined()
+    const retriggerEntry = result.find(
+      (e) => e.xp === 0 && e.minorImprovements.some((m) => m.id.includes('u-retrigger'))
+    )
+    expect(retriggerEntry).toBeDefined()
+    expect(retriggerEntry).toMatchObject({ tierLabel: 'Honneur de bataille', minorCount: 1 })
+    // expandQueueEntry called once only (retrigger entries bypass it)
+    expect(mockExpandQueueEntry).toHaveBeenCalledOnce()
+  })
+
+  it('test 7: no loss (undefined lostGainTypes) → 0 entries (regression guard)', () => {
+    const units = [makeWizardUnit({ id: 'u1' })]
+    const xpResults = new Map([['u1', { oldXp: 15, newXp: 18 }]])
+    const result = buildTierUpQueue(units, xpResults)
+    expect(result).toHaveLength(0)
+  })
+
+  it('test 8: Personnages type is skipped → 0 retrigger entries', () => {
+    const units = [makeWizardUnit({ id: 'u1', type: 'Personnages' })]
+    const xpResults = new Map([['u1', { oldXp: 10, newXp: 15 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_champion'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+    expect(result).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // buildBatchGainsPayload
 // ---------------------------------------------------------------------------
 
