@@ -48,6 +48,15 @@ export const submitMatchResultSchema = z.object({
 })
 export type SubmitMatchResultInput = z.infer<typeof submitMatchResultSchema>
 
+// Unit selection before match result
+export const submitUnitSelectionSchema = z.object({
+  matchId: z.string().min(1),
+  unitIds: z.array(z.string().min(1))
+    .min(1, 'At least one unit must be selected')
+    .max(50, 'Too many units selected'),
+})
+export type SubmitUnitSelectionInput = z.infer<typeof submitUnitSelectionSchema>
+
 // Delete pending match
 export const deleteMatchSchema = z.object({
   matchId: z.string().min(1),

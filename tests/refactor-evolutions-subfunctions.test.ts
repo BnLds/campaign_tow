@@ -57,13 +57,13 @@ describe('[AC6][P0] completeEvolutionsWithGainsTransaction — orchestrator stru
 
   it('[EVO-009] orchestrator calls all 7 top-level sub-functions', () => {
     const code = evo()
-    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,500}lockAndCheckReentry/)
-    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,600}clearTemporaryEffects/)
-    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,800}verifyUnitOwnership/)
-    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,900}insertTierUpGains/)
-    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1000}processConsequences/)
-    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1100}handleChampionKills/)
-    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1200}finalizeEvolutions/)
+    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,800}lockAndCheckReentry/)
+    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,900}clearTemporaryEffects/)
+    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1100}verifyUnitOwnership/)
+    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1200}insertTierUpGains/)
+    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1400}processConsequences/)
+    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1500}handleChampionKills/)
+    expect(code).toMatch(/completeEvolutionsWithGainsTransaction[\s\S]{0,1600}finalizeEvolutions/)
   })
 
   it('[EVO-010] sub-functions are not exported (private to module)', () => {

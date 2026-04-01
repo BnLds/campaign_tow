@@ -323,14 +323,14 @@ describe('[AC4][P0] DB queries — getTimelineForArmy modifications for XP entri
   it('[4.1b-QRY-011] getTimelineForArmy references matchXpEntries for secondary XP query', () => {
     const queries = getQueries()
     expect(queries).toMatch(
-      /getTimelineForArmy[\s\S]{0,5000}matchXpEntries/
+      /getTimelineForArmy[\s\S]{0,8000}matchXpEntries/
     )
   })
 
   it('[4.1b-QRY-012] getTimelineForArmy returns unitXpEntries field in its results', () => {
     const queries = getQueries()
     expect(queries).toMatch(
-      /getTimelineForArmy[\s\S]{0,5000}unitXpEntries/
+      /getTimelineForArmy[\s\S]{0,8000}unitXpEntries/
     )
   })
 })

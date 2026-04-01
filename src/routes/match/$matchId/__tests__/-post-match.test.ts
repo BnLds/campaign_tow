@@ -92,7 +92,7 @@ describe('[AC7][P0] loadPostMatchDataFn — server function contract (Task 3.2)'
   // 10.28 — throws FORBIDDEN when not a participant
   it('[4.1-SFN-010] loadPostMatchDataFn throws FORBIDDEN when army is not a participant', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/loadPostMatchDataFn[\s\S]{0,2000}FORBIDDEN/)
+    expect(code).toMatch(/loadPostMatchDataFn[\s\S]{0,5000}FORBIDDEN/)
   })
 
   // 10.29 — returns alreadyCompleted: true when evolutionsEnteredAt is set

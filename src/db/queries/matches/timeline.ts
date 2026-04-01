@@ -3,7 +3,8 @@ import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../../index'
 import { players, armies, units, matches, matchParticipants, matchXpEntries, statModifiers, unitGains } from '../../schema'
 import type { UnitGainType } from '../units'
-import { getArmyXpAndPointsTotalsBatch } from '../units'
+import { getArmyXpAndPointsTotalsBatch, getUnitsTotalsByIds } from '../units'
+import { getUnitSelectionForParticipant } from './unit-selections'
 
 export type MatchType = 'standard' | 'initial_setup'
 
@@ -19,6 +20,8 @@ export type TimelineEntryData = {
   hasEvolutions: boolean
   isLatestMatch: boolean
   matchType: MatchType
+  unitSelectionCompletedAt: Date | null
+  opponentUnitSelectionCompletedAt: Date | null
   opponent: {
     name: string | null
     faction: string | null
@@ -112,10 +115,12 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
       matchType: matches.matchType,
       result: matchParticipants.result,
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
+      unitSelectionCompletedAt: matchParticipants.unitSelectionCompletedAt,
       snapshotXp: matchParticipants.snapshotXp,
       snapshotPoints: matchParticipants.snapshotPoints,
       oppSnapshotXp: oppParticipant.snapshotXp,
       oppSnapshotPoints: oppParticipant.snapshotPoints,
+      oppUnitSelectionCompletedAt: oppParticipant.unitSelectionCompletedAt,
       opponentName: oppArmy.name,
       opponentFaction: oppArmy.faction,
       opponentPlayerName: oppPlayer.username,
@@ -137,24 +142,72 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
   const totalsMap = await getArmyXpAndPointsTotalsBatch(uniqueArmyIds)
   const playerTotals = totalsMap.get(armyId) ?? { totalXp: 0, totalPoints: 0 }
 
+  // For entries without snapshots but with unit selections, compute selection-aware totals
+  // This only applies to the latest pending match (the only entry without a snapshot)
+  const selectionTotalsCache = new Map<string, { totalXp: number; totalPoints: number }>()
+  for (const row of rows) {
+    if (row.matchType === 'initial_setup') continue
+    const hasSnapshot = row.snapshotXp != null && row.snapshotPoints != null && row.oppSnapshotXp != null && row.oppSnapshotPoints != null
+    if (hasSnapshot) continue
+    // No snapshot — check if player or opponent has a selection
+    if (row.unitSelectionCompletedAt) {
+      const ids = await getUnitSelectionForParticipant(row.matchParticipantId)
+      if (ids.length > 0) selectionTotalsCache.set(row.matchParticipantId, await getUnitsTotalsByIds(ids))
+    }
+    if (row.oppUnitSelectionCompletedAt && row.oppArmyId) {
+      // Get opponent participant ID from the row — we need a lookup
+      const oppParticipantRows = await db
+        .select({ id: matchParticipants.id })
+        .from(matchParticipants)
+        .where(and(eq(matchParticipants.matchId, row.matchId), ne(matchParticipants.armyId, armyId)))
+        .limit(1)
+      if (oppParticipantRows[0]) {
+        const oppIds = await getUnitSelectionForParticipant(oppParticipantRows[0].id)
+        if (oppIds.length > 0) selectionTotalsCache.set(oppParticipantRows[0].id, await getUnitsTotalsByIds(oppIds))
+      }
+    }
+  }
+
   const entries = rows.map((row) => {
     const oppTotals = row.oppArmyId ? totalsMap.get(row.oppArmyId) : null
     const hasSnapshot = row.snapshotXp != null && row.snapshotPoints != null && row.oppSnapshotXp != null && row.oppSnapshotPoints != null
-    const armyTotals = (row.matchType !== 'initial_setup' && (hasSnapshot || oppTotals)) ? (hasSnapshot ? {
-      playerXp: row.snapshotXp!,
-      playerPoints: row.snapshotPoints!,
-      opponentXp: row.oppSnapshotXp!,
-      opponentPoints: row.oppSnapshotPoints!,
-      deltaXp: row.snapshotXp! - row.oppSnapshotXp!,
-      deltaPoints: row.snapshotPoints! - row.oppSnapshotPoints!,
-    } : {
-      playerXp: playerTotals.totalXp,
-      playerPoints: playerTotals.totalPoints,
-      opponentXp: oppTotals!.totalXp,
-      opponentPoints: oppTotals!.totalPoints,
-      deltaXp: playerTotals.totalXp - oppTotals!.totalXp,
-      deltaPoints: playerTotals.totalPoints - oppTotals!.totalPoints,
-    }) : undefined
+
+    let armyTotals: { playerXp: number; playerPoints: number; opponentXp: number; opponentPoints: number; deltaXp: number; deltaPoints: number } | undefined
+    if (row.matchType === 'initial_setup' || (!hasSnapshot && !oppTotals)) {
+      armyTotals = undefined
+    } else if (hasSnapshot) {
+      armyTotals = {
+        playerXp: row.snapshotXp!,
+        playerPoints: row.snapshotPoints!,
+        opponentXp: row.oppSnapshotXp!,
+        opponentPoints: row.oppSnapshotPoints!,
+        deltaXp: row.snapshotXp! - row.oppSnapshotXp!,
+        deltaPoints: row.snapshotPoints! - row.oppSnapshotPoints!,
+      }
+    } else {
+      // No snapshot — use selection-aware totals if available, else full army
+      const myTotals = selectionTotalsCache.get(row.matchParticipantId) ?? playerTotals
+      // Look up opponent's selection totals
+      let effectiveOppTotals = oppTotals!
+      // Check if opponent had a selection
+      if (row.oppUnitSelectionCompletedAt && row.oppArmyId) {
+        // Find the opponent participant's cached totals
+        for (const [key, val] of selectionTotalsCache.entries()) {
+          if (key !== row.matchParticipantId) {
+            effectiveOppTotals = val
+            break
+          }
+        }
+      }
+      armyTotals = {
+        playerXp: myTotals.totalXp,
+        playerPoints: myTotals.totalPoints,
+        opponentXp: effectiveOppTotals.totalXp,
+        opponentPoints: effectiveOppTotals.totalPoints,
+        deltaXp: myTotals.totalXp - effectiveOppTotals.totalXp,
+        deltaPoints: myTotals.totalPoints - effectiveOppTotals.totalPoints,
+      }
+    }
     return {
       matchId: row.matchId,
       matchParticipantId: row.matchParticipantId,
@@ -163,6 +216,8 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
       result: row.result,
       hasEvolutions: row.evolutionsEnteredAt !== null,
       isLatestMatch: row.matchId === latestMatchId,
+      unitSelectionCompletedAt: row.unitSelectionCompletedAt ?? null,
+      opponentUnitSelectionCompletedAt: row.oppUnitSelectionCompletedAt ?? null,
       opponent: row.opponentPlayerName != null
         ? {
             name: row.opponentName ?? null,

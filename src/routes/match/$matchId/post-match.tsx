@@ -42,7 +42,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo, getArmyXpAndPointsTotalsBatch } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo, getArmyXpAndPointsTotalsBatch, getUnitSelectionForParticipant, getUnitsTotalsByIds } = await import('../../../db/queries')
 
     // Load drizzle deps before round 1 (needed for match type + opponent query)
     const [
@@ -107,15 +107,43 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
         }
       }
     }
-    // Returns all army units (no per-match composition tracking exists yet).
-    // The player enters 0 XP for units that didn't participate.
+    // Load unit selection for filtering (if player has completed selection)
+    const playerSelectionUnitIds = participant.unitSelectionCompletedAt
+      ? await getUnitSelectionForParticipant(participant.id)
+      : null // null = no selection, load all units
 
-    // Compute catchup bonus XP from live army totals
+    // Compute catchup bonus XP — use per-participant selected totals when available
     const oppArmyId = oppRows[0]?.oppArmyId ?? null
-    const catchupArmyIds = [army.id, ...(oppArmyId ? [oppArmyId] : [])]
-    const totalsMap = await getArmyXpAndPointsTotalsBatch(catchupArmyIds)
-    const playerTotal = totalsMap.get(army.id) ?? { totalXp: 0, totalPoints: 0 }
-    const opponentTotal = oppArmyId ? (totalsMap.get(oppArmyId) ?? { totalXp: 0, totalPoints: 0 }) : { totalXp: 0, totalPoints: 0 }
+    // Get opponent participant for their selection
+    const oppParticipantRows = oppArmyId
+      ? await db
+          .select({ id: mpTable.id, unitSelectionCompletedAt: mpTable.unitSelectionCompletedAt })
+          .from(mpTable)
+          .where(dbAnd(dbEq(mpTable.matchId, data.matchId), dbNe(mpTable.playerId, context.session.playerId)))
+          .limit(1)
+      : []
+    const oppParticipantInfo = oppParticipantRows[0] ?? null
+
+    // Player totals: from selection if exists, else full army
+    let playerTotal: { totalXp: number; totalPoints: number }
+    if (playerSelectionUnitIds && playerSelectionUnitIds.length > 0) {
+      playerTotal = await getUnitsTotalsByIds(playerSelectionUnitIds)
+    } else {
+      const totalsMap = await getArmyXpAndPointsTotalsBatch([army.id])
+      playerTotal = totalsMap.get(army.id) ?? { totalXp: 0, totalPoints: 0 }
+    }
+
+    // Opponent totals: from their selection if exists, else full army
+    let opponentTotal: { totalXp: number; totalPoints: number } = { totalXp: 0, totalPoints: 0 }
+    if (oppArmyId) {
+      if (oppParticipantInfo?.unitSelectionCompletedAt) {
+        const oppSelectedIds = await getUnitSelectionForParticipant(oppParticipantInfo.id)
+        opponentTotal = oppSelectedIds.length > 0 ? await getUnitsTotalsByIds(oppSelectedIds) : { totalXp: 0, totalPoints: 0 }
+      } else {
+        const totalsMap = await getArmyXpAndPointsTotalsBatch([oppArmyId])
+        opponentTotal = totalsMap.get(oppArmyId) ?? { totalXp: 0, totalPoints: 0 }
+      }
+    }
     const catchupDeltaXp = mode === 'initial-xp' ? 0 : Math.max(0, opponentTotal.totalXp - playerTotal.totalXp)
     const catchupBonusXp = Math.floor(catchupDeltaXp / 10)
 
@@ -136,10 +164,13 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     }
 
     // Round 2 (parallel): units + xp entries
-    const [unitsRaw, existingEntries] = await Promise.all([
+    const [allUnitsRaw, existingEntries] = await Promise.all([
       getUnitsForArmy(army.id),
       getMatchXpEntries(participant.id),
     ])
+    // Filter units by selection if player has completed unit selection
+    const selectedSet = playerSelectionUnitIds ? new Set(playerSelectionUnitIds) : null
+    const unitsRaw = selectedSet ? allUnitsRaw.filter((u) => selectedSet.has(u.id)) : allUnitsRaw
     const entryMap = new Map(existingEntries.map((e) => [e.unitId, { xpGained: e.xpGained, derouteXpLost: e.derouteXpLost }]))
     // Load existing unit_gains — filter out gains from the current participant
     // (defense in depth: with batch commit there should be no partial gains,

@@ -356,12 +356,35 @@ export async function hasInProgressPostMatch(unitId: string): Promise<boolean> {
   return rows.length > 0
 }
 
-export async function getArmyXpAndPointsTotalsBatch(armyIds: string[]): Promise<Map<string, { totalXp: number; totalPoints: number }>> {
+export async function getUnitsTotalsByIds(
+  unitIds: string[],
+  executor?: Parameters<Parameters<typeof db.transaction>[0]>[0],
+): Promise<{ totalXp: number; totalPoints: number }> {
+  if (unitIds.length === 0) return { totalXp: 0, totalPoints: 0 }
+
+  const ex = executor ?? db
+  const rows = await ex
+    .select({
+      totalXp: sql<string>`COALESCE(SUM(${units.xp}), 0)`,
+      totalPoints: sql<string>`COALESCE(SUM(${units.points}), 0)`,
+    })
+    .from(units)
+    .where(and(inArray(units.id, unitIds), eq(units.status, 'active')))
+
+  if (rows.length === 0) return { totalXp: 0, totalPoints: 0 }
+  return { totalXp: Number(rows[0].totalXp), totalPoints: Number(rows[0].totalPoints) }
+}
+
+export async function getArmyXpAndPointsTotalsBatch(
+  armyIds: string[],
+  executor?: Parameters<Parameters<typeof db.transaction>[0]>[0],
+): Promise<Map<string, { totalXp: number; totalPoints: number }>> {
   if (armyIds.length === 0) return new Map()
 
   const filteredIds = armyIds.filter((id) => id != null)
 
-  const rows = await db
+  const ex = executor ?? db
+  const rows = await ex
     .select({
       armyId: units.armyId,
       totalXp: sql<string>`COALESCE(SUM(${units.xp}), 0)`,

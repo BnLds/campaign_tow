@@ -4,9 +4,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { useState, useEffect, useRef } from 'react'
 import { TimelineEntry } from '../components/timeline-entry'
 import { ArmyImportForm } from '../components/army-import-form'
+import { UnitSelectionWizard } from '../components/unit-selection-wizard'
 import { authMiddleware } from '../lib/middleware'
 import type { ServerResult, MatchType } from '../lib/types'
-import { submitMatchResultSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
+import { submitMatchResultSchema, submitUnitSelectionSchema, deleteMatchSchema, toValidResult } from '../lib/validators'
+import { requiresUnitSelection } from '../lib/match-utils'
 import { invalidateArmyState } from '../lib/invalidation-helpers'
 import { campaignTimelineQueryOptions } from '../lib/campaign-queries'
 import { sessionQueryOptions } from '../lib/session-queries'
@@ -30,6 +32,19 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
         error: { code: 'FORBIDDEN', message: "Vous n'êtes pas participant de cette partie" },
       }
     }
+    // Unit selection gate — skip for initial_setup matches
+    const { db: dbInst } = await import('../db/index')
+    const { matches: matchesTable } = await import('../db/schema')
+    const { eq: dbEq } = await import('drizzle-orm')
+    const matchTypeRows = await dbInst
+      .select({ matchType: matchesTable.matchType })
+      .from(matchesTable)
+      .where(dbEq(matchesTable.id, data.matchId))
+      .limit(1)
+    const matchType = matchTypeRows[0]?.matchType ?? 'standard'
+    if (requiresUnitSelection(matchType) && !participant.unitSelectionCompletedAt) {
+      return { success: false, error: { code: 'UNIT_SELECTION_REQUIRED', message: 'La sélection des unités doit être complétée avant de saisir le résultat' } }
+    }
     // First-time result entry (result is null) or re-edit on latest match
     const isFirstTime = participant.result === null
     const updated = isFirstTime
@@ -38,11 +53,105 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
     if (!updated) {
       return { success: false, error: { code: 'SERVER_ERROR', message: 'Échec de la mise à jour du résultat' } }
     }
-    // Write-once snapshot: freeze army XP & points deltas at first result selection
-    if (isFirstTime) {
-      await snapshotArmyTotalsForMatch(data.matchId)
-    }
+    // Snapshot: capture army XP & points deltas at result entry
+    await snapshotArmyTotalsForMatch(data.matchId)
     return { success: true, data: { participantId: participant.id, result: data.result } }
+  })
+
+export const submitUnitSelectionFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(submitUnitSelectionSchema)
+  .handler(async ({ context, data }): Promise<ServerResult<{ totalXp: number; totalPoints: number }>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, submitUnitSelection, snapshotArmyTotalsForMatch } = await import('../db/queries')
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
+    }
+    const participant = await getMatchParticipantByMatchAndPlayer(data.matchId, context.session.playerId)
+    if (!participant) {
+      return { success: false, error: { code: 'FORBIDDEN', message: "Vous n'êtes pas participant de cette partie" } }
+    }
+    // Reject for initial_setup matches
+    const { db: dbInst } = await import('../db/index')
+    const { matchParticipants: mpTable, matches: matchesTable } = await import('../db/schema')
+    const { eq: dbEq } = await import('drizzle-orm')
+    const [matchRow] = await dbInst
+      .select({ matchType: matchesTable.matchType })
+      .from(matchesTable)
+      .where(dbEq(matchesTable.id, data.matchId))
+      .limit(1)
+    if (matchRow && !requiresUnitSelection(matchRow.matchType)) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Sélection des unités non applicable pour ce type de partie' } }
+    }
+    // Block modification after post-match evolutions completed
+    const [mpRow] = await dbInst
+      .select({ evolutionsEnteredAt: mpTable.evolutionsEnteredAt })
+      .from(mpTable)
+      .where(dbEq(mpTable.id, participant.id))
+      .limit(1)
+    if (mpRow?.evolutionsEnteredAt) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Impossible de modifier la sélection après le rapport post-match' } }
+    }
+    try {
+      // Wrap selection + snapshot in a single transaction to prevent race conditions
+      const { db: dbTx } = await import('../db/index')
+      const totals = await dbTx.transaction(async (tx) => {
+        const result = await submitUnitSelection(participant.id, data.unitIds, tx)
+        // If participant already has a result, recalculate snapshot atomically
+        if (participant.result !== null) {
+          await snapshotArmyTotalsForMatch(data.matchId, tx)
+        }
+        return result
+      })
+      return { success: true, data: totals }
+    } catch (err) {
+      if (err instanceof Error && err.message === 'INVALID_UNIT_IDS') {
+        return { success: false, error: { code: 'FORBIDDEN', message: "Certaines unités n'appartiennent pas à votre armée" } }
+      }
+      throw err
+    }
+  })
+
+export const loadArmyUnitsForSelectionFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .inputValidator((data: { matchId: string }) => data)
+  .handler(async ({ context, data }): Promise<ServerResult<{ units: Array<{ id: string; name: string; type: string; xp: number; points: number }>; preSelectedUnitIds: string[] }>> => {
+    if (context.session.isGuest) {
+      return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
+    }
+    const { getPlayerArmy, getMatchParticipantByMatchAndPlayer, getUnitsForArmy, getUnitSelectionForParticipant } = await import('../db/queries')
+    const army = await getPlayerArmy(context.session.playerId)
+    if (!army) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Aucune armée assignée' } }
+    }
+    const participant = await getMatchParticipantByMatchAndPlayer(data.matchId, context.session.playerId)
+    if (!participant) {
+      return { success: false, error: { code: 'FORBIDDEN', message: "Vous n'êtes pas participant de cette partie" } }
+    }
+    // Block loading wizard after post-match evolutions completed
+    const { db: dbCheck } = await import('../db/index')
+    const { matchParticipants: mpCheck } = await import('../db/schema')
+    const { eq: eqCheck } = await import('drizzle-orm')
+    const [mpRowCheck] = await dbCheck
+      .select({ evolutionsEnteredAt: mpCheck.evolutionsEnteredAt })
+      .from(mpCheck)
+      .where(eqCheck(mpCheck.id, participant.id))
+      .limit(1)
+    if (mpRowCheck?.evolutionsEnteredAt) {
+      return { success: false, error: { code: 'FORBIDDEN', message: 'Sélection verrouillée après le rapport post-match' } }
+    }
+    const armyUnits = await getUnitsForArmy(army.id)
+    const preSelectedUnitIds = await getUnitSelectionForParticipant(participant.id)
+    return {
+      success: true,
+      data: {
+        units: armyUnits.map((u) => ({ id: u.id, name: u.name, type: u.type, xp: u.xp, points: u.points ?? 0 })),
+        preSelectedUnitIds,
+      },
+    }
   })
 
 export const deleteMatchFn = createServerFn({ method: 'POST' })
@@ -115,6 +224,7 @@ function CampaignView() {
   const context = useRouteContext({ from: '__root__' })
   const { session } = context
   const [reentryConfirmMatchId, setReentryConfirmMatchId] = useState<string | null>(null)
+  const [unitSelectionMatchId, setUnitSelectionMatchId] = useState<string | null>(null)
   const [deleteConfirmMatch, setDeleteConfirmMatch] = useState<{ matchId: string; opponentName: string; date: string } | null>(null)
   const [skipXpConfirmOpen, setSkipXpConfirmOpen] = useState(false)
   const [skipXpError, setSkipXpError] = useState<string | null>(null)
@@ -234,6 +344,19 @@ function CampaignView() {
     blockToastTimeoutRef.current = setTimeout(() => setBlockToast(null), 3000)
   }
 
+  const handleUnitSelectionStart = (matchId: string) => {
+    setUnitSelectionMatchId(matchId)
+  }
+
+  const handleUnitSelectionSubmit = async (matchId: string, unitIds: string[]) => {
+    const response = await submitUnitSelectionFn({ data: { matchId, unitIds } })
+    if (!response.success) {
+      throw new Error(response.error.message)
+    }
+    setUnitSelectionMatchId(null)
+    await invalidateArmyState(queryClient, router)
+  }
+
   const handleEvolutionStart = (matchId: string) => {
     // Priority 1: initial XP not done — block all standard matches
     if (!army?.initialXpCompletedAt && matchId !== initialSetupMatch?.matchId) {
@@ -341,6 +464,15 @@ function CampaignView() {
             </div>
           </div>
         </div>
+      )}
+      {/* Wizard de sélection d'unités */}
+      {unitSelectionMatchId && (
+        <UnitSelectionWizard
+          matchId={unitSelectionMatchId}
+          loadUnits={() => loadArmyUnitsForSelectionFn({ data: { matchId: unitSelectionMatchId } })}
+          onSubmit={(unitIds) => handleUnitSelectionSubmit(unitSelectionMatchId, unitIds)}
+          onCancel={() => setUnitSelectionMatchId(null)}
+        />
       )}
       {/* Modal de confirmation — passer l'XP initiale */}
       {skipXpConfirmOpen && (
@@ -460,6 +592,9 @@ function CampaignView() {
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}
                       onPostMatchReentry={handlePostMatchReentry}
+                      onUnitSelectionStart={handleUnitSelectionStart}
+                      unitSelectionCompletedAt={entry.unitSelectionCompletedAt ?? null}
+                      opponentUnitSelectionCompletedAt={entry.opponentUnitSelectionCompletedAt ?? null}
                       initialXpSkipped={entry.matchType === 'initial_setup' && !!army.initialXpCompletedAt && !entry.hasEvolutions}
                       onSkipInitialXp={entry.matchType === 'initial_setup' && !army.initialXpCompletedAt ? handleSkipInitialXp : undefined}
                       onDelete={!entry.hasEvolutions ? (matchId) => {

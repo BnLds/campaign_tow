@@ -43,7 +43,7 @@ export async function getAllArmyRecords(): Promise<Map<string, { wins: number; d
 export async function getMatchParticipantByMatchAndPlayer(
   matchId: string,
   playerId: string,
-): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null } | null> {
+): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null; unitSelectionCompletedAt: Date | null } | null> {
   const rows = await db
     .select({
       id: matchParticipants.id,
@@ -51,6 +51,7 @@ export async function getMatchParticipantByMatchAndPlayer(
       playerId: matchParticipants.playerId,
       armyId: matchParticipants.armyId,
       result: matchParticipants.result,
+      unitSelectionCompletedAt: matchParticipants.unitSelectionCompletedAt,
     })
     .from(matchParticipants)
     .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))

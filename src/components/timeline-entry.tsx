@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
+import { requiresUnitSelection } from '../lib/match-utils'
 import { cn } from '#/lib/utils'
 import { chipClasses } from '#/lib/chip-styles'
 import { LinkButton } from '#/components/link-button'
@@ -27,6 +28,9 @@ export type TimelineEntryProps = {
   onPostMatchReentry?: (matchId: string) => void
   onDelete?: (matchId: string) => void
   onSkipInitialXp?: () => void
+  onUnitSelectionStart?: (matchId: string) => void
+  unitSelectionCompletedAt?: Date | null
+  opponentUnitSelectionCompletedAt?: Date | null
   initialXpSkipped?: boolean
   unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: Array<{ description: string; type: string }>; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
   armyTotals?: {
@@ -96,6 +100,9 @@ export function TimelineEntry({
   onPostMatchReentry,
   onDelete,
   onSkipInitialXp,
+  onUnitSelectionStart,
+  unitSelectionCompletedAt,
+  opponentUnitSelectionCompletedAt,
   initialXpSkipped = false,
   unitXpEntries,
   armyTotals,
@@ -104,13 +111,31 @@ export function TimelineEntry({
   const resultConfig = result && !isInitialSetup ? RESULT_CONFIG[result] : null
   const formattedDate = formatDate(date)
 
-  const [isSelecting, setIsSelecting] = useState(false)
+  const [editMode, setEditMode] = useState<'idle' | 'menu' | 'result'>('idle')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // initial_setup matches have no result (no V/D/E) — don't show result selection
+  // Whether this match type requires unit selection
+  const needsUnitSelection = !isInitialSetup && requiresUnitSelection(matchType)
+  // unitSelectionCompletedAt === undefined means "prop not passed" → backward compat (no selection required)
+  const playerSelected = unitSelectionCompletedAt !== undefined ? unitSelectionCompletedAt !== null : null
+  const opponentSelected = opponentUnitSelectionCompletedAt !== undefined ? opponentUnitSelectionCompletedAt !== null : null
+
+  // Show CTA only for standard matches where unit selection is needed and player hasn't selected yet
+  const showUnitSelectionCTA =
+    needsUnitSelection && playerSelected === false
+
+  // Provisional deltas: player selected but opponent hasn't yet
+  const isDeltaProvisional =
+    needsUnitSelection && playerSelected === true && opponentSelected === false
+
+  // Show result selection buttons
   const showSelectionButtons =
-    !isInitialSetup && isEditable && (result === null || isSelecting)
+    !isInitialSetup && isEditable && (
+      result === null
+        ? (playerSelected === null || playerSelected === true) // backward compat or player selected
+        : editMode === 'result'
+    ) && !showUnitSelectionCTA
 
   const handleResultClick = async (selectedResult: 'victory' | 'defeat' | 'draw') => {
     if (!onResultSubmit || isSubmitting) return
@@ -154,14 +179,34 @@ export function TimelineEntry({
             </p>
           )}
           {!isInitialSetup && opponent && armyTotals && (
-            <p className="text-xs m-0 flex flex-wrap gap-1.5">
-                <span className={cn('', armyTotals.deltaXp > 0 ? 'text-cw-bonus' : armyTotals.deltaXp < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
-                  Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
-                </span>
-                <span className={cn('', armyTotals.deltaPoints > 0 ? 'text-cw-bonus' : armyTotals.deltaPoints < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
-                  Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
-                </span>
+            <>
+              <p className="text-xs m-0 flex flex-wrap gap-1.5">
+                {isDeltaProvisional ? (
+                  <>
+                    <span className="italic" style={{ color: '#9ca3af' }}>
+                      Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
+                    </span>
+                    <span className="italic" style={{ color: '#9ca3af' }}>
+                      Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className={cn('', armyTotals.deltaXp > 0 ? 'text-cw-bonus' : armyTotals.deltaXp < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
+                      Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
+                    </span>
+                    <span className={cn('', armyTotals.deltaPoints > 0 ? 'text-cw-bonus' : armyTotals.deltaPoints < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
+                      Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
+                    </span>
+                  </>
+                )}
               </p>
+              {isDeltaProvisional && (
+                <p className="text-xs m-0 italic" style={{ color: '#9ca3af' }}>
+                  ⚠ adversaire n&apos;a pas sélectionné — deltas provisoires
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -173,11 +218,15 @@ export function TimelineEntry({
             </span>
           )}
           <div className="flex flex-row items-center gap-1.5">
-            {isEditable && !isInitialSetup && result !== null && !isSelecting && (!hasEvolutions || isLatestMatch) && (
+            {isEditable && !isInitialSetup && result !== null && editMode === 'idle' && (!hasEvolutions || isLatestMatch) && (
               <LinkButton
                 data-testid="modify-result"
                 onClick={() => {
-                  setIsSelecting(true)
+                  if (needsUnitSelection && unitSelectionCompletedAt !== undefined && unitSelectionCompletedAt !== null) {
+                    setEditMode('menu')
+                  } else {
+                    setEditMode('result')
+                  }
                   setSubmitError(null)
                 }}
               >
@@ -200,7 +249,7 @@ export function TimelineEntry({
                 Modifier
               </LinkButton>
             )}
-            {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
+            {isEditable && !isInitialSetup && result !== null && editMode === 'idle' && !hasEvolutions && onDelete && (
               <button
                 type="button"
                 data-testid="delete-match"
@@ -211,12 +260,12 @@ export function TimelineEntry({
                 ✕
               </button>
             )}
-            {isEditable && !isInitialSetup && result !== null && isSelecting && (
+            {isEditable && !isInitialSetup && result !== null && editMode !== 'idle' && (
               <LinkButton
                 data-testid="cancel-modify"
                 variant="danger"
                 onClick={() => {
-                  setIsSelecting(false)
+                  setEditMode('idle')
                   setSubmitError(null)
                 }}
               >
@@ -227,10 +276,46 @@ export function TimelineEntry({
         </div>
       </div>
 
+      {/* Unit selection CTA — shown when player hasn't selected yet (standard matches only) */}
+      {showUnitSelectionCTA && onUnitSelectionStart && (
+        <Button
+          type="button"
+          data-testid="unit-selection-cta"
+          variant="brand"
+          onClick={() => onUnitSelectionStart(matchId)}
+          className="self-center mt-1 gap-1.5"
+        >
+          Sélectionner mes unités <span aria-hidden="true">›</span>
+        </Button>
+      )}
+
+      {/* Modifier menu — two options when editMode === 'menu' */}
+      {isEditable && !isInitialSetup && editMode === 'menu' && (
+        <div className="flex flex-col gap-1 mt-1 pl-1">
+          <LinkButton
+            data-testid="menu-modify-result"
+            onClick={() => setEditMode('result')}
+          >
+            Modifier le résultat
+          </LinkButton>
+          {onUnitSelectionStart && !hasEvolutions && (
+            <LinkButton
+              data-testid="menu-modify-unit-selection"
+              onClick={() => {
+                onUnitSelectionStart(matchId)
+                setEditMode('idle')
+              }}
+            >
+              Modifier la sélection d&apos;unités
+            </LinkButton>
+          )}
+        </div>
+      )}
+
       {/* Result selection buttons */}
       {showSelectionButtons && (
         <>
-        {hasEvolutions && isLatestMatch && isSelecting && (
+        {hasEvolutions && isLatestMatch && editMode === 'result' && (
           <p className="text-xs text-cw-text-secondary m-0 mt-1 italic">
             Changer le résultat ne modifie pas le rapport — pensez à le re-saisir si nécessaire.
           </p>
@@ -247,7 +332,7 @@ export function TimelineEntry({
                 className={cn(
                   'flex-1 min-h-11 min-w-11 rounded-md font-semibold text-sm cursor-pointer',
                   cfg.buttonClasses,
-                  result === key && isSelecting ? cfg.selectedBorder : 'border border-transparent',
+                  result === key && editMode === 'result' ? cfg.selectedBorder : 'border border-transparent',
                   isSubmitting && 'opacity-60 cursor-not-allowed',
                 )}
               >
@@ -356,8 +441,8 @@ export function TimelineEntry({
       )}
 
       {/* "Modifier le dernier rapport" — shown on latest match with completed post-match.
-           For standard matches: only after clicking "Modifier". For initial_setup: always visible. */}
-      {isEditable && !isInitialSetup && result !== null && hasEvolutions && isLatestMatch && isSelecting && onPostMatchReentry && (
+           For standard matches: only after clicking "Modifier" (editMode === 'menu'). For initial_setup: always visible. */}
+      {isEditable && !isInitialSetup && result !== null && hasEvolutions && isLatestMatch && editMode === 'menu' && onPostMatchReentry && (
         <Button
           type="button"
           data-testid="post-match-reentry"
