@@ -111,7 +111,7 @@ export function TimelineEntry({
   const resultConfig = result && !isInitialSetup ? RESULT_CONFIG[result] : null
   const formattedDate = formatDate(date)
 
-  const [editMode, setEditMode] = useState<'idle' | 'menu' | 'result'>('idle')
+  const [editMode, setEditMode] = useState<'idle' | 'result'>('idle')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -225,7 +225,7 @@ export function TimelineEntry({
                   if (result === null) {
                     onUnitSelectionStart?.(matchId)
                   } else if (needsUnitSelection && unitSelectionCompletedAt !== undefined && unitSelectionCompletedAt !== null) {
-                    setEditMode('menu')
+                    setEditMode('result')
                   } else {
                     setEditMode('result')
                   }
@@ -291,32 +291,20 @@ export function TimelineEntry({
         </Button>
       )}
 
-      {/* Modifier menu — two options when editMode === 'menu' */}
-      {isEditable && !isInitialSetup && editMode === 'menu' && (
-        <div className="flex flex-col gap-1 mt-1 pl-1">
-          <LinkButton
-            data-testid="menu-modify-result"
-            onClick={() => setEditMode('result')}
-          >
-            Modifier le résultat
-          </LinkButton>
-          {onUnitSelectionStart && !hasEvolutions && (
-            <LinkButton
-              data-testid="menu-modify-unit-selection"
-              onClick={() => {
-                onUnitSelectionStart(matchId)
-                setEditMode('idle')
-              }}
-            >
-              Modifier la sélection d&apos;unités
-            </LinkButton>
-          )}
-        </div>
-      )}
-
       {/* Result selection buttons */}
       {showSelectionButtons && (
         <>
+        {onUnitSelectionStart && !hasEvolutions && needsUnitSelection && unitSelectionCompletedAt != null && editMode === 'result' && result !== null && (
+          <LinkButton
+            data-testid="menu-modify-unit-selection"
+            onClick={() => {
+              onUnitSelectionStart(matchId)
+              setEditMode('idle')
+            }}
+          >
+            Modifier la sélection d&apos;unités
+          </LinkButton>
+        )}
         {hasEvolutions && isLatestMatch && editMode === 'result' && (
           <p className="text-xs text-cw-text-secondary m-0 mt-1 italic">
             Changer le résultat ne modifie pas le rapport — pensez à le re-saisir si nécessaire.
@@ -343,6 +331,14 @@ export function TimelineEntry({
             )
           })}
         </div>
+        {hasEvolutions && onPostMatchReentry && editMode === 'result' && result !== null && (
+          <LinkButton
+            data-testid="post-match-reentry"
+            onClick={() => onPostMatchReentry(matchId)}
+          >
+            Modifier le dernier rapport
+          </LinkButton>
+        )}
         </>
       )}
 
@@ -442,19 +438,6 @@ export function TimelineEntry({
         </LinkButton>
       )}
 
-      {/* "Modifier le dernier rapport" — shown on latest match with completed post-match.
-           For standard matches: only after clicking "Modifier" (editMode === 'menu'). For initial_setup: always visible. */}
-      {isEditable && !isInitialSetup && result !== null && hasEvolutions && isLatestMatch && editMode === 'menu' && onPostMatchReentry && (
-        <Button
-          type="button"
-          data-testid="post-match-reentry"
-          variant="brand"
-          onClick={() => onPostMatchReentry(matchId)}
-          className="self-center mt-1 gap-1.5"
-        >
-          Modifier le dernier rapport
-        </Button>
-      )}
     </div>
   )
 }
