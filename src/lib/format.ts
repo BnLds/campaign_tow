@@ -1,6 +1,7 @@
 // Honour gain labels — used to classify gains inserted during post-match flow
 export const HONOUR_CHAMPION_LABEL = 'Champion gratuit'
 export const HONOUR_BANNER_LABEL = 'Bannière gratuite'
+export const HONOUR_MUSICIAN_LABEL = 'Musicien gratuit'
 
 const STAT_ABBREVIATIONS: Record<string, string> = {
   Mouvement: 'M',

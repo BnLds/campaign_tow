@@ -27,17 +27,17 @@ const UNIT_TYPE = 'Unités de base'
 const CHAR_TYPE = 'Personnages'
 
 // ---------------------------------------------------------------------------
-// Task 9.1 — UNIT_THRESHOLDS has 6 entries at XP 3, 9, 10, 25, 50, 80
+// Task 9.1 — UNIT_THRESHOLDS has 7 entries at XP 3, 9, 12, 10, 25, 50, 80
 // ---------------------------------------------------------------------------
 
 describe('[AC5][P0] UNIT_THRESHOLDS — structure (Task 9.1)', () => {
-  it('[4.2-CST-001] UNIT_THRESHOLDS has exactly 6 entries', () => {
-    expect(UNIT_THRESHOLDS).toHaveLength(6)
+  it('[4.2-CST-001] UNIT_THRESHOLDS has exactly 7 entries', () => {
+    expect(UNIT_THRESHOLDS).toHaveLength(7)
   })
 
-  it('[4.2-CST-002] UNIT_THRESHOLDS entries are at XP 3, 9, 10, 25, 50, 80 (in order)', () => {
+  it('[4.2-CST-002] UNIT_THRESHOLDS entries are at XP 3, 9, 12, 10, 25, 50, 80 (in order)', () => {
     const xpValues = UNIT_THRESHOLDS.map((t) => t.xp)
-    expect(xpValues).toEqual([3, 9, 10, 25, 50, 80])
+    expect(xpValues).toEqual([3, 9, 12, 10, 25, 50, 80])
   })
 
   it('[4.2-CST-003] UNIT_THRESHOLDS entry at XP 3 has tierLabel "Honneur de bataille"', () => {
@@ -133,14 +133,14 @@ describe('[AC2][P0] Improvement ids — uniqueness across all improvement arrays
 // ---------------------------------------------------------------------------
 
 describe('[AC5][P0] detectTierCrossings — unit 0→15 (Task 9.4)', () => {
-  it('[4.2-CST-016] unit 0→15: returns exactly 3 crossings', () => {
+  it('[4.2-CST-016] unit 0→15: returns exactly 4 crossings', () => {
     const crossings = detectTierCrossings(0, 15, UNIT_TYPE)
-    expect(crossings).toHaveLength(3)
+    expect(crossings).toHaveLength(4)
   })
 
-  it('[4.2-CST-017] unit 0→15: crossing XP values are [3, 9, 10]', () => {
+  it('[4.2-CST-017] unit 0→15: crossing XP values are [3, 9, 10, 12]', () => {
     const crossings = detectTierCrossings(0, 15, UNIT_TYPE)
-    expect(crossings.map((c) => c.xp)).toEqual([3, 9, 10])
+    expect(crossings.map((c) => c.xp)).toEqual([3, 9, 10, 12])
   })
 
   it('[4.2-CST-018] unit 0→15: crossing at XP 3 has majorCount=0 and minorCount=1', () => {
@@ -333,14 +333,14 @@ describe('[AC2][P0] Endurance — character improvements (Task 9.12)', () => {
 // ---------------------------------------------------------------------------
 
 describe('[AC5][P0] detectTierCrossings — unit 0→80 (Task 9.13)', () => {
-  it('[4.2-CST-040] unit 0→80: returns exactly 6 crossings', () => {
+  it('[4.2-CST-040] unit 0→80: returns exactly 7 crossings', () => {
     const crossings = detectTierCrossings(0, 80, UNIT_TYPE)
-    expect(crossings).toHaveLength(6)
+    expect(crossings).toHaveLength(7)
   })
 
-  it('[4.2-CST-041] unit 0→80: crossing XP values are [3, 9, 10, 25, 50, 80]', () => {
+  it('[4.2-CST-041] unit 0→80: crossing XP values are [3, 9, 10, 12, 25, 50, 80]', () => {
     const crossings = detectTierCrossings(0, 80, UNIT_TYPE)
-    expect(crossings.map((c) => c.xp)).toEqual([3, 9, 10, 25, 50, 80])
+    expect(crossings.map((c) => c.xp)).toEqual([3, 9, 10, 12, 25, 50, 80])
   })
 })
 

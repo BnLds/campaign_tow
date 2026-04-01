@@ -18,8 +18,9 @@ export const matchTypeEnum = pgEnum('match_type', ['standard', 'initial_setup'])
 // Run scripts/backfill-unit-gain-type.sql AFTER push to correct rows that are not actually tier_up.
 export const unitGainTypeEnum = pgEnum('unit_gain_type', [
   'tier_up',          // Stat/skill improvement at a tier threshold (most common)
-  'honour_champion',  // Free champion (honour de bataille at 3/9 XP)
-  'honour_banner',    // Free banner (honour de bataille at 3/9 XP)
+  'honour_champion',  // Free champion (honour de bataille at 3/9/12 XP)
+  'honour_banner',    // Free banner (honour de bataille at 3/9/12 XP)
+  'honour_musician',  // Free musician (honour de bataille at 3/9/12 XP)
   'death',            // Character killed (MHC roll = 2)
   'haine',            // Hatred gained (MHC roll = 11 / destruction roll = 11)
   'pertes_catastrophiques', // Half strength next battle (destruction roll = 4-6)

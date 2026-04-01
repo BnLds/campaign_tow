@@ -34,7 +34,7 @@ export type ThresholdEntry = {
 
 // Honour thresholds — XP values excluded from deroute tier-down gain removal
 // Champion and banner gains at these thresholds are NEVER cleared by deroute
-export const HONOUR_THRESHOLDS = [3, 9] as const
+export const HONOUR_THRESHOLDS = [3, 9, 12] as const
 
 export const DEROUTE_XP_LOSS: Record<0 | 1 | 2 | 3 | 4, number> = {
   0: 10, // Bleusaille
@@ -111,6 +111,7 @@ export const UNIT_THRESHOLDS: ThresholdEntry[] = [
     minorImprovements: [
       { id: 'u-hon1-champ', label: 'Champion gratuit', category: 'honour' },
       { id: 'u-hon1-ban', label: 'Bannière gratuite', category: 'honour' },
+      { id: 'u-hon1-mus', label: 'Musicien gratuit', category: 'honour' },
       { id: 'u-hon1-na', label: 'Non applicable', category: 'honour' },
     ],
     majorCount: 0,
@@ -123,7 +124,21 @@ export const UNIT_THRESHOLDS: ThresholdEntry[] = [
     minorImprovements: [
       { id: 'u-hon2-champ', label: 'Champion gratuit', category: 'honour' },
       { id: 'u-hon2-ban', label: 'Bannière gratuite', category: 'honour' },
+      { id: 'u-hon2-mus', label: 'Musicien gratuit', category: 'honour' },
       { id: 'u-hon2-na', label: 'Non applicable', category: 'honour' },
+    ],
+    majorCount: 0,
+    minorCount: 1,
+  },
+  {
+    xp: 12,
+    tierLabel: 'Honneur de bataille',
+    majorImprovements: [],
+    minorImprovements: [
+      { id: 'u-hon3-champ', label: 'Champion gratuit', category: 'honour' },
+      { id: 'u-hon3-ban', label: 'Bannière gratuite', category: 'honour' },
+      { id: 'u-hon3-mus', label: 'Musicien gratuit', category: 'honour' },
+      { id: 'u-hon3-na', label: 'Non applicable', category: 'honour' },
     ],
     majorCount: 0,
     minorCount: 1,

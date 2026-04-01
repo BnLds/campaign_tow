@@ -419,8 +419,8 @@ describe('[AC2][AC9][P0] HONOUR_THRESHOLDS constant', () => {
     expect(HONOUR_THRESHOLDS).toBeDefined()
   })
 
-  it('[DS-HON-002] HONOUR_THRESHOLDS contains exactly [3, 9]', () => {
-    expect(Array.from(HONOUR_THRESHOLDS)).toEqual([3, 9])
+  it('[DS-HON-002] HONOUR_THRESHOLDS contains exactly [3, 9, 12]', () => {
+    expect(Array.from(HONOUR_THRESHOLDS)).toEqual([3, 9, 12])
   })
 
   it('[DS-HON-003] HONOUR_THRESHOLDS is readonly (type-level, not modifiable at runtime)', () => {
@@ -428,7 +428,8 @@ describe('[AC2][AC9][P0] HONOUR_THRESHOLDS constant', () => {
     const asSet = new Set<number>(HONOUR_THRESHOLDS)
     expect(asSet.has(3)).toBe(true)
     expect(asSet.has(9)).toBe(true)
-    expect(asSet.size).toBe(2)
+    expect(asSet.has(12)).toBe(true)
+    expect(asSet.size).toBe(3)
   })
 })
 

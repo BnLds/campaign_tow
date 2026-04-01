@@ -1,7 +1,7 @@
 // Campaign TOW — PostMatchWizard helpers (pure, no React)
 
 import { detectTierCrossings } from '../../lib/tier'
-import { HONOUR_CHAMPION_LABEL, HONOUR_BANNER_LABEL } from '../../lib/format'
+import { HONOUR_CHAMPION_LABEL, HONOUR_BANNER_LABEL, HONOUR_MUSICIAN_LABEL } from '../../lib/format'
 import { expandQueueEntry } from './phase-tierup'
 import type { InjuryResult, DestructionResult, InitialConsequenceItem, ConsequenceEntry, WizardUnit, FlaggedUnit, TierUpQueueEntry } from './types'
 
@@ -99,6 +99,13 @@ function buildHonourRetriggerEntries(
         availableImprovements.push({
           id: `u-retrigger-${unitId}-ban-${i}`,
           label: HONOUR_BANNER_LABEL,
+          category: 'honour',
+        })
+      }
+      if (lostTypes.has('honour_musician')) {
+        availableImprovements.push({
+          id: `u-retrigger-${unitId}-mus-${i}`,
+          label: HONOUR_MUSICIAN_LABEL,
           category: 'honour',
         })
       }
