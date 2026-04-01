@@ -3,8 +3,7 @@ import { db } from '../index'
 import { units, statModifiers, unitGains, matchParticipants, matchXpEntries, matches, armies } from '../schema'
 import type { ConsequenceEntry } from '../../lib/validators'
 import { detectLostThresholds } from '../../lib/tier'
-import { HONOUR_CHAMPION_LABEL, HONOUR_BANNER_LABEL, HONOUR_MUSICIAN_LABEL } from '../../lib/format'
-import type { UnitGainType } from './units'
+import { resolveHonourType } from '../../lib/format'
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -248,13 +247,6 @@ async function verifyUnitOwnership(tx: DbTransaction, armyId: string, unitIds: s
   if (unitIds.some((id) => !ownedIds.has(id))) {
     throw new Error('FORBIDDEN')
   }
-}
-
-function resolveHonourType(description: string): UnitGainType {
-  if (description === HONOUR_CHAMPION_LABEL) return 'honour_champion'
-  if (description === HONOUR_BANNER_LABEL) return 'honour_banner'
-  if (description === HONOUR_MUSICIAN_LABEL) return 'honour_musician'
-  return 'tier_up'
 }
 
 async function insertTierUpGains(

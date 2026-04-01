@@ -1,7 +1,17 @@
+import type { UnitGainType } from '../db/queries/units'
+
 // Honour gain labels — used to classify gains inserted during post-match flow
 export const HONOUR_CHAMPION_LABEL = 'Champion gratuit'
 export const HONOUR_BANNER_LABEL = 'Bannière gratuite'
 export const HONOUR_MUSICIAN_LABEL = 'Musicien gratuit'
+
+/** Resolve a gain description to the appropriate unit_gain_type enum value. */
+export function resolveHonourType(description: string): UnitGainType {
+  if (description === HONOUR_CHAMPION_LABEL) return 'honour_champion'
+  if (description === HONOUR_BANNER_LABEL) return 'honour_banner'
+  if (description === HONOUR_MUSICIAN_LABEL) return 'honour_musician'
+  return 'tier_up'
+}
 
 const STAT_ABBREVIATIONS: Record<string, string> = {
   Mouvement: 'M',
