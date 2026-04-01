@@ -331,7 +331,7 @@ export function TimelineEntry({
         </p>
       )}
 
-      {/* "Au rapport !" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
+      {/* "Au rapport !" / "Remplir l'XP" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
       {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && onEvolutionStart && (
         <Button
           type="button"
@@ -340,18 +340,18 @@ export function TimelineEntry({
           onClick={() => onEvolutionStart(matchId)}
           className="self-center mt-1 gap-1.5"
         >
-          Au rapport ! <span aria-hidden="true">›</span>
+          {isInitialSetup ? "Remplir l\u2019XP" : 'Au rapport !'} <span aria-hidden="true">›</span>
         </Button>
       )}
 
-      {/* "Passer l'XP initiale" button — only for initial_setup, when editable and not yet filled */}
+      {/* "Pas d'xp, que de la bleusaille" button — only for initial_setup, when editable and not yet filled */}
       {isEditable && isInitialSetup && !hasEvolutions && onSkipInitialXp && (
         <LinkButton
           data-testid="skip-initial-xp"
           className="self-center py-1 text-[0.8125rem]"
           onClick={onSkipInitialXp}
         >
-          Passer l&apos;XP initiale
+          Pas d&apos;xp, que de la bleusaille
         </LinkButton>
       )}
 
