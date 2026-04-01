@@ -19,13 +19,20 @@ const STAT_ABBREV_RE = new RegExp(
 )
 
 // Negative consequence gains — displayed in red instead of green
-const NEGATIVE_GAIN_TYPES = new Set(['death', 'banner_lost', 'deroute_sanglante', 'haine'])
+const NEGATIVE_GAIN_TYPES = new Set(['death', 'banner_lost', 'champion_lost', 'deroute_sanglante', 'haine'])
+
+// Loss marker types — hidden on army unit card, visible only in timeline
+const LOSS_MARKER_TYPES = new Set(['banner_lost', 'champion_lost'])
 
 // Temporary consequence gains — displayed in orange, auto-cleared next match
 const TEMPORARY_GAIN_TYPES = new Set(['pertes_catastrophiques'])
 
 export function isNegativeConsequenceGain(type: string): boolean {
   return NEGATIVE_GAIN_TYPES.has(type)
+}
+
+export function isLossMarkerGain(type: string): boolean {
+  return LOSS_MARKER_TYPES.has(type)
 }
 
 export function isTemporaryConsequenceGain(type: string): boolean {

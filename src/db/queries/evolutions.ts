@@ -11,7 +11,7 @@ type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 export async function getMatchParticipantForEvolutionByPlayer(
   matchId: string,
   playerId: string,
-): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null; evolutionsEnteredAt: Date | null } | null> {
+): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null; evolutionsEnteredAt: Date | null; unitSelectionCompletedAt: Date | null } | null> {
   const rows = await db
     .select({
       id: matchParticipants.id,
@@ -20,6 +20,7 @@ export async function getMatchParticipantForEvolutionByPlayer(
       armyId: matchParticipants.armyId,
       result: matchParticipants.result,
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
+      unitSelectionCompletedAt: matchParticipants.unitSelectionCompletedAt,
     })
     .from(matchParticipants)
     .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))
@@ -433,14 +434,20 @@ async function processConsequences(
   }
 }
 
-async function handleChampionKills(tx: DbTransaction, championKilledIds: string[]): Promise<void> {
-  // Champion killed in challenge — delete champion unit_gain
+async function handleChampionKills(tx: DbTransaction, championKilledIds: string[], matchParticipantId: string): Promise<void> {
+  // Champion killed in challenge — delete champion unit_gain and insert loss marker
   for (const unitId of championKilledIds) {
     await tx.delete(unitGains)
       .where(and(
         eq(unitGains.unitId, unitId),
         eq(unitGains.type, 'honour_champion'),
       ))
+    await tx.insert(unitGains).values({
+      unitId,
+      description: 'Champion tué (défi)',
+      type: 'champion_lost',
+      matchParticipantId,
+    })
   }
 }
 
@@ -485,9 +492,11 @@ export async function completeEvolutionsWithGainsTransaction(
       ...(championKilledIds ?? []),
     ]
     if (armyId && allSubmittedIds.length > 0) await verifyUnitOwnership(tx, armyId, allSubmittedIds)
-    await insertTierUpGains(tx, gains, matchParticipantId)
+    // Destructive effects first (delete old honours, insert loss markers),
+    // then constructive gains (re-selections survive instead of being wiped).
     await processConsequences(tx, consequences, matchParticipantId)
-    if (championKilledIds && championKilledIds.length > 0) await handleChampionKills(tx, championKilledIds)
+    if (championKilledIds && championKilledIds.length > 0) await handleChampionKills(tx, championKilledIds, matchParticipantId)
+    await insertTierUpGains(tx, gains, matchParticipantId)
     await finalizeEvolutions(tx, matchParticipantId, matchType, armyId)
   })
 }

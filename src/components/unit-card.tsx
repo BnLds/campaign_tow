@@ -4,7 +4,7 @@
 import React from 'react'
 import type { ComposedUnitView, ComposedSubProfile, GroupedStatDelta, GroupedUnitGain } from '../lib/delta-composer'
 import { getTierLabel, tierColorClass } from '../lib/tier'
-import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
+import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain, isLossMarkerGain } from '../lib/format'
 import type { TierLevel } from '../lib/tier'
 import { cn } from '#/lib/utils'
 import { chipClasses } from '#/lib/chip-styles'
@@ -200,7 +200,9 @@ function DeltaChips({ deltas, gains }: { deltas: GroupedStatDelta[]; gains: Grou
           </span>
         )
       })}
-      {gains.map((g, idx) => {
+      {gains
+        .filter((g) => !isLossMarkerGain(g.type))
+        .map((g, idx) => {
         const isTemp = isTemporaryConsequenceGain(g.type)
         const isNeg = isNegativeConsequenceGain(g.type)
         const variant = isTemp ? 'temporary' : isNeg ? 'malus' : 'bonus'
