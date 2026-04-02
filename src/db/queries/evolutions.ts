@@ -412,11 +412,14 @@ async function processConsequences(
 
     // AC21: banner loss (independent of main consequence type)
     if (consequence.bannerLost === true) {
-      await tx.delete(unitGains)
+      await tx.update(unitGains)
+        .set({ cleared: true, clearedByMatchParticipantId: matchParticipantId })
         .where(and(
           eq(unitGains.unitId, consequence.unitId),
           eq(unitGains.type, 'honour_banner'),
+          eq(unitGains.cleared, false),
         ))
+      // Timeline display marker — not the source of truth (cleared gain is)
       await tx.insert(unitGains).values({
         unitId: consequence.unitId,
         description: 'Bannière perdue (destruction)',
@@ -428,13 +431,15 @@ async function processConsequences(
 }
 
 async function handleChampionKills(tx: DbTransaction, championKilledIds: string[], matchParticipantId: string): Promise<void> {
-  // Champion killed in challenge — delete champion unit_gain and insert loss marker
   for (const unitId of championKilledIds) {
-    await tx.delete(unitGains)
+    await tx.update(unitGains)
+      .set({ cleared: true, clearedByMatchParticipantId: matchParticipantId })
       .where(and(
         eq(unitGains.unitId, unitId),
         eq(unitGains.type, 'honour_champion'),
+        eq(unitGains.cleared, false),
       ))
+    // Timeline display marker — not the source of truth (cleared gain is)
     await tx.insert(unitGains).values({
       unitId,
       description: 'Champion tué (défi)',
@@ -485,7 +490,7 @@ export async function completeEvolutionsWithGainsTransaction(
       ...(championKilledIds ?? []),
     ]
     if (armyId && allSubmittedIds.length > 0) await verifyUnitOwnership(tx, armyId, allSubmittedIds)
-    // Destructive effects first (delete old honours, insert loss markers),
+    // Honour losses first (clear old honour gains + insert timeline markers),
     // then constructive gains (re-selections survive instead of being wiped).
     await processConsequences(tx, consequences, matchParticipantId)
     if (championKilledIds && championKilledIds.length > 0) await handleChampionKills(tx, championKilledIds, matchParticipantId)

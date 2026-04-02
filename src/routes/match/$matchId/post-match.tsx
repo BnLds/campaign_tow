@@ -25,7 +25,7 @@ type PostMatchLoaderData = {
   matchParticipantId: string
   opponentPlayerName: string
   mode: 'post-match' | 'initial-xp'
-  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: Array<{description: string; type: string}>; commandement: number; effectiveStats: Record<string, number | null> }>
+  units: Array<{ id: string; name: string; type: string; xp: number; previousXpGained: number | null; previousDerouteXpLost: number; hasMount: boolean; existingGains: Array<{description: string; type: string}>; clearedHonours: string[]; commandement: number; effectiveStats: Record<string, number | null> }>
   campaignPlayers?: Array<{ playerId: string; playerDisplayName: string }>
   catchupBonusXp: number
   catchupDeltaXp: number
@@ -47,8 +47,8 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     // Load drizzle deps before round 1 (needed for match type + opponent query)
     const [
       { db },
-      { matchParticipants: mpTable, players: playersTable, matches: matchesTable },
-      { and: dbAnd, eq: dbEq, ne: dbNe },
+      { matchParticipants: mpTable, players: playersTable, matches: matchesTable, unitGains: unitGainsTable },
+      { and: dbAnd, eq: dbEq, ne: dbNe, inArray: dbInArray },
       { alias },
     ] = await Promise.all([
       import('../../../db/index'),
@@ -186,6 +186,26 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       arr.push({ description: g.description, type: g.type })
       gainsByUnit.set(g.unitId, arr)
     }
+    // Reentry: load honours cleared by this participant so the wizard can restore the UI state
+    const HONOUR_TYPES = ['honour_banner', 'honour_champion', 'honour_musician'] as const
+    const clearedHonoursByUnit = new Map<string, string[]>()
+    if (isReentry && unitIds.length > 0) {
+      const clearedRows = await db
+        .select({ unitId: unitGainsTable.unitId, type: unitGainsTable.type })
+        .from(unitGainsTable)
+        .where(dbAnd(
+          dbInArray(unitGainsTable.unitId, unitIds),
+          dbEq(unitGainsTable.cleared, true),
+          dbEq(unitGainsTable.clearedByMatchParticipantId, participant.id),
+          dbInArray(unitGainsTable.type, [...HONOUR_TYPES]),
+        ))
+      for (const row of clearedRows) {
+        const arr = clearedHonoursByUnit.get(row.unitId) ?? []
+        arr.push(row.type)
+        clearedHonoursByUnit.set(row.unitId, arr)
+      }
+    }
+
     // Group stat modifiers by unit
     const statModsByUnit = new Map<string, typeof allStatModifiers>()
     for (const mod of allStatModifiers) {
@@ -205,7 +225,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
           id: u.id, name: u.name, nickname: u.nickname, type: u.type, xp: u.xp,
           previousXpGained: entryMap.get(u.id)?.xpGained ?? null,
           previousDerouteXpLost: entryMap.get(u.id)?.derouteXpLost ?? 0,
-          hasMount: false, existingGains: unitGains, commandement: 0,
+          hasMount: false, existingGains: unitGains, clearedHonours: clearedHonoursByUnit.get(u.id) ?? [], commandement: 0,
           effectiveStats: { m: null, cc: null, ct: null, f: null, e: null, pv: null, i: null, a: null, cd: null },
         }
       }
@@ -251,6 +271,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
         previousDerouteXpLost: entryMap.get(u.id)?.derouteXpLost ?? 0,
         hasMount: u.subProfiles.some((sp) => sp.isMount),
         existingGains: unitGains,
+        clearedHonours: clearedHonoursByUnit.get(u.id) ?? [],
         commandement: (isNaN(baseCd) ? 0 : baseCd) + cdGains,
         effectiveStats: baseStats,
       }

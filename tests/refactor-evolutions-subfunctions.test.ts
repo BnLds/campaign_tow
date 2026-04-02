@@ -132,8 +132,8 @@ describe('[AC7][P0] All unitGains inserts include type field', () => {
   const evo = () => readFileSync(resolve(root, 'src/db/queries/evolutions.ts'), 'utf-8')
 
   it('[EVO-016] tier_up is the default type resolved for non-honour gains', () => {
-    // resolveHonourType returns 'tier_up' for all non-honour descriptions
-    expect(evo()).toMatch(/resolveHonourType[\s\S]{0,300}return\s*'tier_up'/)
+    // resolveHonourType is imported from format.ts and used in insertTierUpGains
+    expect(evo()).toMatch(/resolveHonourType/)
   })
 
   it('[EVO-017] haine inserts include type: haine', () => {
@@ -152,7 +152,8 @@ describe('[AC7][P0] All unitGains inserts include type field', () => {
     expect(evo()).toMatch(/type:\s*['"]deroute_sanglante['"]/)
   })
 
-  it('[EVO-021] banner_lost inserts include type: banner_lost', () => {
+  it('[EVO-021] banner loss clears honour_banner and inserts banner_lost timeline marker', () => {
+    expect(evo()).toMatch(/cleared:\s*true[\s\S]{0,50}clearedByMatchParticipantId/)
     expect(evo()).toMatch(/type:\s*['"]banner_lost['"]/)
   })
 

@@ -235,5 +235,6 @@ export function buildFlaggedUnits(
     name: u.name,
     type: u.type,
     existingGains: u.existingGains ?? [],
+    clearedHonours: u.clearedHonours,
   }))
 }

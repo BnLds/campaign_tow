@@ -35,6 +35,7 @@ export type FlaggedUnit = {
   name: string
   type: string
   existingGains: Array<{ description: string; type: string }>
+  clearedHonours?: string[]
 }
 
 export type WizardUnit = {
@@ -47,6 +48,7 @@ export type WizardUnit = {
   previousDerouteXpLost?: number | null
   hasMount?: boolean
   existingGains?: Array<{ description: string; type: string }>
+  clearedHonours?: string[]
   commandement?: number
   effectiveStats?: Record<string, number | null>
 }
