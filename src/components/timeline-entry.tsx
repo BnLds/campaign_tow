@@ -203,7 +203,7 @@ export function TimelineEntry({
               </p>
               {isDeltaProvisional && (
                 <p className="text-xs m-0 italic" style={{ color: '#9ca3af' }}>
-                  ⚠ adversaire n&apos;a pas sélectionné — deltas provisoires
+                  ⚠ deltas provisoires, ton adversaire n&apos;a pas fait de sélection d&apos;unités
                 </p>
               )}
             </>
