@@ -175,6 +175,186 @@ describe('[AC2][P0] TimelineEntry — "Au rapport !" link (Task 8.1)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Unit selection CTA — visible even when result already set (opponent flow)
+// ---------------------------------------------------------------------------
+
+describe('TimelineEntry — unit selection CTA with result already set', () => {
+  it('shows "Sélectionner mes unités" when result is set but player has not selected', () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        matchType="standard"
+        opponent={baseOpponent}
+        result="defeat"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={true}
+        onResultSubmit={vi.fn()}
+        onEvolutionStart={vi.fn()}
+        onUnitSelectionStart={vi.fn()}
+        unitSelectionCompletedAt={null}
+        opponentUnitSelectionCompletedAt={new Date()}
+      />
+    )
+    expect(screen.getByTestId('unit-selection-cta')).not.toBeNull()
+  })
+
+  it('hides "Au rapport !" when unit selection is required but player has not selected', () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        matchType="standard"
+        opponent={baseOpponent}
+        result="defeat"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={true}
+        onResultSubmit={vi.fn()}
+        onEvolutionStart={vi.fn()}
+        onUnitSelectionStart={vi.fn()}
+        unitSelectionCompletedAt={null}
+        opponentUnitSelectionCompletedAt={new Date()}
+      />
+    )
+    expect(screen.queryByText(/Au rapport/i)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Confirmation modal — opponent has not selected units
+// ---------------------------------------------------------------------------
+
+describe('TimelineEntry — confirmation modal before "Au rapport !"', () => {
+  it('opens modal when opponent has not selected units and player clicks "Au rapport !"', async () => {
+    const onEvolutionStart = vi.fn()
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        matchType="standard"
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={true}
+        onResultSubmit={vi.fn()}
+        onEvolutionStart={onEvolutionStart}
+        onUnitSelectionStart={vi.fn()}
+        unitSelectionCompletedAt={new Date()}
+        opponentUnitSelectionCompletedAt={null}
+      />
+    )
+    fireEvent.click(screen.getByText(/Au rapport/i))
+    await waitFor(() => {
+      expect(screen.getByText(/n'a pas encore sélectionné/i)).not.toBeNull()
+    })
+    expect(onEvolutionStart).not.toHaveBeenCalled()
+  })
+
+  it('calls onEvolutionStart when "Continuer" is clicked in the modal', async () => {
+    const onEvolutionStart = vi.fn()
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        matchType="standard"
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={true}
+        onResultSubmit={vi.fn()}
+        onEvolutionStart={onEvolutionStart}
+        onUnitSelectionStart={vi.fn()}
+        unitSelectionCompletedAt={new Date()}
+        opponentUnitSelectionCompletedAt={null}
+      />
+    )
+    fireEvent.click(screen.getByText(/Au rapport/i))
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-evolution-continue')).not.toBeNull()
+    })
+    fireEvent.click(screen.getByTestId('confirm-evolution-continue'))
+    await waitFor(() => {
+      expect(onEvolutionStart).toHaveBeenCalledWith(BASE_MATCH_ID)
+    })
+  })
+
+  it('closes modal without calling onEvolutionStart when "Attendre" is clicked', async () => {
+    const onEvolutionStart = vi.fn()
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        matchType="standard"
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={true}
+        onResultSubmit={vi.fn()}
+        onEvolutionStart={onEvolutionStart}
+        onUnitSelectionStart={vi.fn()}
+        unitSelectionCompletedAt={new Date()}
+        opponentUnitSelectionCompletedAt={null}
+      />
+    )
+    fireEvent.click(screen.getByText(/Au rapport/i))
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-evolution-wait')).not.toBeNull()
+    })
+    fireEvent.click(screen.getByTestId('confirm-evolution-wait'))
+    expect(onEvolutionStart).not.toHaveBeenCalled()
+  })
+
+  it('calls onEvolutionStart directly when opponent has selected units (no modal)', async () => {
+    const onEvolutionStart = vi.fn()
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        matchType="standard"
+        opponent={baseOpponent}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={true}
+        onResultSubmit={vi.fn()}
+        onEvolutionStart={onEvolutionStart}
+        onUnitSelectionStart={vi.fn()}
+        unitSelectionCompletedAt={new Date()}
+        opponentUnitSelectionCompletedAt={new Date()}
+      />
+    )
+    fireEvent.click(screen.getByText(/Au rapport/i))
+    await waitFor(() => {
+      expect(onEvolutionStart).toHaveBeenCalledWith(BASE_MATCH_ID)
+    })
+    expect(screen.queryByText(/n'a pas encore sélectionné/i)).toBeNull()
+  })
+
+  it('displays opponent name in the confirmation modal message', async () => {
+    render(
+      <TimelineEntry
+        matchId={BASE_MATCH_ID}
+        matchType="standard"
+        opponent={{ name: 'Horde Sauvage', faction: 'Orcs', playerName: 'Alice' }}
+        result="victory"
+        date={BASE_DATE}
+        hasEvolutions={false}
+        isEditable={true}
+        onResultSubmit={vi.fn()}
+        onEvolutionStart={vi.fn()}
+        onUnitSelectionStart={vi.fn()}
+        unitSelectionCompletedAt={new Date()}
+        opponentUnitSelectionCompletedAt={null}
+      />
+    )
+    fireEvent.click(screen.getByText(/Au rapport/i))
+    await waitFor(() => {
+      const desc = document.querySelector('[data-slot="alert-dialog-description"]')
+      expect(desc?.textContent).toContain('Horde Sauvage')
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Source file structural contract — onEvolutionStart prop added to TimelineEntry
 // AC: 2
 // ---------------------------------------------------------------------------

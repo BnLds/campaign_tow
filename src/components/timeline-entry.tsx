@@ -9,6 +9,16 @@ import { cn } from '#/lib/utils'
 import { chipClasses } from '#/lib/chip-styles'
 import { LinkButton } from '#/components/link-button'
 import { Button } from '#/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '#/components/ui/alert-dialog'
 
 export type TimelineEntryProps = {
   matchId: string
@@ -114,6 +124,7 @@ export function TimelineEntry({
   const [editMode, setEditMode] = useState<'idle' | 'result'>('idle')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [confirmEvolutionOpen, setConfirmEvolutionOpen] = useState(false)
 
   // Whether this match type requires unit selection
   const needsUnitSelection = !isInitialSetup && requiresUnitSelection(matchType)
@@ -121,9 +132,9 @@ export function TimelineEntry({
   const playerSelected = unitSelectionCompletedAt !== undefined ? unitSelectionCompletedAt !== null : null
   const opponentSelected = opponentUnitSelectionCompletedAt !== undefined ? opponentUnitSelectionCompletedAt !== null : null
 
-  // Show CTA only for pending matches where unit selection is needed and player hasn't selected yet
+  // Show CTA when unit selection is needed and player hasn't selected yet (even if result already set by opponent)
   const showUnitSelectionCTA =
-    needsUnitSelection && playerSelected === false && result === null
+    needsUnitSelection && playerSelected === false
 
   // Provisional deltas: player selected but opponent hasn't yet
   const isDeltaProvisional =
@@ -418,17 +429,53 @@ export function TimelineEntry({
       )}
 
       {/* "Au rapport !" / "Remplir l'XP" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
-      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && onEvolutionStart && (
+      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && !(needsUnitSelection && playerSelected === false) && onEvolutionStart && (
         <Button
           type="button"
           data-testid="evolution-start"
           variant="brand"
-          onClick={() => onEvolutionStart(matchId)}
+          onClick={() => {
+            if (needsUnitSelection && opponentSelected === false) {
+              setConfirmEvolutionOpen(true)
+            } else {
+              onEvolutionStart(matchId)
+            }
+          }}
           className="self-center mt-1 gap-1.5"
         >
           {isInitialSetup ? "Remplir l\u2019XP" : 'Au rapport !'} <span aria-hidden="true">›</span>
         </Button>
       )}
+
+      {/* Confirmation modal — opponent hasn't selected units yet */}
+      <AlertDialog open={confirmEvolutionOpen} onOpenChange={setConfirmEvolutionOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sélection d&apos;unités incomplète</AlertDialogTitle>
+            <AlertDialogDescription>
+              {opponent?.name ?? 'L\u2019adversaire'} n&apos;a pas encore sélectionné ses unités. Veux-tu quand même continuer vers le rapport ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              data-testid="confirm-evolution-wait"
+              className="bg-cw-bonus text-white hover:bg-cw-bonus/90"
+            >
+              Attendre
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="confirm-evolution-continue"
+              className="bg-cw-malus text-white hover:bg-cw-malus/90"
+              onClick={() => {
+                setConfirmEvolutionOpen(false)
+                onEvolutionStart?.(matchId)
+              }}
+            >
+              Continuer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* "Pas d'xp, que de la bleusaille" button — only for initial_setup, when editable and not yet filled */}
       {isEditable && isInitialSetup && !hasEvolutions && onSkipInitialXp && (
