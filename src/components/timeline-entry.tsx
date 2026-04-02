@@ -332,12 +332,15 @@ export function TimelineEntry({
           })}
         </div>
         {hasEvolutions && onPostMatchReentry && editMode === 'result' && result !== null && (
-          <LinkButton
+          <Button
+            type="button"
             data-testid="post-match-reentry"
+            variant="brand"
             onClick={() => onPostMatchReentry(matchId)}
+            className="self-center mt-1 gap-1.5"
           >
-            Modifier le dernier rapport
-          </LinkButton>
+            Modifier le dernier rapport <span aria-hidden="true">›</span>
+          </Button>
         )}
         </>
       )}
