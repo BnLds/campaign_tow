@@ -26,6 +26,8 @@ export interface TierUpStepProps {
   disabledImprovementIds?: string[]
   /** IDs of improvements blocked because the stat has reached STAT_CAP (10) */
   capBlockedImprovementIds?: string[]
+  /** Optional contextual subtitle shown below the tier label (e.g. XP threshold or recovery context) */
+  subtitle?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +47,7 @@ export function TierUpStep({
   confirmLabel = 'Confirmer',
   disabledImprovementIds = [],
   capBlockedImprovementIds = [],
+  subtitle,
 }: TierUpStepProps) {
   // Major improvements are passed as-is (Endurance exclusion at 20 XP is done in constants)
   const filteredMajors = majorImprovements
@@ -308,6 +311,19 @@ export function TierUpStep({
         >
           {tierLabel}
         </p>
+        {subtitle && (
+          <p
+            data-testid="tier-up-subtitle"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.8125rem',
+              color: 'var(--color-text-secondary)',
+              margin: '0 0 0.125rem',
+            }}
+          >
+            {subtitle}
+          </p>
+        )}
         <p
           style={{
             fontFamily: 'var(--font-display)',

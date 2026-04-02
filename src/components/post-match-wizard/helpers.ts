@@ -117,7 +117,7 @@ function buildHonourRetriggerEntries(
 
       entries.push({
         xp: 0, // synthetic — not tied to a real threshold
-        tierLabel: 'Honneur de bataille',
+        tierLabel: "Récupération d'honneur",
         majorImprovements: [],
         minorImprovements: availableImprovements,
         majorCount: 0,
@@ -128,6 +128,7 @@ function buildHonourRetriggerEntries(
         unitType: unit.type,
         hasMount: unit.hasMount ?? false,
         commandement: unit.commandement ?? 0,
+        honourKind: 'recovery',
       })
     }
   }
@@ -162,7 +163,19 @@ export function buildTierUpQueue(
         const effectiveGains = unitLostTypes
           ? existingGains.filter((g) => !unitLostTypes.has(g.type))
           : existingGains
-        filteredMinor = crossing.minorImprovements.filter((imp) => !effectiveGains.some((g) => g.description === imp.label))
+        // Build set of labels corresponding to lost honour types — exclude them from the
+        // normal crossing so the player can only recover them via the dedicated retrigger screen
+        const lostHonourLabels = new Set<string>()
+        if (unitLostTypes) {
+          if (unitLostTypes.has('honour_champion')) lostHonourLabels.add(HONOUR_CHAMPION_LABEL)
+          if (unitLostTypes.has('honour_banner')) lostHonourLabels.add(HONOUR_BANNER_LABEL)
+          if (unitLostTypes.has('honour_musician')) lostHonourLabels.add(HONOUR_MUSICIAN_LABEL)
+        }
+        filteredMinor = crossing.minorImprovements.filter(
+          (imp) =>
+            !effectiveGains.some((g) => g.description === imp.label) &&
+            !lostHonourLabels.has(imp.label)
+        )
       }
       if (isHonour && filteredMinor.length === 0) continue
       const baseEntry: TierUpQueueEntry = {
@@ -174,6 +187,7 @@ export function buildTierUpQueue(
         unitType: unit.type,
         hasMount: unit.hasMount ?? false,
         commandement: unit.commandement ?? 0,
+        ...(isHonour ? { honourKind: 'new' as const } : {}),
       }
       queue.push(...expandQueueEntry(baseEntry))
     }

@@ -27,6 +27,7 @@ export type TierUpQueueEntry = ThresholdEntry & {
   unitType: string
   hasMount: boolean  // defaults to false when not provided
   commandement: number  // current CD value for constraint checks
+  honourKind?: 'new' | 'recovery'
 }
 
 export type FlaggedUnit = {

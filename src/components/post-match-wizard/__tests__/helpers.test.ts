@@ -323,7 +323,8 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({
       unitId: 'u1',
-      tierLabel: 'Honneur de bataille',
+      tierLabel: "Récupération d'honneur",
+      honourKind: 'recovery',
       xp: 0,
       minorCount: 1,
     })
@@ -350,7 +351,7 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
     const result = buildTierUpQueue(units, xpResults, lostGainTypes)
     expect(result).toHaveLength(2)
     for (const entry of result) {
-      expect(entry).toMatchObject({ tierLabel: 'Honneur de bataille', xp: 0, minorCount: 1 })
+      expect(entry).toMatchObject({ tierLabel: "Récupération d'honneur", honourKind: 'recovery', xp: 0, minorCount: 1 })
       const labels = entry.minorImprovements.map((m) => m.label)
       expect(labels).toContain('Champion gratuit')
       expect(labels).toContain('Bannière gratuite')
@@ -368,7 +369,7 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
     const lostGainTypes = new Map([['u1', new Set(['honour_champion', 'honour_banner'])]])
     const result = buildTierUpQueue(units, xpResults, lostGainTypes)
     expect(result).toHaveLength(1)
-    expect(result[0]).toMatchObject({ tierLabel: 'Honneur de bataille', xp: 0, minorCount: 1 })
+    expect(result[0]).toMatchObject({ tierLabel: "Récupération d'honneur", honourKind: 'recovery', xp: 0, minorCount: 1 })
   })
 
   it('test 5: champion killed + crosses 9 XP threshold → 2 total entries (Effect A keeps champ visible)', () => {
@@ -398,13 +399,13 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
     // Normal crossing entry (from expandQueueEntry) — identified by xp threshold value
     const normalEntry = result.find((e) => e.xp === 9)
     expect(normalEntry).toBeDefined()
-    expect(normalEntry).toMatchObject({ tierLabel: 'Honneur de bataille' })
+    expect(normalEntry).toMatchObject({ tierLabel: 'Honneur de bataille', honourKind: 'new' })
     // Retrigger entry — xp:0 and improvements contain a retrigger id pattern
     const retriggerEntry = result.find(
       (e) => e.xp === 0 && e.minorImprovements.some((m) => m.id.includes('u-retrigger'))
     )
     expect(retriggerEntry).toBeDefined()
-    expect(retriggerEntry).toMatchObject({ tierLabel: 'Honneur de bataille', minorCount: 1 })
+    expect(retriggerEntry).toMatchObject({ tierLabel: "Récupération d'honneur", honourKind: 'recovery', minorCount: 1 })
     // expandQueueEntry called once only (retrigger entries bypass it)
     expect(mockExpandQueueEntry).toHaveBeenCalledOnce()
   })
@@ -434,7 +435,7 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
       (e) => e.xp === 0 && e.minorImprovements.some((m) => m.id.includes('u-retrigger'))
     )
     expect(retriggerEntry).toBeDefined()
-    expect(retriggerEntry).toMatchObject({ tierLabel: 'Honneur de bataille', minorCount: 1 })
+    expect(retriggerEntry).toMatchObject({ tierLabel: "Récupération d'honneur", honourKind: 'recovery', minorCount: 1 })
     // expandQueueEntry called once only (retrigger entries bypass it)
     expect(mockExpandQueueEntry).toHaveBeenCalledOnce()
   })
@@ -452,6 +453,56 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
     const lostGainTypes = new Map([['u1', new Set(['honour_champion'])]])
     const result = buildTierUpQueue(units, xpResults, lostGainTypes)
     expect(result).toHaveLength(0)
+  })
+
+  it('test 9 (bug scenario): unit 3 XP + bannière, destroyed, gains +6 XP → crosses 9 XP, bannière lost → 2 entries, banner excluded from normal crossing', () => {
+    // Unit has existing bannière, crosses 9 XP threshold, bannière was lost this match.
+    // Expected: normal crossing does NOT include 'Bannière gratuite' (reserved for retrigger),
+    // retrigger entry DOES include 'Bannière gratuite' + 'Non applicable'.
+    const honourCrossing = makeThresholdEntry({
+      xp: 9,
+      tierLabel: 'Honneur de bataille',
+      majorImprovements: [],
+      minorImprovements: [
+        { id: 'u-hon-champ', label: 'Champion gratuit', category: 'honour' as const },
+        { id: 'u-hon-ban', label: 'Bannière gratuite', category: 'honour' as const },
+        { id: 'u-hon-mus', label: 'Musicien gratuit', category: 'honour' as const },
+        { id: 'u-hon-na', label: 'Non applicable', category: 'honour' as const },
+      ],
+      majorCount: 0,
+      minorCount: 1,
+    })
+    mockDetectTierCrossings.mockReturnValue([honourCrossing])
+    // Unit had bannière as existing gain; it was lost (lostGainTypes)
+    const units = [
+      makeWizardUnit({
+        id: 'u1',
+        type: 'Infanterie',
+        existingGains: [{ description: 'Bannière gratuite', type: 'honour_banner' }],
+      }),
+    ]
+    const xpResults = new Map([['u1', { oldXp: 3, newXp: 9 }]])
+    const lostGainTypes = new Map([['u1', new Set(['honour_banner'])]])
+    const result = buildTierUpQueue(units, xpResults, lostGainTypes)
+
+    expect(result).toHaveLength(2)
+
+    // Normal crossing: honourKind: 'new', must NOT contain 'Bannière gratuite'
+    const normalEntry = result.find((e) => e.xp === 9)
+    expect(normalEntry).toBeDefined()
+    expect(normalEntry).toMatchObject({ honourKind: 'new', tierLabel: 'Honneur de bataille' })
+    const normalLabels = normalEntry!.minorImprovements.map((m) => m.label)
+    expect(normalLabels).not.toContain('Bannière gratuite')
+
+    // Retrigger entry: honourKind: 'recovery', MUST contain 'Bannière gratuite' + 'Non applicable'
+    const retriggerEntry = result.find(
+      (e) => e.xp === 0 && e.minorImprovements.some((m) => m.id.includes('u-retrigger'))
+    )
+    expect(retriggerEntry).toBeDefined()
+    expect(retriggerEntry).toMatchObject({ honourKind: 'recovery', tierLabel: "Récupération d'honneur" })
+    const retriggerLabels = retriggerEntry!.minorImprovements.map((m) => m.label)
+    expect(retriggerLabels).toContain('Bannière gratuite')
+    expect(retriggerLabels).toContain('Non applicable')
   })
 })
 

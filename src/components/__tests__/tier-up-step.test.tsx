@@ -1100,3 +1100,61 @@ describe('[SKILL] TierUpStep — mixed mode with minor skill', () => {
     expect(descriptions[2]).toBe('tenace')
   })
 })
+
+// ---------------------------------------------------------------------------
+// SUBTITLE — optional contextual subtitle prop
+// ---------------------------------------------------------------------------
+
+describe('[SUBTITLE] TierUpStep — subtitle prop', () => {
+  it('[SUBTITLE-TUS-001] renders subtitle when provided', () => {
+    render(
+      <TierUpStep
+        tierLabel="Honneur de bataille"
+        majorImprovements={[]}
+        minorImprovements={[{ id: 'h-na', label: 'Non applicable', category: 'honour' }]}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        subtitle="Palier 9 XP atteint"
+        onConfirm={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('tier-up-subtitle')).not.toBeNull()
+    expect(screen.getByText('Palier 9 XP atteint')).not.toBeNull()
+  })
+
+  it("[SUBTITLE-TUS-002] renders recovery subtitle for Récupération d'honneur", () => {
+    render(
+      <TierUpStep
+        tierLabel="Récupération d'honneur"
+        majorImprovements={[]}
+        minorImprovements={[
+          { id: 'h-ban', label: 'Bannière gratuite', category: 'honour' },
+          { id: 'h-na', label: 'Non applicable', category: 'honour' },
+        ]}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        subtitle="Honneur détruit — récupération possible"
+        onConfirm={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('tier-up-subtitle')).not.toBeNull()
+    expect(screen.getByText('Honneur détruit — récupération possible')).not.toBeNull()
+  })
+
+  it('[SUBTITLE-TUS-003] does not render subtitle element when not provided', () => {
+    render(
+      <TierUpStep
+        tierLabel="Aguerri"
+        majorImprovements={[]}
+        minorImprovements={MINOR_IMPROVEMENTS}
+        majorCount={0}
+        minorCount={1}
+        unitName="Hallebardiers"
+        onConfirm={vi.fn()}
+      />,
+    )
+    expect(screen.queryByTestId('tier-up-subtitle')).toBeNull()
+  })
+})

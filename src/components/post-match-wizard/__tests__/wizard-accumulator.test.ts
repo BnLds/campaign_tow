@@ -190,14 +190,24 @@ describe('recordTierUp', () => {
     expect(acc.cumulativeGains.get('unit-1')).toEqual(['+1 CC', '+1 Force'])
   })
 
-  it('tracks honour selections for Honneur de bataille entries', () => {
+  it('tracks honour selections for Honneur de bataille entries (honourKind: new)', () => {
     const acc = createWizardAccumulator()
-    const entry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', unitId: 'unit-1' })
+    const entry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', honourKind: 'new', unitId: 'unit-1' })
 
     acc.recordTierUp(1, entry, ['Champion gratuit'])
 
     const honours = acc.cumulativeHonourSelections.get('unit-1')
     expect(honours?.has('Champion gratuit')).toBe(true)
+  })
+
+  it('tracks honour selections for Récupération d\'honneur entries (honourKind: recovery)', () => {
+    const acc = createWizardAccumulator()
+    const entry = makeTierUpEntry({ xp: 0, tierLabel: "Récupération d'honneur", honourKind: 'recovery', unitId: 'unit-1' })
+
+    acc.recordTierUp(1, entry, ['Bannière gratuite'])
+
+    const honours = acc.cumulativeHonourSelections.get('unit-1')
+    expect(honours?.has('Bannière gratuite')).toBe(true)
   })
 
   it('does NOT track honour selections for non-honour tiers', () => {
@@ -231,7 +241,7 @@ describe('recordTierUp', () => {
 
   it('filters out "Non applicable" from pendingGains and cumulativeGains', () => {
     const acc = createWizardAccumulator()
-    const entry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', unitId: 'unit-1' })
+    const entry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', honourKind: 'new', unitId: 'unit-1' })
 
     acc.recordTierUp(1, entry, ['Non applicable'])
 
@@ -280,9 +290,9 @@ describe('rollbackTierUp', () => {
     expect(acc.submittedTierUpsByStep.has(1)).toBe(false)
   })
 
-  it('clears honour selections for Honneur de bataille entries', () => {
+  it('clears honour selections for Honneur de bataille entries (honourKind: new)', () => {
     const acc = createWizardAccumulator()
-    const entry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', unitId: 'unit-1' })
+    const entry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', honourKind: 'new', unitId: 'unit-1' })
 
     acc.recordTierUp(1, entry, ['Champion gratuit'])
     acc.rollbackTierUp(1, entry)
@@ -291,9 +301,20 @@ describe('rollbackTierUp', () => {
     expect(honours?.has('Champion gratuit')).toBe(false)
   })
 
+  it('clears honour selections for Récupération d\'honneur entries (honourKind: recovery)', () => {
+    const acc = createWizardAccumulator()
+    const entry = makeTierUpEntry({ xp: 0, tierLabel: "Récupération d'honneur", honourKind: 'recovery', unitId: 'unit-1' })
+
+    acc.recordTierUp(1, entry, ['Bannière gratuite'])
+    acc.rollbackTierUp(1, entry)
+
+    const honours = acc.cumulativeHonourSelections.get('unit-1')
+    expect(honours?.has('Bannière gratuite')).toBe(false)
+  })
+
   it('does not clear honour selections when rolling back a non-honour tier', () => {
     const acc = createWizardAccumulator()
-    const honourEntry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', unitId: 'unit-1' })
+    const honourEntry = makeTierUpEntry({ xp: 3, tierLabel: 'Honneur de bataille', honourKind: 'new', unitId: 'unit-1' })
     const normalEntry = makeTierUpEntry({ xp: 25, tierLabel: 'Expérimenté', unitId: 'unit-1' })
 
     acc.recordTierUp(1, honourEntry, ['Champion gratuit'])
