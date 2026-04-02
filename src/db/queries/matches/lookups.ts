@@ -1,4 +1,5 @@
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and, sql, gte, lt } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../../index'
 import { matches, matchParticipants } from '../../schema'
 
@@ -77,4 +78,31 @@ export async function getInitialSetupMatchForArmy(armyId: string): Promise<{
     .where(and(eq(matchParticipants.armyId, armyId), eq(matches.matchType, 'initial_setup')))
     .limit(1)
   return rows.length > 0 ? rows[0] : null
+}
+
+export async function checkDuplicateMatch(player1Id: string, player2Id: string, dateStr: string): Promise<boolean> {
+  const startOfDay = new Date(dateStr + 'T00:00:00Z')
+  const nextDay = new Date(startOfDay)
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+
+  const mp1 = alias(matchParticipants, 'mp1')
+  const mp2 = alias(matchParticipants, 'mp2')
+
+  const rows = await db
+    .select({ matchId: mp1.matchId })
+    .from(mp1)
+    .innerJoin(mp2, eq(mp1.matchId, mp2.matchId))
+    .innerJoin(matches, eq(mp1.matchId, matches.id))
+    .where(
+      and(
+        eq(mp1.playerId, player1Id),
+        eq(mp2.playerId, player2Id),
+        eq(matches.matchType, 'standard'),
+        gte(matches.date, startOfDay),
+        lt(matches.date, nextDay),
+      ),
+    )
+    .limit(1)
+
+  return rows.length > 0
 }

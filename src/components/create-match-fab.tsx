@@ -20,7 +20,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { cn } from '#/lib/utils'
 
 // ---------------------------------------------------------------------------
 // Query options: opponents list
@@ -123,6 +135,20 @@ export const createMatchFn = createServerFn({ method: 'POST' })
   })
 
 // ---------------------------------------------------------------------------
+// Server function: checkDuplicateMatchFn — checks if a match already exists between two players on a given date
+// ---------------------------------------------------------------------------
+
+export const checkDuplicateMatchFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+  .handler(async ({ context, data }) => {
+    if (context.session.isGuest) throw new Error('UNAUTHORIZED')
+    const { checkDuplicateMatch } = await import('../db/queries')
+    const isDuplicate = await checkDuplicateMatch(context.session.playerId, data.opponentPlayerId, data.date)
+    return { isDuplicate }
+  })
+
+// ---------------------------------------------------------------------------
 // CreateMatchFab component props
 // ---------------------------------------------------------------------------
 
@@ -163,6 +189,7 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [duplicateConfirmOpen, setDuplicateConfirmOpen] = useState(false)
 
   const {
     data: opponents = [] as OpponentItem[],
@@ -184,6 +211,7 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
       // H1 — reset isSubmitting when dialog is closed/reopened
       setIsSubmitting(false)
       setSearchFilter('')
+      setDuplicateConfirmOpen(false)
       return
     }
     // M5 — reset date to today and time to now when dialog opens
@@ -225,15 +253,15 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
     retryOpponents()
   }
 
-  const handleConfirm = async () => {
-    if (!selectedOpponent || isSubmitting) return
+  const selectedOpponentName = opponents.find((o) => o.playerId === selectedOpponent)?.playerUsername ?? 'cet adversaire'
+
+  const doCreateMatch = async () => {
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await createMatchFn({ data: { opponentPlayerId: selectedOpponent, date, time } })
+      await createMatchFn({ data: { opponentPlayerId: selectedOpponent!, date, time } })
       setOpen(false)
       setSelectedOpponent(null)
-      // H1 — reset isSubmitting on success path (finally will also run but setOpen triggers useEffect reset)
       setIsSubmitting(false)
       queryClient.invalidateQueries({ queryKey: ['opponents'] })
       queryClient.invalidateQueries({ queryKey: ['session'] })
@@ -244,6 +272,33 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
     } finally {
       // H1 — ensure isSubmitting is always reset (covers both success and error paths)
       setIsSubmitting(false)
+    }
+  }
+
+  const handleConfirm = async () => {
+    if (!selectedOpponent || isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitError(null)
+    try {
+      const { isDuplicate } = await checkDuplicateMatchFn({ data: { opponentPlayerId: selectedOpponent, date } })
+      if (isDuplicate) {
+        setIsSubmitting(false)
+        setDuplicateConfirmOpen(true)
+        return
+      }
+      await doCreateMatch()
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Erreur lors de la vérification.')
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDuplicateConfirm = async () => {
+    setDuplicateConfirmOpen(false)
+    try {
+      await doCreateMatch()
+    } catch {
+      // doCreateMatch handles its own errors via setSubmitError
     }
   }
 
@@ -258,25 +313,8 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
         data-testid="create-match-fab"
         aria-label="Créer une partie"
         onClick={handleFabClick}
-        style={{
-          position: 'absolute',
-          right: 16,
-          bottom: FAB_BOTTOM,
-          zIndex: 2,
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          background: '#334155',
-          color: '#fff',
-          fontSize: 24,
-          border: 'none',
-          cursor: 'pointer',
-          boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 700,
-        }}
+        className="absolute right-4 z-2 size-14 rounded-full bg-cw-brand text-white text-2xl border-none cursor-pointer shadow-[0_6px_16px_rgba(0,0,0,0.18)] flex items-center justify-center font-bold"
+        style={{ bottom: FAB_BOTTOM }}
       >
         +
       </button>
@@ -285,12 +323,7 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 600,
-              }}
-            >
+            <DialogTitle className="font-cw-display font-semibold">
               Nouvelle partie
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -301,31 +334,20 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
           {/* Opponent list */}
           <div>
             {isLoading ? (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>
+              <p className="text-cw-text-secondary text-sm">
                 Chargement des adversaires…
               </p>
             ) : loadError ? (
               <div>
-                <p style={{ color: 'var(--color-malus)', fontSize: 14, marginBottom: 8 }}>
+                <p className="text-cw-malus text-sm mb-2">
                   Impossible de charger la liste des adversaires.
                 </p>
-                <button
-                  onClick={handleRetry}
-                  style={{
-                    background: 'none',
-                    border: '1px solid #334155',
-                    borderRadius: 8,
-                    padding: '6px 12px',
-                    cursor: 'pointer',
-                    color: '#334155',
-                    fontSize: 13,
-                  }}
-                >
+                <Button variant="outline" size="sm" onClick={handleRetry}>
                   Réessayer
-                </button>
+                </Button>
               </div>
             ) : opponents.length === 0 ? (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, fontStyle: 'italic' }}>
+              <p className="text-cw-text-secondary text-sm italic">
                 Aucun adversaire disponible
               </p>
             ) : (
@@ -337,119 +359,101 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
                   className="mb-2"
                 />
                 {filteredOpponents.length === 0 ? (
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, fontStyle: 'italic' }}>
+                  <p className="text-cw-text-secondary text-sm italic">
                     Aucun résultat
                   </p>
                 ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto' }}>
-                {filteredOpponents.map((opponent) => (
-                  <button
-                    key={opponent.playerId}
-                    onClick={() => setSelectedOpponent(opponent.playerId)}
-                    style={{
-                      textAlign: 'left',
-                      background: selectedOpponent === opponent.playerId ? '#eef4ff' : '#fffbf5',
-                      border: selectedOpponent === opponent.playerId ? '2px solid #2a5ab8' : '1px solid #e0d5c8',
-                      borderRadius: 8,
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {/* playerUsername displayed with Cinzel (font-display) */}
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>
-                      {opponent.playerUsername}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                      {opponent.hasArmy
-                        ? `${opponent.armyName} — ${opponent.faction}`
-                        : 'Armée non attribuée'}
-                    </div>
-                  </button>
-                ))}
-              </div>
+                  <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto">
+                    {filteredOpponents.map((opponent) => (
+                      <button
+                        key={opponent.playerId}
+                        onClick={() => setSelectedOpponent(opponent.playerId)}
+                        className={cn(
+                          'text-left rounded-lg px-3 py-2.5 cursor-pointer',
+                          selectedOpponent === opponent.playerId
+                            ? 'bg-cw-tab-active-bg border-2 border-cw-info'
+                            : 'bg-cw-surface border border-cw-border'
+                        )}
+                      >
+                        {/* playerUsername displayed with Cinzel (font-display) */}
+                        <div className="font-cw-display font-semibold text-[15px] text-cw-text-primary">
+                          {opponent.playerUsername}
+                        </div>
+                        <div className="text-xs text-cw-text-secondary">
+                          {opponent.hasArmy
+                            ? `${opponent.armyName} — ${opponent.faction}`
+                            : 'Armée non attribuée'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </>
             )}
           </div>
 
           {/* Date + time inputs */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="match-date"
-                style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
-              >
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label htmlFor="match-date" className="text-[13px] font-semibold text-cw-text-primary block mb-1">
                 Date
               </label>
-              <input
+              <Input
                 id="match-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  border: '1px solid #e0d5c8',
-                  borderRadius: 8,
-                  padding: '8px 10px',
-                  fontSize: 14,
-                  color: 'var(--color-text-primary)',
-                  background: '#fffbf5',
-                }}
               />
             </div>
-            <div style={{ flex: 1 }}>
-              <label
-                htmlFor="match-time"
-                style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', display: 'block', marginBottom: 4 }}
-              >
+            <div className="flex-1">
+              <label htmlFor="match-time" className="text-[13px] font-semibold text-cw-text-primary block mb-1">
                 Heure
               </label>
-              <input
+              <Input
                 id="match-time"
                 type="time"
                 required
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                style={{
-                  width: '100%',
-                  border: '1px solid #e0d5c8',
-                  borderRadius: 8,
-                  padding: '8px 10px',
-                  fontSize: 14,
-                  color: 'var(--color-text-primary)',
-                  background: '#fffbf5',
-                }}
               />
             </div>
           </div>
 
           {/* Submit error */}
           {submitError && (
-            <p style={{ color: 'var(--color-malus)', fontSize: 13, margin: 0 }}>
+            <p className="text-cw-malus text-[13px] m-0">
               {submitError}
             </p>
           )}
 
           {/* Confirm button — disabled until opponent is selected */}
-          <button
+          <Button
+            variant="brand"
             onClick={handleConfirm}
-            disabled={!selectedOpponent || isSubmitting || isLoading} // disabled when no opponent selected, loading, or submitting
-            style={{
-              background: !selectedOpponent || isSubmitting || isLoading ? '#94a3b8' : '#334155',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 12,
-              minHeight: 44,
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: !selectedOpponent || isSubmitting || isLoading ? 'not-allowed' : 'pointer',
-              width: '100%',
-            }}
+            disabled={!selectedOpponent || isSubmitting || isLoading}
+            className="w-full min-h-[44px] text-[15px] font-bold rounded-xl"
           >
             {isSubmitting ? 'Création en cours...' : 'Créer la partie'}
-          </button>
+          </Button>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={duplicateConfirmOpen} onOpenChange={setDuplicateConfirmOpen}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Match en doublon</AlertDialogTitle>
+            <AlertDialogDescription>
+              Un match contre {selectedOpponentName} existe déjà à cette date. Souhaitez-vous créer un match supplémentaire contre {selectedOpponentName} ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicateConfirm} disabled={isSubmitting}>
+              {isSubmitting ? 'Création en cours...' : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
