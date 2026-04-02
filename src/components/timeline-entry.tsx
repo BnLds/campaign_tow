@@ -4,10 +4,21 @@
 
 import { useState } from 'react'
 import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceGain } from '../lib/format'
+import { requiresUnitSelection } from '../lib/match-utils'
 import { cn } from '#/lib/utils'
 import { chipClasses } from '#/lib/chip-styles'
 import { LinkButton } from '#/components/link-button'
 import { Button } from '#/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '#/components/ui/alert-dialog'
 
 export type TimelineEntryProps = {
   matchId: string
@@ -27,6 +38,9 @@ export type TimelineEntryProps = {
   onPostMatchReentry?: (matchId: string) => void
   onDelete?: (matchId: string) => void
   onSkipInitialXp?: () => void
+  onUnitSelectionStart?: (matchId: string) => void
+  unitSelectionCompletedAt?: Date | null
+  opponentUnitSelectionCompletedAt?: Date | null
   initialXpSkipped?: boolean
   unitXpEntries?: Array<{ unitName: string; unitType: string; xpGained: number; gains: Array<{ description: string; type: string }>; statChanges?: Array<{ stat: string; delta: number; temporary: boolean }> }>
   armyTotals?: {
@@ -96,6 +110,9 @@ export function TimelineEntry({
   onPostMatchReentry,
   onDelete,
   onSkipInitialXp,
+  onUnitSelectionStart,
+  unitSelectionCompletedAt,
+  opponentUnitSelectionCompletedAt,
   initialXpSkipped = false,
   unitXpEntries,
   armyTotals,
@@ -104,13 +121,32 @@ export function TimelineEntry({
   const resultConfig = result && !isInitialSetup ? RESULT_CONFIG[result] : null
   const formattedDate = formatDate(date)
 
-  const [isSelecting, setIsSelecting] = useState(false)
+  const [editMode, setEditMode] = useState<'idle' | 'result'>('idle')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [confirmEvolutionOpen, setConfirmEvolutionOpen] = useState(false)
 
-  // initial_setup matches have no result (no V/D/E) — don't show result selection
+  // Whether this match type requires unit selection
+  const needsUnitSelection = !isInitialSetup && requiresUnitSelection(matchType)
+  // unitSelectionCompletedAt === undefined means "prop not passed" → backward compat (no selection required)
+  const playerSelected = unitSelectionCompletedAt !== undefined ? unitSelectionCompletedAt !== null : null
+  const opponentSelected = opponentUnitSelectionCompletedAt !== undefined ? opponentUnitSelectionCompletedAt !== null : null
+
+  // Show CTA when unit selection is needed and player hasn't selected yet (even if result already set by opponent)
+  const showUnitSelectionCTA =
+    needsUnitSelection && playerSelected === false
+
+  // Provisional deltas: player selected but opponent hasn't yet
+  const isDeltaProvisional =
+    needsUnitSelection && playerSelected === true && opponentSelected === false
+
+  // Show result selection buttons
   const showSelectionButtons =
-    !isInitialSetup && isEditable && (result === null || isSelecting)
+    !isInitialSetup && isEditable && (
+      result === null
+        ? (playerSelected === null || playerSelected === true) // backward compat or player selected
+        : editMode === 'result'
+    ) && !showUnitSelectionCTA
 
   const handleResultClick = async (selectedResult: 'victory' | 'defeat' | 'draw') => {
     if (!onResultSubmit || isSubmitting) return
@@ -154,14 +190,34 @@ export function TimelineEntry({
             </p>
           )}
           {!isInitialSetup && opponent && armyTotals && (
-            <p className="text-xs m-0 flex flex-wrap gap-1.5">
-                <span className={cn('', armyTotals.deltaXp > 0 ? 'text-cw-bonus' : armyTotals.deltaXp < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
-                  Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
-                </span>
-                <span className={cn('', armyTotals.deltaPoints > 0 ? 'text-cw-bonus' : armyTotals.deltaPoints < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
-                  Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
-                </span>
+            <>
+              <p className="text-xs m-0 flex flex-wrap gap-1.5">
+                {isDeltaProvisional ? (
+                  <>
+                    <span className="italic" style={{ color: '#9ca3af' }}>
+                      Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
+                    </span>
+                    <span className="italic" style={{ color: '#9ca3af' }}>
+                      Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className={cn('', armyTotals.deltaXp > 0 ? 'text-cw-bonus' : armyTotals.deltaXp < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
+                      Δ {armyTotals.deltaXp > 0 ? '+' : ''}{armyTotals.deltaXp} XP
+                    </span>
+                    <span className={cn('', armyTotals.deltaPoints > 0 ? 'text-cw-bonus' : armyTotals.deltaPoints < 0 ? 'text-cw-malus' : 'text-cw-text-secondary')}>
+                      Δ {armyTotals.deltaPoints > 0 ? '+' : ''}{armyTotals.deltaPoints} pts
+                    </span>
+                  </>
+                )}
               </p>
+              {isDeltaProvisional && (
+                <p className="text-xs m-0 italic" style={{ color: '#9ca3af' }}>
+                  ⚠ deltas provisoires, ton adversaire n&apos;a pas fait de sélection d&apos;unités
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -173,11 +229,17 @@ export function TimelineEntry({
             </span>
           )}
           <div className="flex flex-row items-center gap-1.5">
-            {isEditable && !isInitialSetup && result !== null && !isSelecting && (!hasEvolutions || isLatestMatch) && (
+            {isEditable && !isInitialSetup && editMode === 'idle' && (result !== null ? (!hasEvolutions || isLatestMatch) : (needsUnitSelection && playerSelected === true && !!onUnitSelectionStart)) && (
               <LinkButton
                 data-testid="modify-result"
                 onClick={() => {
-                  setIsSelecting(true)
+                  if (result === null) {
+                    onUnitSelectionStart?.(matchId)
+                  } else if (needsUnitSelection && unitSelectionCompletedAt !== undefined && unitSelectionCompletedAt !== null) {
+                    setEditMode('result')
+                  } else {
+                    setEditMode('result')
+                  }
                   setSubmitError(null)
                 }}
               >
@@ -200,7 +262,7 @@ export function TimelineEntry({
                 Modifier
               </LinkButton>
             )}
-            {isEditable && !isInitialSetup && result !== null && !isSelecting && !hasEvolutions && onDelete && (
+            {isEditable && !isInitialSetup && editMode === 'idle' && !hasEvolutions && onDelete && (
               <button
                 type="button"
                 data-testid="delete-match"
@@ -211,12 +273,12 @@ export function TimelineEntry({
                 ✕
               </button>
             )}
-            {isEditable && !isInitialSetup && result !== null && isSelecting && (
+            {isEditable && !isInitialSetup && result !== null && editMode !== 'idle' && (
               <LinkButton
                 data-testid="cancel-modify"
                 variant="danger"
                 onClick={() => {
-                  setIsSelecting(false)
+                  setEditMode('idle')
                   setSubmitError(null)
                 }}
               >
@@ -227,10 +289,34 @@ export function TimelineEntry({
         </div>
       </div>
 
+      {/* Unit selection CTA — shown when player hasn't selected yet (standard matches only) */}
+      {showUnitSelectionCTA && onUnitSelectionStart && (
+        <Button
+          type="button"
+          data-testid="unit-selection-cta"
+          variant="brand"
+          onClick={() => onUnitSelectionStart(matchId)}
+          className="self-center mt-1 gap-1.5"
+        >
+          Sélectionner mes unités <span aria-hidden="true">›</span>
+        </Button>
+      )}
+
       {/* Result selection buttons */}
       {showSelectionButtons && (
         <>
-        {hasEvolutions && isLatestMatch && isSelecting && (
+        {onUnitSelectionStart && !hasEvolutions && needsUnitSelection && unitSelectionCompletedAt != null && editMode === 'result' && result !== null && (
+          <LinkButton
+            data-testid="menu-modify-unit-selection"
+            onClick={() => {
+              onUnitSelectionStart(matchId)
+              setEditMode('idle')
+            }}
+          >
+            Modifier la sélection d&apos;unités
+          </LinkButton>
+        )}
+        {hasEvolutions && isLatestMatch && editMode === 'result' && (
           <p className="text-xs text-cw-text-secondary m-0 mt-1 italic">
             Changer le résultat ne modifie pas le rapport — pensez à le re-saisir si nécessaire.
           </p>
@@ -247,7 +333,7 @@ export function TimelineEntry({
                 className={cn(
                   'flex-1 min-h-11 min-w-11 rounded-md font-semibold text-sm cursor-pointer',
                   cfg.buttonClasses,
-                  result === key && isSelecting ? cfg.selectedBorder : 'border border-transparent',
+                  result === key && editMode === 'result' ? cfg.selectedBorder : 'border border-transparent',
                   isSubmitting && 'opacity-60 cursor-not-allowed',
                 )}
               >
@@ -256,6 +342,17 @@ export function TimelineEntry({
             )
           })}
         </div>
+        {hasEvolutions && onPostMatchReentry && editMode === 'result' && result !== null && (
+          <Button
+            type="button"
+            data-testid="post-match-reentry"
+            variant="brand"
+            onClick={() => onPostMatchReentry(matchId)}
+            className="self-center mt-1 gap-1.5"
+          >
+            Modifier le dernier rapport <span aria-hidden="true">›</span>
+          </Button>
+        )}
         </>
       )}
 
@@ -331,43 +428,66 @@ export function TimelineEntry({
         </p>
       )}
 
-      {/* "Au rapport !" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
-      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && onEvolutionStart && (
+      {/* "Au rapport !" / "Remplir l'XP" button — shown when result is set (or initial_setup), evolutions not yet entered, and editable */}
+      {isEditable && (result !== null || isInitialSetup) && !hasEvolutions && !initialXpSkipped && !(needsUnitSelection && playerSelected === false) && onEvolutionStart && (
         <Button
           type="button"
           data-testid="evolution-start"
           variant="brand"
-          onClick={() => onEvolutionStart(matchId)}
+          onClick={() => {
+            if (needsUnitSelection && opponentSelected === false) {
+              setConfirmEvolutionOpen(true)
+            } else {
+              onEvolutionStart(matchId)
+            }
+          }}
           className="self-center mt-1 gap-1.5"
         >
-          Au rapport ! <span aria-hidden="true">›</span>
+          {isInitialSetup ? "Remplir l\u2019XP" : 'Au rapport !'} <span aria-hidden="true">›</span>
         </Button>
       )}
 
-      {/* "Passer l'XP initiale" button — only for initial_setup, when editable and not yet filled */}
+      {/* Confirmation modal — opponent hasn't selected units yet */}
+      <AlertDialog open={confirmEvolutionOpen} onOpenChange={setConfirmEvolutionOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sélection d&apos;unités incomplète</AlertDialogTitle>
+            <AlertDialogDescription>
+              {opponent?.name ?? 'L\u2019adversaire'} n&apos;a pas encore sélectionné ses unités. Veux-tu quand même continuer vers le rapport ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              data-testid="confirm-evolution-wait"
+              className="bg-cw-bonus text-white hover:bg-cw-bonus/90"
+            >
+              Attendre
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="confirm-evolution-continue"
+              className="bg-cw-malus text-white hover:bg-cw-malus/90"
+              onClick={() => {
+                setConfirmEvolutionOpen(false)
+                onEvolutionStart?.(matchId)
+              }}
+            >
+              Continuer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* "Pas d'xp, que de la bleusaille" button — only for initial_setup, when editable and not yet filled */}
       {isEditable && isInitialSetup && !hasEvolutions && onSkipInitialXp && (
         <LinkButton
           data-testid="skip-initial-xp"
           className="self-center py-1 text-[0.8125rem]"
           onClick={onSkipInitialXp}
         >
-          Passer l&apos;XP initiale
+          Pas d&apos;xp, que de la bleusaille
         </LinkButton>
       )}
 
-      {/* "Modifier le dernier rapport" — shown on latest match with completed post-match.
-           For standard matches: only after clicking "Modifier". For initial_setup: always visible. */}
-      {isEditable && !isInitialSetup && result !== null && hasEvolutions && isLatestMatch && isSelecting && onPostMatchReentry && (
-        <Button
-          type="button"
-          data-testid="post-match-reentry"
-          variant="brand"
-          onClick={() => onPostMatchReentry(matchId)}
-          className="self-center mt-1 gap-1.5"
-        >
-          Modifier le dernier rapport
-        </Button>
-      )}
     </div>
   )
 }

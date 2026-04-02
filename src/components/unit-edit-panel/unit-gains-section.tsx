@@ -7,8 +7,15 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { addUnitGainFn, removeUnitGainFn } from '../../server-fns/unit-mutations'
+import { HONOUR_CHAMPION_LABEL, HONOUR_BANNER_LABEL, HONOUR_MUSICIAN_LABEL } from '../../lib/format'
 import { useFeedback, FeedbackMsg } from './use-feedback'
 import type { UnitGainRow } from './types'
+
+const HONOUR_BUTTONS = [
+  { label: HONOUR_CHAMPION_LABEL, type: 'honour_champion', short: 'Champion' },
+  { label: HONOUR_BANNER_LABEL, type: 'honour_banner', short: 'Bannière' },
+  { label: HONOUR_MUSICIAN_LABEL, type: 'honour_musician', short: 'Musicien' },
+] as const
 
 interface UnitGainsSectionProps {
   armyId: string
@@ -103,6 +110,24 @@ export function UnitGainsSection({
           ))}
         </ul>
       )}
+
+      <div className="flex flex-wrap gap-2 mb-3">
+        {HONOUR_BUTTONS.map((hon) => {
+          const alreadyHas = unitGains.some((g) => g.type === hon.type)
+          return (
+            <Button
+              key={hon.type}
+              variant="outline"
+              size="sm"
+              disabled={alreadyHas || addingGain}
+              onClick={() => mutate(hon.label)}
+              className="text-xs"
+            >
+              {hon.short}
+            </Button>
+          )
+        })}
+      </div>
 
       <form onSubmit={handleAddUnitGain} className="flex flex-col gap-2">
         <div className="flex flex-col gap-1">

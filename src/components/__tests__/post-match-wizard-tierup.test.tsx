@@ -370,15 +370,15 @@ describe('[AC9][P0] PostMatchWizard — Phase 2 cancel calls onCancel (Task 12.5
 
 describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls completeEvolutionsFn (Task 12.6)', () => {
   it('[4.2-WIZ-010] Phase 2: after last TierUpStep confirmed, completeEvolutionsFn is called', async () => {
-    // Unit crosses XP threshold at 10 only (oldXp=9, newXp=12)
+    // Unit crosses XP threshold at 10 only (oldXp=9, newXp=11)
     const onSubmitUnitXp = vi.fn().mockResolvedValue({
       success: true,
-      data: { unitId: 'unit-1', newXp: 12 },
+      data: { unitId: 'unit-1', newXp: 11 },
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
     const onComplete = vi.fn()
 
-    // Unit with xp=9, no prior submission → preMatchXp=9, newXp=12 → crosses threshold 10 only
+    // Unit with xp=9, no prior submission → preMatchXp=9, newXp=11 → crosses threshold 10 only
     const unitsOneThreshold = [
       { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 9, previousXpGained: null, hasMount: false },
     ]
@@ -420,11 +420,11 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
     // Unit crosses only one threshold
     const onSubmitUnitXp = vi.fn().mockResolvedValue({
       success: true,
-      data: { unitId: 'unit-1', newXp: 12 },
+      data: { unitId: 'unit-1', newXp: 11 },
     })
     const onCompleteEvolutions = vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })
 
-    // Unit with xp=9, no prior submission → preMatchXp=9, newXp=12 → crosses threshold 10 only (1 tier-up)
+    // Unit with xp=9, no prior submission → preMatchXp=9, newXp=11 → crosses threshold 10 only (1 tier-up)
     const unitsOneThreshold = [
       { id: 'unit-1', name: 'Hallebardiers', type: 'Unités de base', xp: 9, previousXpGained: null, hasMount: false },
     ]

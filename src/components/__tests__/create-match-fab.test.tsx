@@ -53,22 +53,22 @@ describe('[AC1][P0] CreateMatchFab — visual appearance: circular navy "+" butt
     expect(code).toMatch(/\+/)
   })
 
-  it('[3.2-FAB-004] CreateMatchFab has background color #334155 (navy)', () => {
+  it('[3.2-FAB-004] CreateMatchFab has background color navy (bg-cw-brand)', () => {
     // AC: 1
     const code = getFab()
-    expect(code).toContain('#334155')
+    expect(code).toMatch(/bg-cw-brand/)
   })
 
-  it('[3.2-FAB-005] CreateMatchFab is 56x56px (width and height)', () => {
+  it('[3.2-FAB-005] CreateMatchFab is 56x56px (size-14 = 3.5rem = 56px)', () => {
     // AC: 1
     const code = getFab()
-    expect(code).toMatch(/56/)
+    expect(code).toMatch(/size-14/)
   })
 
-  it('[3.2-FAB-006] CreateMatchFab has border-radius 50% (circular shape)', () => {
+  it('[3.2-FAB-006] CreateMatchFab has border-radius 50% (rounded-full)', () => {
     // AC: 1
     const code = getFab()
-    expect(code).toMatch(/borderRadius.*50%|border-radius.*50%/)
+    expect(code).toMatch(/rounded-full/)
   })
 
   it('[3.2-FAB-007] CreateMatchFab is positioned absolute (position: absolute)', () => {
@@ -90,16 +90,16 @@ describe('[AC1][P0] CreateMatchFab — visual appearance: circular navy "+" butt
     expect(code).toMatch(/bottom.*62|62.*bottom/)
   })
 
-  it('[3.2-FAB-010] CreateMatchFab has z-index: 2', () => {
+  it('[3.2-FAB-010] CreateMatchFab has z-index (z-2)', () => {
     // AC: 1
     const code = getFab()
-    expect(code).toMatch(/zIndex.*2|z-index.*2/)
+    expect(code).toMatch(/z-2/)
   })
 
   it('[3.2-FAB-011] CreateMatchFab has box-shadow for elevation', () => {
     // AC: 1
     const code = getFab()
-    expect(code).toMatch(/boxShadow|box-shadow/)
+    expect(code).toMatch(/shadow-\[/)
   })
 })
 

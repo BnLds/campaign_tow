@@ -365,7 +365,7 @@ export function PhaseXp({
         )}
 
         {/* Champion killed in challenge — only for non-Personnages units that have a champion (post-match only) */}
-        {mode !== 'initial-xp' && unit.type !== 'Personnages' && (unit.existingGains ?? []).some((g) => g.type === 'honour_champion') && (
+        {mode !== 'initial-xp' && unit.type !== 'Personnages' && ((unit.existingGains ?? []).some((g) => g.type === 'honour_champion') || (unit.clearedHonours ?? []).includes('honour_champion')) && (
           <label
             className="flex items-center gap-2 cursor-pointer font-[family-name:var(--font-body)] text-sm font-semibold text-[var(--color-malus)]"
           >

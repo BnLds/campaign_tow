@@ -15,6 +15,27 @@
       "when": 1774857242725,
       "tag": "0001_smooth_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775056222893,
+      "tag": "0002_fearless_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775056845426,
+      "tag": "0003_damp_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1775058451430,
+      "tag": "0004_amusing_earthquake",
+      "breakpoints": true
     }
   ]
 }

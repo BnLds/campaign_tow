@@ -1,7 +1,7 @@
 // Campaign TOW — Database Schema
 // This is the single source of all Drizzle table definitions.
 
-import { pgTable, text, boolean, timestamp, integer, pgEnum, uniqueIndex, index, check } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, timestamp, integer, pgEnum, uniqueIndex, unique, index, check } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
 // Story 3.1 — Enum for match result (enforces valid values at DB level)
@@ -18,13 +18,15 @@ export const matchTypeEnum = pgEnum('match_type', ['standard', 'initial_setup'])
 // Run scripts/backfill-unit-gain-type.sql AFTER push to correct rows that are not actually tier_up.
 export const unitGainTypeEnum = pgEnum('unit_gain_type', [
   'tier_up',          // Stat/skill improvement at a tier threshold (most common)
-  'honour_champion',  // Free champion (honour de bataille at 3/9 XP)
-  'honour_banner',    // Free banner (honour de bataille at 3/9 XP)
+  'honour_champion',  // Free champion (honour de bataille at 3/9/12 XP)
+  'honour_banner',    // Free banner (honour de bataille at 3/9/12 XP)
+  'honour_musician',  // Free musician (honour de bataille at 3/9/12 XP)
   'death',            // Character killed (MHC roll = 2)
   'haine',            // Hatred gained (MHC roll = 11 / destruction roll = 11)
   'pertes_catastrophiques', // Half strength next battle (destruction roll = 4-6)
   'deroute_sanglante',      // XP loss (destruction roll = 2-3)
   'banner_lost',      // Banner lost on unit destruction
+  'champion_lost',    // Champion killed in challenge
 ])
 
 export const players = pgTable('players', {
@@ -150,6 +152,9 @@ export const matchParticipants = pgTable('match_participants', {
   bonusXp: integer('bonus_xp'),
   snapshotXp: integer('snapshot_xp'),
   snapshotPoints: integer('snapshot_points'),
+  // unitSelectionCompletedAt: null means unit selection not yet done
+  // nullable timestamp — set when the player completes unit selection for this match
+  unitSelectionCompletedAt: timestamp('unit_selection_completed_at'),
   // createdAt tracks when the participant record was inserted (not the match date)
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [
@@ -157,6 +162,18 @@ export const matchParticipants = pgTable('match_participants', {
   index('idx_mp_player_id').on(table.playerId),
   index('idx_mp_army_id').on(table.armyId),
   index('idx_mp_match_id').on(table.matchId),
+])
+
+// Unit selection per match — tracks which units participate in a match
+export const matchUnitSelections = pgTable('match_unit_selections', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  matchParticipantId: text('match_participant_id').notNull()
+    .references(() => matchParticipants.id, { onDelete: 'cascade' }),
+  unitId: text('unit_id').notNull()
+    .references(() => units.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  unique().on(table.matchParticipantId, table.unitId),
 ])
 
 // Story 4-1b — match XP entries: per-unit per-match XP tracking

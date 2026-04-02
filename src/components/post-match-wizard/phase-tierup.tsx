@@ -88,7 +88,7 @@ export function PhaseTierUp({
   // For honour thresholds, dynamically filter out improvements already selected
   // in earlier tier-up steps of the same unit (within this session) — O(1) lookup
   let dynamicMinorImprovements = currentTierUp.minorImprovements
-  if (currentTierUp.tierLabel === 'Honneur de bataille') {
+  if (currentTierUp.honourKind) {
     const priorSelections = cumulativeHonourSelections.get(currentTierUp.unitId)
     if (priorSelections && priorSelections.size > 0) {
       dynamicMinorImprovements = currentTierUp.minorImprovements.filter(
@@ -161,6 +161,12 @@ export function PhaseTierUp({
     }
   }
 
+  const subtitle = currentTierUp.honourKind === 'new'
+    ? `Palier ${currentTierUp.xp} XP atteint`
+    : currentTierUp.honourKind === 'recovery'
+      ? 'Honneur détruit — récupération possible'
+      : undefined
+
   const handleConfirm = async (result: { descriptions: string[] }) => {
     setIsSubmitting(true)
     setError(null)
@@ -199,6 +205,7 @@ export function PhaseTierUp({
         {/* TierUpStep — key resets internal useState when advancing to next step (C1) */}
         <TierUpStep
           tierLabel={currentTierUp.tierLabel}
+          subtitle={subtitle}
           majorImprovements={currentTierUp.majorImprovements}
           minorImprovements={dynamicMinorImprovements}
           majorCount={currentTierUp.majorCount}

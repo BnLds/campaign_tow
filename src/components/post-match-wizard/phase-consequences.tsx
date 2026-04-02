@@ -47,7 +47,7 @@ export function PhaseConsequences({
         ) : (
           <UnitDestructionStep
             unitName={flaggedUnit.name}
-            hasBannerGain={flaggedUnit.existingGains.some((g) => g.type === 'honour_banner')}
+            hasBannerGain={flaggedUnit.existingGains.some((g) => g.type === 'honour_banner') || (flaggedUnit.clearedHonours ?? []).includes('honour_banner')}
             onConfirm={(result) => onConfirm(result)}
           />
         )}

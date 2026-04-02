@@ -1,6 +1,17 @@
+import type { UnitGainType } from '../db/queries/units'
+
 // Honour gain labels — used to classify gains inserted during post-match flow
 export const HONOUR_CHAMPION_LABEL = 'Champion gratuit'
 export const HONOUR_BANNER_LABEL = 'Bannière gratuite'
+export const HONOUR_MUSICIAN_LABEL = 'Musicien gratuit'
+
+/** Resolve a gain description to the appropriate unit_gain_type enum value. */
+export function resolveHonourType(description: string): UnitGainType {
+  if (description === HONOUR_CHAMPION_LABEL) return 'honour_champion'
+  if (description === HONOUR_BANNER_LABEL) return 'honour_banner'
+  if (description === HONOUR_MUSICIAN_LABEL) return 'honour_musician'
+  return 'tier_up'
+}
 
 const STAT_ABBREVIATIONS: Record<string, string> = {
   Mouvement: 'M',
@@ -19,13 +30,20 @@ const STAT_ABBREV_RE = new RegExp(
 )
 
 // Negative consequence gains — displayed in red instead of green
-const NEGATIVE_GAIN_TYPES = new Set(['death', 'banner_lost', 'deroute_sanglante', 'haine'])
+const NEGATIVE_GAIN_TYPES = new Set(['death', 'banner_lost', 'champion_lost', 'deroute_sanglante', 'haine'])
+
+// Loss marker types — hidden on army unit card, visible only in timeline
+const LOSS_MARKER_TYPES = new Set(['banner_lost', 'champion_lost'])
 
 // Temporary consequence gains — displayed in orange, auto-cleared next match
 const TEMPORARY_GAIN_TYPES = new Set(['pertes_catastrophiques'])
 
 export function isNegativeConsequenceGain(type: string): boolean {
   return NEGATIVE_GAIN_TYPES.has(type)
+}
+
+export function isLossMarkerGain(type: string): boolean {
+  return LOSS_MARKER_TYPES.has(type)
 }
 
 export function isTemporaryConsequenceGain(type: string): boolean {

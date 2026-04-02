@@ -188,7 +188,24 @@ export function usePostMatchWizard({
       }
     }
 
-    const queue = buildTierUpQueue(units, acc.current.xpResults)
+    // Build lostGainTypes from champion flags and pending consequences
+    const lostGainTypes = new Map<string, Set<string>>()
+    for (const [unitId, killed] of acc.current.championFlags) {
+      if (killed) {
+        const set = lostGainTypes.get(unitId) ?? new Set<string>()
+        set.add('honour_champion')
+        lostGainTypes.set(unitId, set)
+      }
+    }
+    for (const [unitId, consequence] of acc.current.pendingConsequences) {
+      if ('bannerLost' in consequence && consequence.bannerLost === true) {
+        const set = lostGainTypes.get(unitId) ?? new Set<string>()
+        set.add('honour_banner')
+        lostGainTypes.set(unitId, set)
+      }
+    }
+
+    const queue = buildTierUpQueue(units, acc.current.xpResults, lostGainTypes)
 
     if (queue.length === 0) {
       // No tier crossings — batch commit with empty gains + consequences

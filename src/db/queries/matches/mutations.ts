@@ -1,7 +1,8 @@
 import { eq, and, ne, desc, isNull, gte } from 'drizzle-orm'
 import { db } from '../../index'
 import { matches, matchParticipants } from '../../schema'
-import { getArmyXpAndPointsTotalsBatch } from '../units'
+import { getArmyXpAndPointsTotalsBatch, getUnitsTotalsByIds } from '../units'
+import { getUnitSelectionForParticipant } from './unit-selections'
 
 export async function createMatchWithParticipants(params: {
   player1Id: string
@@ -145,24 +146,49 @@ export async function updateMatchResultOnLatest(
   })
 }
 
-// Write-once snapshot: capture army XP & points totals at first result selection.
-// Skips participants with armyId null or snapshot already set.
-export async function snapshotArmyTotalsForMatch(matchId: string): Promise<void> {
-  const rows = await db
-    .select({ id: matchParticipants.id, armyId: matchParticipants.armyId, snapshotXp: matchParticipants.snapshotXp })
+// Snapshot: capture army XP & points totals for each participant.
+// Uses selected units when matchUnitSelections rows exist, falls back to full army totals.
+// Not write-once — recalculated on result entry AND when unit selection is modified post-result.
+// Accepts optional transaction for atomicity with calling context.
+export async function snapshotArmyTotalsForMatch(matchId: string, tx?: Parameters<Parameters<typeof db.transaction>[0]>[0]): Promise<void> {
+  const executor = tx ?? db
+  const rows = await executor
+    .select({
+      id: matchParticipants.id,
+      armyId: matchParticipants.armyId,
+      unitSelectionCompletedAt: matchParticipants.unitSelectionCompletedAt,
+    })
     .from(matchParticipants)
     .where(eq(matchParticipants.matchId, matchId))
 
-  const eligible = rows.filter((r) => r.armyId != null && r.snapshotXp == null)
+  const eligible = rows.filter((r) => r.armyId != null)
   if (eligible.length === 0) return
 
-  const armyIds = eligible.map((r) => r.armyId!)
-  const totalsMap = await getArmyXpAndPointsTotalsBatch(armyIds)
+  // For participants with unit selections, compute from selected units
+  // For participants without, fall back to full army totals
+  const noSelectionArmyIds = eligible
+    .filter((r) => !r.unitSelectionCompletedAt)
+    .map((r) => r.armyId!)
+  const fullArmyTotalsMap = noSelectionArmyIds.length > 0
+    ? await getArmyXpAndPointsTotalsBatch(noSelectionArmyIds, tx)
+    : new Map<string, { totalXp: number; totalPoints: number }>()
 
   await Promise.all(
-    eligible.map((r) => {
-      const totals = totalsMap.get(r.armyId!) ?? { totalXp: 0, totalPoints: 0 }
-      return db
+    eligible.map(async (r) => {
+      let totals: { totalXp: number; totalPoints: number }
+
+      if (r.unitSelectionCompletedAt) {
+        // Compute from selected units
+        const selectedUnitIds = await getUnitSelectionForParticipant(r.id, tx)
+        totals = selectedUnitIds.length > 0
+          ? await getUnitsTotalsByIds(selectedUnitIds, tx)
+          : { totalXp: 0, totalPoints: 0 }
+      } else {
+        // Fall back to full army totals
+        totals = fullArmyTotalsMap.get(r.armyId!) ?? { totalXp: 0, totalPoints: 0 }
+      }
+
+      return executor
         .update(matchParticipants)
         .set({ snapshotXp: totals.totalXp, snapshotPoints: totals.totalPoints })
         .where(eq(matchParticipants.id, r.id))

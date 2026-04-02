@@ -50,7 +50,7 @@ function rollbackTierUpStep(
   }
 
   // Remove from cumulativeHonourSelections
-  if (prevEntry.tierLabel === 'Honneur de bataille') {
+  if (prevEntry.honourKind) {
     const honours = cumulativeHonourSelections.get(prevEntry.unitId)
     if (honours) {
       for (const d of prevSelections) honours.delete(d)
@@ -129,7 +129,7 @@ export function createWizardAccumulator(): WizardAccumulator {
       cumulativeGains.set(tierUpEntry.unitId, [...existing, ...descriptionsToSave])
 
       // Update cumulativeHonourSelections for honour tiers
-      if (tierUpEntry.tierLabel === 'Honneur de bataille') {
+      if (tierUpEntry.honourKind) {
         const honours = cumulativeHonourSelections.get(tierUpEntry.unitId) ?? new Set<string>()
         for (const d of descriptionsToSave) honours.add(d)
         cumulativeHonourSelections.set(tierUpEntry.unitId, honours)

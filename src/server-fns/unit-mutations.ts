@@ -13,6 +13,7 @@ import {
 import type { ServerResult } from '../lib/types'
 import { calculateTier } from '../lib/tier'
 import type { TierLevel } from '../lib/tier'
+import { resolveHonourType } from '../lib/format'
 
 // ---------------------------------------------------------------------------
 // Valid stats constant
@@ -81,7 +82,7 @@ export const addUnitGainFn = createServerFn({ method: 'POST' })
     const guard = await assertUnitBelongsToArmy(data.unitId, data.armyId)
     if (!guard.ok) return guard.result
     const { insertUnitGain } = await import('../db/queries')
-    const row = await insertUnitGain(data.unitId, data.description, 'tier_up')
+    const row = await insertUnitGain(data.unitId, data.description, resolveHonourType(data.description))
     return { success: true as const, data: { id: row.id } }
   })
 

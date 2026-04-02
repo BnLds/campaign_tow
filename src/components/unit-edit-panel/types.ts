@@ -13,6 +13,7 @@ export interface UnitGainRow {
   id: string
   unitId: string
   description: string
+  type: string
 }
 
 export interface SubProfileItem {

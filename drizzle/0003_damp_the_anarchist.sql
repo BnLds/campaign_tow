@@ -1,0 +1,1 @@
+ALTER TYPE "public"."unit_gain_type" ADD VALUE 'champion_lost';
