@@ -59,7 +59,7 @@ export async function createSession(playerId: string): Promise<void> {
 
   setCookie(SESSION_COOKIE, session.id, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.HTTPS === 'true',
     sameSite: 'lax',
     expires: expiresAt,
     path: '/',
