@@ -1,0 +1,14 @@
+node_modules
+.output
+.git
+.github
+.env*
+.auth
+*.md
+drizzle/*.sql~
+e2e
+tests
+_bmad*
+docs
+playwright-report
+test-results
