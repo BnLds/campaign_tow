@@ -133,8 +133,9 @@ export function TimelineEntry({
   const opponentSelected = opponentUnitSelectionCompletedAt !== undefined ? opponentUnitSelectionCompletedAt !== null : null
 
   // Show CTA when unit selection is needed and player hasn't selected yet (even if result already set by opponent)
+  // Skip if post-match is already locked (legacy matches created before unit selection feature)
   const showUnitSelectionCTA =
-    needsUnitSelection && playerSelected === false
+    needsUnitSelection && playerSelected === false && !hasEvolutions
 
   // Provisional deltas: player selected but opponent hasn't yet
   const isDeltaProvisional =
