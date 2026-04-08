@@ -118,7 +118,7 @@ export const submitUnitSelectionFn = createServerFn({ method: 'POST' })
 export const loadArmyUnitsForSelectionFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator((data: { matchId: string }) => data)
-  .handler(async ({ context, data }): Promise<ServerResult<{ units: Array<{ id: string; name: string; type: string; xp: number; points: number }>; preSelectedUnitIds: string[] }>> => {
+  .handler(async ({ context, data }): Promise<ServerResult<{ units: Array<{ id: string; name: string; type: string; xp: number; points: number; effectivePoints: number }>; preSelectedUnitIds: string[] }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
@@ -144,11 +144,29 @@ export const loadArmyUnitsForSelectionFn = createServerFn({ method: 'GET' })
       return { success: false, error: { code: 'FORBIDDEN', message: 'Sélection verrouillée après le rapport post-match' } }
     }
     const armyUnits = await getUnitsForArmy(army.id)
+    const { db: dbQ } = await import('../db/index')
+    const { unitGains: ugTable } = await import('../db/schema')
+    const { eq, and, inArray } = await import('drizzle-orm')
+    const armyUnitIds = armyUnits.map((u) => u.id)
+    const activePertesCata = armyUnitIds.length > 0
+      ? await dbQ.select({ unitId: ugTable.unitId })
+          .from(ugTable)
+          .where(and(
+            inArray(ugTable.unitId, armyUnitIds),
+            eq(ugTable.type, 'pertes_catastrophiques'),
+            eq(ugTable.cleared, false),
+          ))
+      : []
+    const pertesCataIds = new Set(activePertesCata.map((r) => r.unitId))
     const preSelectedUnitIds = await getUnitSelectionForParticipant(participant.id)
     return {
       success: true,
       data: {
-        units: armyUnits.map((u) => ({ id: u.id, name: u.name, type: u.type, xp: u.xp, points: u.points ?? 0 })),
+        units: armyUnits.map((u) => ({
+          id: u.id, name: u.name, type: u.type, xp: u.xp,
+          points: u.points ?? 0,
+          effectivePoints: pertesCataIds.has(u.id) ? Math.floor((u.points ?? 0) / 2) : (u.points ?? 0),
+        })),
         preSelectedUnitIds,
       },
     }

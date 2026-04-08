@@ -1,6 +1,6 @@
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { db } from '../../index'
-import { matchUnitSelections, matchParticipants, units } from '../../schema'
+import { matchUnitSelections, matchParticipants, units, unitGains } from '../../schema'
 
 export async function submitUnitSelection(
   matchParticipantId: string,
@@ -43,11 +43,18 @@ export async function submitUnitSelection(
       .set({ unitSelectionCompletedAt: new Date() })
       .where(eq(matchParticipants.id, matchParticipantId))
 
-    // Compute totals of selected units
+    // Compute totals of selected units (halve points for units with active pertes_catastrophiques)
     const [totals] = await tx
       .select({
         totalXp: sql<string>`COALESCE(SUM(${units.xp}), 0)`,
-        totalPoints: sql<string>`COALESCE(SUM(${units.points}), 0)`,
+        totalPoints: sql<string>`COALESCE(SUM(
+          CASE WHEN EXISTS (
+            SELECT 1 FROM ${unitGains}
+            WHERE ${unitGains.unitId} = ${units.id}
+            AND ${unitGains.type} = 'pertes_catastrophiques'
+            AND ${unitGains.cleared} = false
+          ) THEN FLOOR(${units.points} / 2) ELSE ${units.points} END
+        ), 0)`,
       })
       .from(units)
       .where(inArray(units.id, unitIds))
@@ -90,7 +97,14 @@ export async function getSelectedUnitsTotalsForMatch(
       const rows = await db
         .select({
           totalXp: sql<string>`COALESCE(SUM(${units.xp}), 0)`,
-          totalPoints: sql<string>`COALESCE(SUM(${units.points}), 0)`,
+          totalPoints: sql<string>`COALESCE(SUM(
+            CASE WHEN EXISTS (
+              SELECT 1 FROM ${unitGains}
+              WHERE ${unitGains.unitId} = ${units.id}
+              AND ${unitGains.type} = 'pertes_catastrophiques'
+              AND ${unitGains.cleared} = false
+            ) THEN FLOOR(${units.points} / 2) ELSE ${units.points} END
+          ), 0)`,
         })
         .from(matchUnitSelections)
         .innerJoin(units, eq(matchUnitSelections.unitId, units.id))

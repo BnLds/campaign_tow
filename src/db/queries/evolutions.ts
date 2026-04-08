@@ -378,7 +378,7 @@ async function processConsequences(
       case 'pertes_catastrophiques':
         await tx.insert(unitGains).values({
           unitId: consequence.unitId,
-          description: 'Pertes Catastrophiques (effectif réduit de moitié pour la prochaine bataille)',
+          description: 'Pertes Catastrophiques (effectif et points réduits de moitié pour la prochaine bataille)',
           type: 'pertes_catastrophiques',
           matchParticipantId,
         })

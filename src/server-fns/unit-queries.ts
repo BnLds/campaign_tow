@@ -30,8 +30,11 @@ export const loadArmyFn = createServerFn({ method: 'GET' })
       const composedView = composeUnitView(unit.subProfiles, unitMods, unitGainsList)
       const tier = calculateTier(unit.xp, unit.type)
 
+      const hasPertesCata = unitGainsList.some((g) => g.type === 'pertes_catastrophiques')
+      const effectivePoints = hasPertesCata && unit.points != null ? Math.floor(unit.points / 2) : unit.points
+
       return {
-        unit: { id: unit.id, name: unit.name, nickname: unit.nickname, type: unit.type, xp: unit.xp, points: unit.points },
+        unit: { id: unit.id, name: unit.name, nickname: unit.nickname, type: unit.type, xp: unit.xp, points: unit.points, effectivePoints },
         composedView,
         tier,
         subProfiles: unit.subProfiles.map((sp) => ({

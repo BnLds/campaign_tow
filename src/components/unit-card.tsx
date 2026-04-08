@@ -14,7 +14,7 @@ import { chipClasses } from '#/lib/chip-styles'
 // ---------------------------------------------------------------------------
 
 interface UnitCardProps {
-  unit: { id: string; name: string; nickname: string | null; type: string; xp: number; points: number | null }
+  unit: { id: string; name: string; nickname: string | null; type: string; xp: number; points: number | null; effectivePoints: number | null }
   composedView: ComposedUnitView
   tier: TierLevel
   action?: React.ReactNode
@@ -251,8 +251,13 @@ export function UnitCard({ unit, composedView, tier, action }: UnitCardProps) {
         <div className="flex items-center gap-2 mt-1">
           {unit.points !== null && (
             <>
-              <span className="text-xs font-semibold text-cw-brand">
-                {unit.points} pts
+              <span className={cn('text-xs font-semibold',
+                unit.effectivePoints !== unit.points ? 'text-cw-malus' : 'text-cw-brand'
+              )}>
+                {unit.effectivePoints} pts
+                {unit.effectivePoints !== unit.points && (
+                  <span className="text-[0.65rem] font-normal"> (÷2)</span>
+                )}
               </span>
               <span className="text-cw-separator text-[0.65rem]">·</span>
             </>
