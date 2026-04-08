@@ -17,6 +17,7 @@ type Unit = {
   type: string
   xp: number
   points: number | null
+  effectivePoints: number | null
 }
 
 export type UnitSelectionWizardProps = {
@@ -138,7 +139,7 @@ export function UnitSelectionWizard({
   }
 
   const selectedUnits = units.filter((u) => selected.has(u.id))
-  const totalPoints = selectedUnits.reduce((sum, u) => sum + (u.points ?? 0), 0)
+  const totalPoints = selectedUnits.reduce((sum, u) => sum + (u.effectivePoints ?? 0), 0)
   const totalXp = selectedUnits.reduce((sum, u) => sum + u.xp, 0)
 
   const handleSubmit = async () => {
@@ -342,7 +343,7 @@ export function UnitSelectionWizard({
                               fontFamily: 'var(--font-body)',
                               fontSize: '0.75rem',
                               fontWeight: 600,
-                              color: 'var(--color-text-secondary)',
+                              color: unit.effectivePoints !== unit.points ? 'var(--color-malus)' : 'var(--color-text-secondary)',
                               background: 'var(--color-stats-bg)',
                               border: '1px solid var(--color-border)',
                               borderRadius: '0.375rem',
@@ -350,7 +351,10 @@ export function UnitSelectionWizard({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            {unit.points} pts
+                            {unit.effectivePoints ?? unit.points} pts
+                            {unit.effectivePoints !== unit.points && (
+                              <span style={{ fontSize: '0.65rem', color: 'var(--color-malus)' }}> (÷2)</span>
+                            )}
                           </span>
                         )}
                         <span

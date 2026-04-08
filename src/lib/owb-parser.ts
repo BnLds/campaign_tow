@@ -208,6 +208,19 @@ export function normalizeBlockText(text: string): string {
   return out.join('\n')
 }
 
+// OWB exports section headers in the app's language.
+// Normalize English section names to the canonical French names used throughout the codebase.
+const SECTION_NAME_MAP: Record<string, string> = {
+  'Characters': 'Personnages',
+  'Core Units': 'Unités de base',
+  'Special Units': 'Unités spéciales',
+  'Rare Units': 'Unités rares',
+}
+
+function normalizeSectionType(rawType: string): string {
+  return SECTION_NAME_MAP[rawType] ?? rawType
+}
+
 export function parseOwbExport(text: string): ParsedArmy {
   if (!text || !text.trim()) {
     throw new Error('OWB export is empty — veuillez coller un export texte Old World Builder valide')
@@ -254,7 +267,7 @@ export function parseOwbExport(text: string): ParsedArmy {
     if (line.startsWith('### ')) {
       const typeMatch = line.match(/^### (.+?) \[/)
       if (typeMatch) {
-        currentType = typeMatch[1].trim()
+        currentType = normalizeSectionType(typeMatch[1].trim())
       }
       continue
     }

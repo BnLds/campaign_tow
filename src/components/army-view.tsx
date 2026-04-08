@@ -80,7 +80,7 @@ export function ArmyView({ army, unitCards, graveyardUnits, isOwner, isAdmin }: 
 
   const groups = groupUnitsByType(unitCards)
   const totalXp = unitCards.reduce((sum, c) => sum + c.unit.xp, 0)
-  const totalPoints = unitCards.reduce((sum, c) => sum + (c.unit.points ?? 0), 0)
+  const totalPoints = unitCards.reduce((sum, c) => sum + (c.unit.effectivePoints ?? 0), 0)
   const allHavePoints = unitCards.length > 0 && unitCards.every((c) => c.unit.points !== null)
 
   return (

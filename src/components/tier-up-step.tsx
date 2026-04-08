@@ -349,7 +349,7 @@ export function TierUpStep({
             fontStyle: 'italic',
           }}
         >
-          Les améliorations s'appliquent au cavalier/servant uniquement
+          Les améliorations s'appliquent en priorité au cavalier/servant. Si celui-ci n'a pas la caractéristique, la monture peut être améliorée.
         </p>
       )}
 

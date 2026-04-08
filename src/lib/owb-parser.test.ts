@@ -260,6 +260,65 @@ describe('[AC1][P0] parseOwbExport — footer handling', () => {
 })
 
 // ---------------------------------------------------------------------------
+// English section headers — normalized to French canonical types
+// ---------------------------------------------------------------------------
+
+describe('parseOwbExport — English section headers normalized to French', () => {
+  const ENGLISH_OWB_BLOCKTEXT = `===
+Freakshow [788 pts]
+Warhammer: The Old World, Warriors of Chaos, Battle March
+===
+
+++ Characters [205 pts] ++
+
+Exalted Sorcerer [125 pts]
+Hand weapon
+
+[Exalted Sorcerer] M(4) WS(4) BS(3) S(4) T(4) W(2) I(3) A(2) Ld(8)
+
+Aspiring Champion [80 pts]
+Hand weapon
+
+[Aspiring Champion] M(4) WS(5) BS(3) S(4) T(4) W(2) I(4) A(3) Ld(8)
+
+++ Core Units [345 pts] ++
+
+16 Chaos Marauders [128 pts]
+Hand weapons
+
+[Chaos Marauder] M(4) WS(4) BS(3) S(3) T(3) W(1) I(3) A(1) Ld(6)
+
+++ Special Units [238 pts] ++
+
+2 Dragon Ogres [132 pts]
+Great weapons
+
+[Dragon Ogre] M(7) WS(4) BS(2) S(5) T(4) W(4) I(2) A(3) Ld(8)
+
+---
+Created with "Old World Builder"
+`
+
+  it('normalizes "Characters" → "Personnages"', () => {
+    const result = parseOwbExport(ENGLISH_OWB_BLOCKTEXT)
+    const unit = result.units.find((u) => u.name === 'Exalted Sorcerer')
+    expect(unit?.type).toBe('Personnages')
+  })
+
+  it('normalizes "Core Units" → "Unités de base"', () => {
+    const result = parseOwbExport(ENGLISH_OWB_BLOCKTEXT)
+    const unit = result.units.find((u) => u.name === 'Chaos Marauders')
+    expect(unit?.type).toBe('Unités de base')
+  })
+
+  it('normalizes "Special Units" → "Unités spéciales"', () => {
+    const result = parseOwbExport(ENGLISH_OWB_BLOCKTEXT)
+    const unit = result.units.find((u) => u.name === 'Dragon Ogres')
+    expect(unit?.type).toBe('Unités spéciales')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // AC4 — Error cases (Task 9.6)
 // ---------------------------------------------------------------------------
 

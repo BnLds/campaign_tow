@@ -46,7 +46,7 @@
 | 40 XP | Vétéran | 1 amélioration majeure + 2 mineures |
 | 70 XP | Héroïque | 2 améliorations majeures + 2 mineures |
 
-> **Personnages montés (cavalerie et chars) :** Les améliorations de statistiques s'appliquent uniquement au personnage, jamais à sa monture.
+> **Personnages montés (cavalerie et chars) :** Les améliorations de statistiques s'appliquent en priorité au cavalier s'il possède la caractéristique. Si le cavalier n'a pas cette caractéristique dans sa fiche, la monture peut être améliorée à la place.
 
 ### Améliorations mineures
 
@@ -90,7 +90,7 @@
 - Un champion meurt s'il perd son défi.
 - Une bannière et un musicien meurent si l'unité est détruite sur le champ de bataille.
 
-> **Unités montées (cavalerie et chars) :** Les améliorations de statistiques s'appliquent uniquement aux cavaliers ou servants, jamais aux montures.
+> **Unités montées (cavalerie et chars) :** Les améliorations de statistiques s'appliquent en priorité aux cavaliers ou servants s'ils possèdent la caractéristique. Si ce n'est pas le cas, la monture peut être améliorée à la place.
 
 ### Améliorations mineures
 
@@ -143,7 +143,7 @@ Si une unité est détruite (rayée de la table), jetez **2D6**.
 | Résultat | Effet |
 |---|---|
 | 2–3 | **Déroute Sanglante.** L'unité perd 10/10/15/20/30 XP selon son palier. La perte d'XP se fait *après* l'ajout des gains de la bataille. |
-| 4–6 | **Pertes Catastrophiques.** L'unité est à moitié d'effectif (arrondi à l'inférieur) pour la bataille suivante. |
+| 4–6 | **Pertes Catastrophiques.** L'unité est à moitié d'effectif (arrondi à l'inférieur) pour la bataille suivante. la valeur en point de l'unité sera également divisée par deux pour la bataille suivante. |
 | 7–8 | **Moral Brisé.** L'unité perd 2 points de Commandement pour la bataille suivante. |
 | 9–10 | **Survivants Endurcis.** Aucune conséquence. |
 | 11 | **Rancune.** L'unité gagne Haine contre l'armée qui l'a vaincue. |
@@ -160,3 +160,8 @@ Si l'unité possédait une bannière :
 
 Si le champion est tué dans un défi (et uniquement un défi), l'amélioration est perdue.
 L'unité doit regagner 3 XP pour en obtenir un nouveau champion.
+
+
+### Cavalerie
+
+> Voir les notes sur les unités et personnages montés dans les sections d'améliorations ci-dessus.

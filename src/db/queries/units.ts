@@ -366,7 +366,14 @@ export async function getUnitsTotalsByIds(
   const rows = await ex
     .select({
       totalXp: sql<string>`COALESCE(SUM(${units.xp}), 0)`,
-      totalPoints: sql<string>`COALESCE(SUM(${units.points}), 0)`,
+      totalPoints: sql<string>`COALESCE(SUM(
+        CASE WHEN EXISTS (
+          SELECT 1 FROM ${unitGains}
+          WHERE ${unitGains.unitId} = ${units.id}
+          AND ${unitGains.type} = 'pertes_catastrophiques'
+          AND ${unitGains.cleared} = false
+        ) THEN FLOOR(${units.points} / 2) ELSE ${units.points} END
+      ), 0)`,
     })
     .from(units)
     .where(and(inArray(units.id, unitIds), eq(units.status, 'active')))
@@ -388,7 +395,14 @@ export async function getArmyXpAndPointsTotalsBatch(
     .select({
       armyId: units.armyId,
       totalXp: sql<string>`COALESCE(SUM(${units.xp}), 0)`,
-      totalPoints: sql<string>`COALESCE(SUM(${units.points}), 0)`,
+      totalPoints: sql<string>`COALESCE(SUM(
+        CASE WHEN EXISTS (
+          SELECT 1 FROM ${unitGains}
+          WHERE ${unitGains.unitId} = ${units.id}
+          AND ${unitGains.type} = 'pertes_catastrophiques'
+          AND ${unitGains.cleared} = false
+        ) THEN FLOOR(${units.points} / 2) ELSE ${units.points} END
+      ), 0)`,
     })
     .from(units)
     .where(and(inArray(units.armyId, filteredIds), eq(units.status, 'active')))

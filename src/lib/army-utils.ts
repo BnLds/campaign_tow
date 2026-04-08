@@ -7,7 +7,7 @@ export const TYPE_ORDER = ['Personnages', 'Unités de base', 'Unités spéciales
 
 export function groupUnitsByType(
   unitCards: Array<{
-    unit: { id: string; name: string; nickname: string | null; type: string; xp: number; points: number | null }
+    unit: { id: string; name: string; nickname: string | null; type: string; xp: number; points: number | null; effectivePoints: number | null }
     composedView: ComposedUnitView
     tier: TierLevel
     subProfiles: Array<{ id: string; label: string; isMount: boolean; sortOrder: number }>
