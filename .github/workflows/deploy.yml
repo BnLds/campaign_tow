@@ -18,5 +18,19 @@ jobs:
             cd /opt/campaign_tow
             GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy" git pull origin main
             sudo docker compose -f docker-compose.prod.yml build --no-cache app
-            sudo docker compose -f docker-compose.prod.yml up -d
+
+            # Blue-green : scale à 2 (ancien + nouveau)
+            sudo docker compose -f docker-compose.prod.yml up -d --no-deps --scale app=2 --no-recreate app
+
+            # Attendre que le nouveau container soit healthy
+            echo "Waiting for new container to be healthy..."
+            sleep 20
+
+            # Supprimer l'ancien container (celui créé en premier)
+            OLD_CONTAINER=$(sudo docker compose -f docker-compose.prod.yml ps -q app | head -1)
+            sudo docker stop "$OLD_CONTAINER" && sudo docker rm "$OLD_CONTAINER"
+
+            # Revenir à scale=1
+            sudo docker compose -f docker-compose.prod.yml up -d --no-deps --scale app=1 --no-recreate app
+
             sudo docker image prune -f
