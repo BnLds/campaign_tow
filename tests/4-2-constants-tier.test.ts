@@ -299,14 +299,14 @@ describe('[AC2][P0] Endurance — character improvements (Task 9.12)', () => {
     expect(endurance?.slotCost).toBeUndefined()
   })
 
-  it('[4.2-CST-037] Endurance is ABSENT from CHARACTER_THRESHOLDS at XP 20 but PRESENT at XP 40 and 70', () => {
+  it('[4.2-CST-037] Endurance is ABSENT from CHARACTER_THRESHOLDS at XP 20 and 40 but PRESENT at XP 70', () => {
     const entry20 = CHARACTER_THRESHOLDS.find((t) => t.xp === 20)
     const endurance20 = entry20?.majorImprovements.find((imp) => imp.label.includes('Endurance'))
     expect(endurance20).toBeUndefined()
 
     const entry40 = CHARACTER_THRESHOLDS.find((t) => t.xp === 40)
     const endurance40 = entry40?.majorImprovements.find((imp) => imp.label.includes('Endurance'))
-    expect(endurance40).toBeDefined()
+    expect(endurance40).toBeUndefined()
 
     const entry70 = CHARACTER_THRESHOLDS.find((t) => t.xp === 70)
     const endurance70 = entry70?.majorImprovements.find((imp) => imp.label.includes('Endurance'))
