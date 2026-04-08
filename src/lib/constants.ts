@@ -248,7 +248,7 @@ export const CHARACTER_THRESHOLDS: ThresholdEntry[] = [
     tierLabel: 'Vétéran',
     majorImprovements: [
       { id: 'c-t40-maj-f', label: '+1 Force', category: 'major' },
-      { id: 'c-t40-maj-e', label: '+1 Endurance', category: 'major' },
+      // Endurance excluded at 40 XP — only available from Héroïque (70 XP)
       { id: 'c-t40-maj-pv', label: '+1 PV (max 2x)', category: 'major' },
       { id: 'c-t40-maj-a', label: '+1 Attaque', category: 'major' },
       { id: 'c-t40-maj-mag', label: '+1 Niveau de magie (sorcier, max 4)', category: 'major' },
