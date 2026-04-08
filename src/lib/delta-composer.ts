@@ -209,13 +209,25 @@ export function composeUnitView(
     }
   }
 
+  // Cavalry rule: mods apply to mount only if no rider sub-profile has this stat
+  const riderStats = new Set<string>()
+  for (const sp of subProfiles) {
+    if (!sp.isMount) {
+      for (const key of STAT_KEYS) {
+        if (sp[key] != null && sp[key] !== '-') riderStats.add(key)
+      }
+    }
+  }
+
   // Compose each sub-profile
   const composedSubProfiles: ComposedSubProfile[] = subProfiles.map((sp) => {
     const stats: Record<string, StatEntry> = {}
 
     for (const key of STAT_KEYS as readonly StatKey[]) {
       const baseValue = sp[key] ?? '-'
-      const mods = sp.isMount ? [] : (modsByStat.get(key) ?? [])
+      const mods = sp.isMount
+        ? (riderStats.has(key) ? [] : (modsByStat.get(key) ?? []))
+        : (modsByStat.get(key) ?? [])
 
       // "-" means the unit doesn't have this stat — ignore all modifiers
       if (baseValue === '-' || mods.length === 0) {
