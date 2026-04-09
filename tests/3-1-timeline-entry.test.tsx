@@ -140,7 +140,7 @@ describe('[AC3][P0] TimelineEntry — result badge', () => {
         hasEvolutions={false}
       />
     )
-    const badge = container.querySelector('[data-testid="result-badge"]') as HTMLElement | null
+    const badge = container.querySelector('[data-testid="result-badge"]')
     expect(badge).not.toBeNull()
     if (badge) {
       // Either inline style or a CSS class indicating victory/green
@@ -160,7 +160,7 @@ describe('[AC3][P0] TimelineEntry — result badge', () => {
         hasEvolutions={false}
       />
     )
-    const badge = container.querySelector('[data-testid="result-badge"]') as HTMLElement | null
+    const badge = container.querySelector('[data-testid="result-badge"]')
     expect(badge).not.toBeNull()
     if (badge) {
       const hasRedStyle = badge.style.color === 'rgb(184, 44, 44)' || badge.style.color === '#b82c2c'

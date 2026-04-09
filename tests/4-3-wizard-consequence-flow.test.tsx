@@ -124,7 +124,7 @@ describe('[AC1,AC12][P0] PostMatchWizard — toggle defaults unchecked (Task 11.
     const props = makeDefaultProps([CHARACTER_1])
     render(<PostMatchWizard {...props} />)
 
-    const toggle = screen.getByTestId('consequence-toggle') as HTMLInputElement
+    const toggle = screen.getByTestId('consequence-toggle')
     expect(toggle.checked).toBe(false)
   })
 })

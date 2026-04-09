@@ -605,7 +605,7 @@ function CampaignView() {
                       result={toValidResult(entry.result)}
                       date={entry.date}
                       hasEvolutions={entry.hasEvolutions}
-                      isEditable={!isGuest && army !== null}
+                      isEditable={!isGuest}
                       isLatestMatch={entry.isLatestMatch}
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}

@@ -7,6 +7,9 @@ import {
   buildFlaggedUnits,
 } from '../helpers'
 
+import { detectTierCrossings } from '../../../lib/tier'
+import { expandQueueEntry } from '../phase-tierup'
+
 // ---------------------------------------------------------------------------
 // Mocks — hoisted before imports by Vitest
 // ---------------------------------------------------------------------------
@@ -18,9 +21,6 @@ vi.mock('../../../lib/tier', () => ({
 vi.mock('../phase-tierup', () => ({
   expandQueueEntry: vi.fn(),
 }))
-
-import { detectTierCrossings } from '../../../lib/tier'
-import { expandQueueEntry } from '../phase-tierup'
 
 const mockDetectTierCrossings = vi.mocked(detectTierCrossings)
 const mockExpandQueueEntry = vi.mocked(expandQueueEntry)

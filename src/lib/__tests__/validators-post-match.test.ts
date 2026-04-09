@@ -13,6 +13,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
+import type { completeEvolutionsWithGainsSchema as CompleteSchemaType } from '../validators'
 import { resolve } from 'node:path'
 
 const root = resolve(__dirname, '../../..')
@@ -262,7 +263,7 @@ describe('[AC1][AC3][P0] submitUnitXpSchema — matchParticipantId runtime valid
 // ---------------------------------------------------------------------------
 
 describe('validateConsequenceEntry — via completeEvolutionsWithGainsSchema', () => {
-  let completeEvolutionsWithGainsSchema: typeof import('../validators').completeEvolutionsWithGainsSchema
+  let completeEvolutionsWithGainsSchema: typeof CompleteSchemaType
 
   beforeAll(async () => {
     const mod = await import('../validators')

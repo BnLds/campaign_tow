@@ -403,9 +403,9 @@ describe('[AC6][P0] TimelineEntry — buttons disabled during submission (isSubm
 
     // Immediately after click, all buttons should be disabled
     await waitFor(() => {
-      const victoryBtn = screen.getByTestId('result-select-victory') as HTMLButtonElement
-      const defeatBtn = screen.getByTestId('result-select-defeat') as HTMLButtonElement
-      const drawBtn = screen.getByTestId('result-select-draw') as HTMLButtonElement
+      const victoryBtn = screen.getByTestId('result-select-victory')
+      const defeatBtn = screen.getByTestId('result-select-defeat')
+      const drawBtn = screen.getByTestId('result-select-draw')
       expect(victoryBtn.disabled).toBe(true)
       expect(defeatBtn.disabled).toBe(true)
       expect(drawBtn.disabled).toBe(true)
@@ -459,7 +459,7 @@ describe('[AC6][P0] TimelineEntry — buttons disabled during submission (isSubm
     fireEvent.click(screen.getByTestId('result-select-draw'))
 
     await waitFor(() => {
-      const drawBtn = screen.getByTestId('result-select-draw') as HTMLButtonElement
+      const drawBtn = screen.getByTestId('result-select-draw')
       expect(drawBtn.disabled).toBe(false)
     })
   })

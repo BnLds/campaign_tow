@@ -1,6 +1,7 @@
 import { eq, and, inArray, sql, isNull } from 'drizzle-orm'
 import { db } from '../index'
-import { players, armies, units, subProfiles, statModifiers, unitGains, matchXpEntries, matchParticipants, unitGainTypeEnum } from '../schema'
+import type { unitGainTypeEnum } from '../schema';
+import { players, armies, units, subProfiles, statModifiers, unitGains, matchXpEntries, matchParticipants } from '../schema'
 
 export type StatFields = {
   m: string
@@ -388,8 +389,6 @@ export async function getArmyXpAndPointsTotalsBatch(
 ): Promise<Map<string, { totalXp: number; totalPoints: number }>> {
   if (armyIds.length === 0) return new Map()
 
-  const filteredIds = armyIds.filter((id) => id != null)
-
   const ex = executor ?? db
   const rows = await ex
     .select({
@@ -405,7 +404,7 @@ export async function getArmyXpAndPointsTotalsBatch(
       ), 0)`,
     })
     .from(units)
-    .where(and(inArray(units.armyId, filteredIds), eq(units.status, 'active')))
+    .where(and(inArray(units.armyId, armyIds), eq(units.status, 'active')))
     .groupBy(units.armyId)
 
   const result = new Map<string, { totalXp: number; totalPoints: number }>()
@@ -414,7 +413,7 @@ export async function getArmyXpAndPointsTotalsBatch(
     result.set(row.armyId, { totalXp: Number(row.totalXp), totalPoints: Number(row.totalPoints) })
   }
 
-  for (const id of filteredIds) {
+  for (const id of armyIds) {
     if (!result.has(id)) {
       result.set(id, { totalXp: 0, totalPoints: 0 })
     }

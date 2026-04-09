@@ -352,7 +352,7 @@ describe('[AC6][P0] PostMatchWizard — button disabled during submission (Task 
     fireEvent.click(screen.getByTestId('wizard-next-button'))
 
     await waitFor(() => {
-      const btn = screen.getByTestId('wizard-next-button') as HTMLButtonElement
+      const btn = screen.getByTestId('wizard-next-button')
       expect(btn.disabled).toBe(true)
     })
 
@@ -850,7 +850,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('wizard-progress').textContent).toMatch(/1\s*\/\s*3/)
       expect(screen.getByTestId('wizard-unit-name').textContent).toContain('Hallebardiers')
-      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
     })
   })
 
@@ -883,8 +883,8 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
-      expect((screen.getByTestId('xp-condition-survived') as HTMLInputElement).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-survived')).checked).toBe(true)
       expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
     })
   })
@@ -918,7 +918,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     // Back to step 1
     fireEvent.click(screen.getByTestId('wizard-back-button'))
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
     })
 
     // Uncheck both, advance again (0 XP)
@@ -937,7 +937,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     // Back again — should show no checkboxes checked
     fireEvent.click(screen.getByTestId('wizard-back-button'))
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(false)
+      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(false)
     })
   })
 
@@ -1197,8 +1197,8 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
-      expect((screen.getByTestId('xp-condition-survived') as HTMLInputElement).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-survived')).checked).toBe(true)
       expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
     })
   })
@@ -1269,8 +1269,8 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
 
     fireEvent.click(screen.getByTestId('xp-condition-general_draw'))
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('1')
-    expect((screen.getByTestId('xp-condition-general_win') as HTMLInputElement).checked).toBe(false)
-    expect((screen.getByTestId('xp-condition-general_draw') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByTestId('xp-condition-general_win')).checked).toBe(false)
+    expect((screen.getByTestId('xp-condition-general_draw')).checked).toBe(true)
   })
 
   it('[XP-CB-008b] general_win can be unchecked by clicking again', () => {
@@ -1283,7 +1283,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
         onCancel={vi.fn()}
       />
     )
-    const generalWin = screen.getByTestId('xp-condition-general_win') as HTMLInputElement
+    const generalWin = screen.getByTestId('xp-condition-general_win')
     // Check
     fireEvent.click(generalWin)
     expect(generalWin.checked).toBe(true)
@@ -1316,7 +1316,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
 
     // Check general_win on character step
     fireEvent.click(screen.getByTestId('xp-condition-general_win'))
-    expect((screen.getByTestId('xp-condition-general_win') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByTestId('xp-condition-general_win')).checked).toBe(true)
 
     // Advance to next unit
     fireEvent.click(screen.getByTestId('wizard-next-button'))
@@ -1331,7 +1331,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     })
 
     // general_win should still be checked
-    expect((screen.getByTestId('xp-condition-general_win') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByTestId('xp-condition-general_win')).checked).toBe(true)
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
   })
 
@@ -1370,7 +1370,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed') as HTMLInputElement).checked).toBe(true)
+      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
       expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
     })
   })
@@ -1399,9 +1399,9 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
         onCancel={vi.fn()}
       />
     )
-    const generalWin = screen.getByTestId('xp-condition-general_win') as HTMLInputElement
+    const generalWin = screen.getByTestId('xp-condition-general_win')
     expect(generalWin.type).toBe('checkbox')
-    const generalDraw = screen.getByTestId('xp-condition-general_draw') as HTMLInputElement
+    const generalDraw = screen.getByTestId('xp-condition-general_draw')
     expect(generalDraw.type).toBe('checkbox')
     // No "Aucun (pas le général)" option
     expect(screen.queryByTestId('xp-condition-general_none')).toBeNull()
@@ -1520,7 +1520,7 @@ describe('[AC3,AC4] PostMatchWizard — initial-xp mode', () => {
         onCancel={vi.fn()}
       />
     )
-    const input = screen.getByTestId('wizard-xp-numeric-input') as HTMLInputElement
+    const input = screen.getByTestId('wizard-xp-numeric-input')
     expect(input.value).toBe('0')
   })
 
@@ -1538,7 +1538,7 @@ describe('[AC3,AC4] PostMatchWizard — initial-xp mode', () => {
         onCancel={vi.fn()}
       />
     )
-    const input = screen.getByTestId('wizard-xp-numeric-input') as HTMLInputElement
+    const input = screen.getByTestId('wizard-xp-numeric-input')
     expect(input.value).toBe('15')
   })
 
@@ -1556,7 +1556,7 @@ describe('[AC3,AC4] PostMatchWizard — initial-xp mode', () => {
         onCompleteEvolutions={vi.fn().mockResolvedValue({ success: true, data: { matchId: MATCH_ID } })}
       />
     )
-    const input = screen.getByTestId('wizard-xp-numeric-input') as HTMLInputElement
+    const input = screen.getByTestId('wizard-xp-numeric-input')
     fireEvent.change(input, { target: { value: '45' } })
     fireEvent.click(screen.getByTestId('wizard-next-button'))
     await waitFor(() => {

@@ -25,6 +25,7 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
+    "@sentry/tanstackstart-react": "^10.47.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-form": "latest",
@@ -60,7 +61,6 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
-    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.15.6",
     "@types/react": "^19.2.0",
@@ -79,8 +79,11 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@sentry/cli",
       "esbuild",
-      "lightningcss"
+      "lightningcss",
+      "unrs-resolver"
     ]
-  }
+  },
+  "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }

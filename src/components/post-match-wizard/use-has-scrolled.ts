@@ -22,10 +22,10 @@ export function useHasScrolled<T extends HTMLElement = HTMLDivElement>() {
     }
     if (!scrollParent) return
 
-    const handler = () => setHasScrolled(scrollParent!.scrollTop > 0)
+    const handler = () => setHasScrolled(scrollParent.scrollTop > 0)
     handler() // initial check
     scrollParent.addEventListener('scroll', handler, { passive: true })
-    return () => scrollParent!.removeEventListener('scroll', handler)
+    return () => scrollParent.removeEventListener('scroll', handler)
   }, [])
 
   return [ref, hasScrolled] as const

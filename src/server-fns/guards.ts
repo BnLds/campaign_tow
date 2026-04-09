@@ -1,14 +1,12 @@
 // Campaign TOW — Shared ownership guards (return-based pattern)
 
 import type { ServerResult } from '../lib/types'
+import type { getUnitById, getStatModifierById, getUnitGainById, getSubProfileById } from '../db/queries'
 
-// Derive types from DB query return values
-type QueryModule = typeof import('../db/queries')
-
-export type UnitById = NonNullable<Awaited<ReturnType<QueryModule['getUnitById']>>>
-type ModifierById = NonNullable<Awaited<ReturnType<QueryModule['getStatModifierById']>>>
-type GainById = NonNullable<Awaited<ReturnType<QueryModule['getUnitGainById']>>>
-type SubProfileById = NonNullable<Awaited<ReturnType<QueryModule['getSubProfileById']>>>
+export type UnitById = NonNullable<Awaited<ReturnType<typeof getUnitById>>>
+type ModifierById = NonNullable<Awaited<ReturnType<typeof getStatModifierById>>>
+type GainById = NonNullable<Awaited<ReturnType<typeof getUnitGainById>>>
+type SubProfileById = NonNullable<Awaited<ReturnType<typeof getSubProfileById>>>
 
 export type GuardResult<T> = { ok: true; data: T } | { ok: false; result: ServerResult<never> }
 

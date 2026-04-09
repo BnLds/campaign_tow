@@ -242,7 +242,7 @@ function SettingsPage() {
                   id="currentPassword"
                   type="password"
                   data-testid="settings-current-password-input"
-                  value={field.state.value ?? ''}
+                  value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
                   style={{ marginTop: '0.25rem' }}

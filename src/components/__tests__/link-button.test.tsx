@@ -32,7 +32,7 @@ describe('LinkButton', () => {
 
   it('has type="button" (not submit)', () => {
     render(<LinkButton>Texte</LinkButton>)
-    const btn = screen.getByText('Texte') as HTMLButtonElement
+    const btn = screen.getByText('Texte')
     expect(btn.type).toBe('button')
   })
 

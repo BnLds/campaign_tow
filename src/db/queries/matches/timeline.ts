@@ -212,7 +212,7 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
       matchId: row.matchId,
       matchParticipantId: row.matchParticipantId,
       date: row.date.toISOString(),
-      matchType: (row.matchType ?? 'standard') as MatchType,
+      matchType: row.matchType as MatchType,
       result: row.result,
       hasEvolutions: row.evolutionsEnteredAt !== null,
       isLatestMatch: row.matchId === latestMatchId,

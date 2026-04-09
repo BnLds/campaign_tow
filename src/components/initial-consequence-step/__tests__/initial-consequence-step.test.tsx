@@ -3,8 +3,7 @@
 // Tests for InitialConsequenceStep — past consequences multi-select (initial-xp mode)
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { renderHook, act } from '@testing-library/react'
+import { render, screen, fireEvent, renderHook, act  } from '@testing-library/react'
 import { InitialConsequenceStep } from '../initial-consequence-step'
 import type { InitialConsequenceItem } from '../initial-consequence-step'
 import { useConsequenceForm } from '../use-consequence-form'

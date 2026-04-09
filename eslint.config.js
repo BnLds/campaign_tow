@@ -15,6 +15,20 @@ export default [
     },
   },
   {
+    // Test files — use dedicated tsconfig.test.json that includes tests/**
+    files: [
+      'tests/**/*.{ts,tsx}',
+      'src/**/*.test.{ts,tsx}',
+      'src/**/__tests__/**/*.{ts,tsx}',
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.test.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
     // shadcn-generated files — never modify directly, exclude from strict lint
     files: ['src/components/ui/**'],
     rules: {

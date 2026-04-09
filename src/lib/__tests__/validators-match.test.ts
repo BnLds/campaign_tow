@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import type { createMatchSchema as CreateMatchSchemaType } from '../validators'
 
 const root = resolve(__dirname, '../../..')
 
@@ -144,7 +145,7 @@ describe('[AC1][P0] submitMatchResultSchema — runtime validation (Task 7.18)',
 // ---------------------------------------------------------------------------
 
 describe('validateMatchResultPair — via createMatchSchema', () => {
-  let createMatchSchema: typeof import('../validators').createMatchSchema
+  let createMatchSchema: typeof CreateMatchSchemaType
 
   beforeAll(async () => {
     const mod = await import('../validators')
