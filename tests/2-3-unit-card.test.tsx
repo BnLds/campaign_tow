@@ -83,7 +83,7 @@ describe('[AC1] UnitCard — 9-stat bar', () => {
 
     // Each stat label should appear as a header cell
     for (const stat of STAT_KEYS) {
-      expect(container.textContent?.toLowerCase()).toContain(stat)
+      expect(container.textContent.toLowerCase()).toContain(stat)
     }
   })
 })
@@ -261,7 +261,7 @@ describe('[AC3] UnitCard — mount sub-profile label indicator', () => {
     )
 
     // The mount indicator text should be present somewhere in the card
-    expect(container.textContent?.toLowerCase()).toContain('monture')
+    expect(container.textContent.toLowerCase()).toContain('monture')
   })
 
   it('[2.3-COMP-NEW-002] isMount=false sub-profile does NOT show mount indicator', () => {
@@ -271,7 +271,7 @@ describe('[AC3] UnitCard — mount sub-profile label indicator', () => {
       <UnitCard unit={makeUnit()} composedView={composedView} tier={0} />
     )
 
-    expect(container.textContent?.toLowerCase()).not.toContain('monture')
+    expect(container.textContent.toLowerCase()).not.toContain('monture')
   })
 })
 

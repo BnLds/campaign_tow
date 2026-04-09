@@ -22,7 +22,7 @@ export const getPlayerArmyInfoFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .inputValidator(z.object({ playerId: z.string() }))
   .handler(async ({ context, data: { playerId } }) => {
-    if (!context.session) throw new Error('UNAUTHORIZED')
+    // authMiddleware guarantees context.session is always defined here
     if (context.session.isGuest || context.session.playerId !== playerId) {
       return { army: null, record: null }
     }
