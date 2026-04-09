@@ -29,10 +29,6 @@ export function getRouter() {
     integrations: [
       Sentry.tanstackRouterBrowserTracingIntegration(router),
       Sentry.replayIntegration(),
-      Sentry.feedbackIntegration({
-        // Additional SDK configuration goes in here, for example:
-        colorScheme: "system",
-      }),
     ],
     // Enable logs to be sent to Sentry
     enableLogs: true,
