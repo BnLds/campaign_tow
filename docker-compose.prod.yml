@@ -26,6 +26,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # VITE_SENTRY_DSN est inliné dans le bundle browser au build —
+        # changer le DSN nécessite donc un rebuild de l'image.
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN}
     restart: unless-stopped
     depends_on:
       db:
@@ -42,6 +47,8 @@ services:
       - SESSION_SECRET=${SESSION_SECRET}
       - ADMIN_USERNAME=${ADMIN_USERNAME}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      # SENTRY_DSN runtime — pour le tunnel serveur (lu par tunnel.ts)
+      - SENTRY_DSN=${SENTRY_DSN}
     labels:
       - traefik.enable=true
       - traefik.http.routers.app.rule=Host(`old-world-campaign.ben-lds.com`)

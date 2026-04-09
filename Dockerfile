@@ -13,6 +13,14 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Build-time args : variables Vite (préfixe VITE_) inlinées dans le bundle client.
+# Doivent être passées via --build-arg ou docker-compose `build.args`.
+# SENTRY_AUTH_TOKEN sert au plugin Sentry Vite pour uploader les sourcemaps.
+ARG VITE_SENTRY_DSN
+ARG SENTRY_AUTH_TOKEN
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -31,4 +39,4 @@ COPY package.json pnpm-lock.yaml drizzle.config.ts ./
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm db:migrate && node .output/server/index.mjs"]
+CMD ["sh", "-c", "pnpm db:migrate && node --import ./.output/server/instrument.server.mjs .output/server/index.mjs"] 

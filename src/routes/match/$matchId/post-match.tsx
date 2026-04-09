@@ -6,6 +6,7 @@ import { createFileRoute, useRouter, Link, redirect } from '@tanstack/react-rout
 import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import React, { useEffect } from 'react'
+import * as Sentry from '@sentry/tanstackstart-react'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
 import { submitInitialXpSchema, loadPostMatchDataSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
@@ -431,7 +432,7 @@ export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
 // Error boundary for PostMatchWizard
 // ---------------------------------------------------------------------------
 
-class PostMatchErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+class PostMatchErrorBoundaryBase extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
   static getDerivedStateFromError(error: Error) { return { error } }
   render() {
@@ -439,6 +440,8 @@ class PostMatchErrorBoundary extends React.Component<{ children: React.ReactNode
     return this.props.children
   }
 }
+
+const PostMatchErrorBoundary = Sentry.withErrorBoundary(PostMatchErrorBoundaryBase, {})
 
 // ---------------------------------------------------------------------------
 // Route definition

@@ -17,6 +17,8 @@ import { Route as ArmiesIndexRouteImport } from './routes/armies/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ArmiesArmyIdRouteImport } from './routes/armies/$armyId'
+import { Route as ApiTunnelRouteImport } from './routes/api/tunnel'
+import { Route as ApiSentryExampleRouteImport } from './routes/api/sentry-example'
 import { Route as MatchMatchIdPostMatchRouteImport } from './routes/match/$matchId/post-match'
 
 const TerritoriesRoute = TerritoriesRouteImport.update({
@@ -59,6 +61,16 @@ const ArmiesArmyIdRoute = ArmiesArmyIdRouteImport.update({
   path: '/armies/$armyId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTunnelRoute = ApiTunnelRouteImport.update({
+  id: '/api/tunnel',
+  path: '/api/tunnel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSentryExampleRoute = ApiSentryExampleRouteImport.update({
+  id: '/api/sentry-example',
+  path: '/api/sentry-example',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MatchMatchIdPostMatchRoute = MatchMatchIdPostMatchRouteImport.update({
   id: '/match/$matchId/post-match',
   path: '/match/$matchId/post-match',
@@ -70,6 +82,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/territories': typeof TerritoriesRoute
+  '/api/sentry-example': typeof ApiSentryExampleRoute
+  '/api/tunnel': typeof ApiTunnelRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/admin/': typeof AdminIndexRoute
@@ -81,6 +95,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/territories': typeof TerritoriesRoute
+  '/api/sentry-example': typeof ApiSentryExampleRoute
+  '/api/tunnel': typeof ApiTunnelRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/admin': typeof AdminIndexRoute
@@ -93,6 +109,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/territories': typeof TerritoriesRoute
+  '/api/sentry-example': typeof ApiSentryExampleRoute
+  '/api/tunnel': typeof ApiTunnelRoute
   '/armies/$armyId': typeof ArmiesArmyIdRoute
   '/invite/$token': typeof InviteTokenRoute
   '/admin/': typeof AdminIndexRoute
@@ -106,6 +124,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/territories'
+    | '/api/sentry-example'
+    | '/api/tunnel'
     | '/armies/$armyId'
     | '/invite/$token'
     | '/admin/'
@@ -117,6 +137,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/territories'
+    | '/api/sentry-example'
+    | '/api/tunnel'
     | '/armies/$armyId'
     | '/invite/$token'
     | '/admin'
@@ -128,6 +150,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/territories'
+    | '/api/sentry-example'
+    | '/api/tunnel'
     | '/armies/$armyId'
     | '/invite/$token'
     | '/admin/'
@@ -140,6 +164,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
   TerritoriesRoute: typeof TerritoriesRoute
+  ApiSentryExampleRoute: typeof ApiSentryExampleRoute
+  ApiTunnelRoute: typeof ApiTunnelRoute
   ArmiesArmyIdRoute: typeof ArmiesArmyIdRoute
   InviteTokenRoute: typeof InviteTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -205,6 +231,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArmiesArmyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tunnel': {
+      id: '/api/tunnel'
+      path: '/api/tunnel'
+      fullPath: '/api/tunnel'
+      preLoaderRoute: typeof ApiTunnelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sentry-example': {
+      id: '/api/sentry-example'
+      path: '/api/sentry-example'
+      fullPath: '/api/sentry-example'
+      preLoaderRoute: typeof ApiSentryExampleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/match/$matchId/post-match': {
       id: '/match/$matchId/post-match'
       path: '/match/$matchId/post-match'
@@ -220,6 +260,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
   TerritoriesRoute: TerritoriesRoute,
+  ApiSentryExampleRoute: ApiSentryExampleRoute,
+  ApiTunnelRoute: ApiTunnelRoute,
   ArmiesArmyIdRoute: ArmiesArmyIdRoute,
   InviteTokenRoute: InviteTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -231,10 +273,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

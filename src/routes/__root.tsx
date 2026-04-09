@@ -8,6 +8,7 @@ import {
   useRouteContext,
 } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import * as Sentry from '@sentry/tanstackstart-react'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import { TabBar } from '../components/tab-bar'
 import { CreateMatchFab } from '../components/create-match-fab'
@@ -57,7 +58,25 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   },
   component: RootLayout,
   shellComponent: RootDocument,
+  errorComponent: RootErrorComponent,
 })
+
+function RootErrorComponent({ error }: { error: Error }) {
+  // Capture les exceptions SSR (beforeLoad, rendu) et client non couvertes
+  // par les middlewares Sentry de start.ts. Sentry déduplique automatiquement
+  // si l'erreur remonte aussi côté client lors de l'hydratation.
+  Sentry.captureException(error)
+  return (
+    <html lang="fr">
+      <body>
+        <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
+          <h1>Une erreur est survenue</h1>
+          <p>L'équipe a été notifiée. Réessayez dans un instant.</p>
+        </div>
+      </body>
+    </html>
+  )
+}
 
 function RootLayout() {
   const { session } = useRouteContext({ from: '__root__' })

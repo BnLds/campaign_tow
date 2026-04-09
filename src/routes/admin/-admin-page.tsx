@@ -8,6 +8,7 @@ import { AdminAssignmentSection } from './-admin-assignment-section'
 import { AdminMatchSection } from './-admin-match-section'
 import { AdminAddUnitSection } from './-admin-add-unit-section'
 import { AdminCorrectionSection } from './-admin-correction-section'
+import { AdminSentryTestSection } from './-admin-sentry-test-section'
 
 export default function AdminPage() {
   const context = useRouteContext({ from: '__root__' })
@@ -33,6 +34,7 @@ export default function AdminPage() {
       <AdminMatchSection queries={queries} />
       <AdminAddUnitSection queries={queries} />
       <AdminCorrectionSection queries={queries} />
+      <AdminSentryTestSection />
     </main>
   )
 }
