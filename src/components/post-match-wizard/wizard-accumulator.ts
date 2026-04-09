@@ -3,6 +3,7 @@
 
 import type { ExtendedDestructionResult, FlaggedUnit, TierUpQueueEntry, WizardAccumulator } from './types'
 import type { InjuryResult } from '../injury-bonus-step'
+import { invariant } from '../../lib/invariant'
 
 // ---------------------------------------------------------------------------
 // Internal rollback helper (ported from use-post-match-wizard.ts)
@@ -112,9 +113,10 @@ export function createWizardAccumulator(): WizardAccumulator {
       const existingGroups = pendingGains.get(tierUpEntry.unitId) ?? []
       const groupIdx = existingGroups.findIndex((g) => g.thresholdXp === tierUpEntry.xp)
       if (groupIdx !== -1) {
+        const existingGroup = invariant(existingGroups[groupIdx], 'groupIdx was found via findIndex — element must exist')
         existingGroups[groupIdx] = {
-          ...existingGroups[groupIdx],
-          descriptions: [...existingGroups[groupIdx].descriptions, ...descriptionsToSave],
+          ...existingGroup,
+          descriptions: [...existingGroup.descriptions, ...descriptionsToSave],
         }
         pendingGains.set(tierUpEntry.unitId, existingGroups)
       } else {

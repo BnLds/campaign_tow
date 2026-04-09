@@ -5,6 +5,7 @@ import { players, armies, units, matches, matchParticipants, matchXpEntries, sta
 import type { UnitGainType } from '../units'
 import { getArmyXpAndPointsTotalsBatch, getUnitsTotalsByIds } from '../units'
 import { getUnitSelectionForParticipant } from './unit-selections'
+import { invariant } from '../../../lib/invariant'
 
 export type MatchType = 'standard' | 'initial_setup'
 
@@ -47,7 +48,7 @@ export async function getLatestMatchIdForArmy(armyId: string, initialXpCompleted
     .where(and(eq(matchParticipants.armyId, armyId), gte(matches.date, initialXpCompletedAt)))
     .orderBy(desc(matches.date), desc(matches.createdAt))
     .limit(1)
-  return rows.length > 0 ? rows[0].matchId : null
+  return rows[0]?.matchId ?? null
 }
 
 type GainRow = { matchParticipantId: string | null; unitId: string; description: string; type: UnitGainType }
@@ -134,7 +135,7 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
     .where(and(eq(matchParticipants.armyId, armyId), matchFilter))
     .orderBy(desc(matches.date), desc(matches.createdAt))
 
-  const latestMatchId = rows.length > 0 ? rows[0].matchId : null
+  const latestMatchId = rows[0]?.matchId ?? null
 
   // Batch-fetch army XP & points totals for delta badges
   const allArmyIds = [armyId, ...rows.map((r) => r.oppArmyId).filter((id): id is string => id != null)]
@@ -176,19 +177,26 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
     if (row.matchType === 'initial_setup' || (!hasSnapshot && !oppTotals)) {
       armyTotals = undefined
     } else if (hasSnapshot) {
+      const snapshotXp = invariant(row.snapshotXp, 'hasSnapshot guarantees snapshotXp is set')
+      const snapshotPoints = invariant(row.snapshotPoints, 'hasSnapshot guarantees snapshotPoints is set')
+      const oppSnapshotXp = invariant(row.oppSnapshotXp, 'hasSnapshot guarantees oppSnapshotXp is set')
+      const oppSnapshotPoints = invariant(row.oppSnapshotPoints, 'hasSnapshot guarantees oppSnapshotPoints is set')
       armyTotals = {
-        playerXp: row.snapshotXp!,
-        playerPoints: row.snapshotPoints!,
-        opponentXp: row.oppSnapshotXp!,
-        opponentPoints: row.oppSnapshotPoints!,
-        deltaXp: row.snapshotXp! - row.oppSnapshotXp!,
-        deltaPoints: row.snapshotPoints! - row.oppSnapshotPoints!,
+        playerXp: snapshotXp,
+        playerPoints: snapshotPoints,
+        opponentXp: oppSnapshotXp,
+        opponentPoints: oppSnapshotPoints,
+        deltaXp: snapshotXp - oppSnapshotXp,
+        deltaPoints: snapshotPoints - oppSnapshotPoints,
       }
     } else {
       // No snapshot — use selection-aware totals if available, else full army
       const myTotals = selectionTotalsCache.get(row.matchParticipantId) ?? playerTotals
       // Look up opponent's selection totals
-      let effectiveOppTotals = oppTotals!
+      // oppTotals is non-null here: we only reach this else branch when hasSnapshot is false,
+      // which means the outer if guard `(!hasSnapshot && !oppTotals)` already returned undefined.
+      // Reaching this branch implies oppTotals is defined.
+      let effectiveOppTotals = invariant(oppTotals, 'else branch is only reached when oppTotals is defined (guarded by !hasSnapshot && !oppTotals above)')
       // Check if opponent had a selection
       if (row.oppUnitSelectionCompletedAt && row.oppArmyId) {
         // Find the opponent participant's cached totals

@@ -25,6 +25,7 @@ import {
 import { submitUnitXpAction, completeEvolutionsAction } from './server-actions'
 import type { SubmitUnitXpParams, CompleteEvolutionsParams } from './server-actions'
 import { createWizardAccumulator } from './wizard-accumulator'
+import { invariant } from '../../lib/invariant'
 
 // ---------------------------------------------------------------------------
 // Return types (discriminated union by phase)
@@ -309,7 +310,7 @@ export function usePostMatchWizard({
       }
       const { consequenceIndex } = wizardState
       const currentFlaggedUnit = acc.current.flaggedUnits[consequenceIndex]
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+       
       if (!currentFlaggedUnit) {
         return
       }
@@ -389,7 +390,7 @@ export function usePostMatchWizard({
 
     try {
       const { tierUpQueue, tierUpStep } = wizardState
-      const currentTierUp = tierUpQueue[tierUpStep]
+      const currentTierUp = invariant(tierUpQueue[tierUpStep], 'wizard tier-up step requires a valid queue entry at current index')
 
       const has2MinChoice = result.descriptions.includes('2 améliorations mineures')
 
@@ -450,7 +451,7 @@ export function usePostMatchWizard({
     if (tierUpStep > 0) {
       const prevStep = tierUpStep - 1
       const prevEntry = tierUpQueue[prevStep]
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+       
       if (prevEntry) {
         acc.current.rollbackTierUp(prevStep, prevEntry)
       }
@@ -537,10 +538,7 @@ export function usePostMatchWizard({
 
   if (wizardState.phase === 'tierup') {
     const { tierUpQueue, tierUpStep } = wizardState
-    const currentTierUp = tierUpQueue[tierUpStep]
-    // H3 — defensive guard: queue/step could be in intermediate state during React batching
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!currentTierUp) return { phase: 'complete' }
+    const currentTierUp = invariant(tierUpQueue[tierUpStep], 'render phase tierup requires a valid queue entry at current index')
 
     const isLastStep = tierUpStep === tierUpQueue.length - 1
     const totalTierUps = tierUpQueue.length
@@ -575,7 +573,7 @@ export function usePostMatchWizard({
   if (wizardState.phase === 'consequences') {
     const { consequenceIndex } = wizardState
     const currentFlaggedUnit = acc.current.flaggedUnits[consequenceIndex]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     if (!currentFlaggedUnit) return { phase: 'complete' }
 
     return {
@@ -602,7 +600,7 @@ export function usePostMatchWizard({
   // Phase 'xp' (default)
   const { currentStep } = wizardState
   const currentUnit = units[currentStep]
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- defensive: step could exceed array bounds during React batching
+   
   if (!currentUnit) return { phase: 'complete' }
 
   const isLastXpStep = currentStep === units.length - 1

@@ -58,7 +58,7 @@ export async function getMatchParticipantByMatchAndPlayer(
     .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))
     .limit(1)
 
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 // Read-side pair of createInitialSetupMatch — keep matchType filter and join logic in sync
@@ -77,7 +77,7 @@ export async function getInitialSetupMatchForArmy(armyId: string): Promise<{
     .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
     .where(and(eq(matchParticipants.armyId, armyId), eq(matches.matchType, 'initial_setup')))
     .limit(1)
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 export async function checkDuplicateMatch(player1Id: string, player2Id: string, dateStr: string): Promise<boolean> {

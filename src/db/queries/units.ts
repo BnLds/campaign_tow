@@ -1,5 +1,6 @@
 import { eq, and, inArray, sql, isNull } from 'drizzle-orm'
 import { db } from '../index'
+import { invariant } from '../../lib/invariant'
 import type { unitGainTypeEnum } from '../schema';
 import { players, armies, units, subProfiles, statModifiers, unitGains, matchXpEntries, matchParticipants } from '../schema'
 
@@ -22,7 +23,7 @@ export async function insertUnit(
   stats: StatFields,
 ): Promise<{ unitId: string; subProfileId: string }> {
   return db.transaction(async (tx) => {
-    const [insertedUnit] = await tx
+    const [insertedUnitRow] = await tx
       .insert(units)
       .values({
         armyId,
@@ -31,8 +32,9 @@ export async function insertUnit(
         xp: 0,
       })
       .returning({ id: units.id })
+    const insertedUnit = invariant(insertedUnitRow, 'INSERT into units must return one row')
 
-    const [insertedSubProfile] = await tx
+    const [insertedSubProfileRow] = await tx
       .insert(subProfiles)
       .values({
         unitId: insertedUnit.id,
@@ -50,6 +52,7 @@ export async function insertUnit(
         cd: stats.cd === '' ? null : stats.cd,
       })
       .returning({ id: subProfiles.id })
+    const insertedSubProfile = invariant(insertedSubProfileRow, 'INSERT into subProfiles must return one row')
 
     return { unitId: insertedUnit.id, subProfileId: insertedSubProfile.id }
   })
@@ -124,7 +127,7 @@ export async function getArmyWithUnits(armyId: string) {
     .limit(1)
 
   if (armyRows.length === 0) return null
-  const army = armyRows[0]
+  const army = invariant(armyRows[0], 'SELECT armies must return row when length > 0')
 
   const unitRows = await db
     .select()
@@ -198,8 +201,7 @@ export async function insertStatModifier(
     .insert(statModifiers)
     .values({ unitId, stat, delta, source, temporary, matchParticipantId: matchParticipantId ?? null })
     .returning()
-  if (rows.length === 0) throw new Error('Insert returned no rows')
-  return rows[0]
+  return invariant(rows[0], 'INSERT into statModifiers must return one row')
 }
 
 export async function getStatModifierById(modifierId: string) {
@@ -231,8 +233,7 @@ export async function insertUnitGain(
     .insert(unitGains)
     .values({ unitId, description, type, matchParticipantId: matchParticipantId ?? null })
     .returning()
-  if (rows.length === 0) throw new Error('Insert returned no rows')
-  return rows[0]
+  return invariant(rows[0], 'INSERT into unitGains must return one row')
 }
 
 export async function getUnitGainById(gainId: string) {
@@ -380,7 +381,8 @@ export async function getUnitsTotalsByIds(
     .where(and(inArray(units.id, unitIds), eq(units.status, 'active')))
 
   if (rows.length === 0) return { totalXp: 0, totalPoints: 0 }
-  return { totalXp: Number(rows[0].totalXp), totalPoints: Number(rows[0].totalPoints) }
+  const row = invariant(rows[0], 'aggregate must return row')
+  return { totalXp: Number(row.totalXp), totalPoints: Number(row.totalPoints) }
 }
 
 export async function getArmyXpAndPointsTotalsBatch(

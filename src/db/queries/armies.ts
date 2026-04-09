@@ -2,18 +2,20 @@ import { eq, and, ne, isNull } from 'drizzle-orm'
 import { db } from '../index'
 import { players, armies, units, subProfiles, matchParticipants } from '../schema'
 import type { ParsedArmy } from '../../lib/owb-parser'
+import { invariant } from '../../lib/invariant'
 
 export async function createArmyWithUnits(
   data: ParsedArmy,
 ): Promise<{ armyId: string; unitCount: number }> {
   return db.transaction(async (tx) => {
-    const [army] = await tx
+    const [armyRow] = await tx
       .insert(armies)
       .values({ name: data.name, faction: data.faction })
       .returning({ id: armies.id })
+    const army = invariant(armyRow, 'INSERT into armies must return one row')
 
     for (const unit of data.units) {
-      const [insertedUnit] = await tx
+      const [unitRow] = await tx
         .insert(units)
         .values({
           armyId: army.id,
@@ -26,6 +28,7 @@ export async function createArmyWithUnits(
           options: unit.options,
         })
         .returning({ id: units.id })
+      const insertedUnit = invariant(unitRow, 'INSERT into units must return one row')
 
       if (unit.subProfiles.length > 0) {
         await tx.insert(subProfiles).values(
@@ -75,7 +78,7 @@ export async function getArmyOwner(armyId: string): Promise<{ playerId: string |
     .from(armies)
     .where(eq(armies.id, armyId))
     .limit(1)
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 export async function getArmyById(armyId: string): Promise<{
@@ -95,7 +98,7 @@ export async function getArmyById(armyId: string): Promise<{
     .where(eq(armies.id, armyId))
     .limit(1)
 
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 export async function getAllArmies() {
@@ -134,7 +137,7 @@ export async function getPlayerArmy(playerId: string): Promise<{
     .where(eq(armies.playerId, playerId))
     .limit(1)
 
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 export async function deleteArmy(armyId: string): Promise<void> {

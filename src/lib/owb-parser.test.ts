@@ -6,6 +6,7 @@
 // Will fail with "Cannot find module './owb-parser'" until owb-parser.ts is implemented.
 
 import { describe, it, expect } from 'vitest'
+import assert from 'node:assert'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parseOwbExport } from './owb-parser'
@@ -111,13 +112,17 @@ describe('[AC1][P0] parseOwbExport — sub-profiles', () => {
   it('[2.1-UNIT-013] first sub-profile label is "Night Goblin Warboss" (extracted from [brackets])', () => {
     const result = parseOwbExport(SAMPLE_OWB)
     const unit = result.units.find((u) => u.name === 'Chef de Guerre Gobelin de la Nuit')
-    expect(unit?.subProfiles[0].label).toBe('Night Goblin Warboss')
+    const sp0 = unit?.subProfiles[0]
+    assert(sp0 !== undefined, 'subProfiles[0] must exist')
+    expect(sp0.label).toBe('Night Goblin Warboss')
   })
 
   it('[2.1-UNIT-014] second sub-profile label is "Giant Cave Squig"', () => {
     const result = parseOwbExport(SAMPLE_OWB)
     const unit = result.units.find((u) => u.name === 'Chef de Guerre Gobelin de la Nuit')
-    expect(unit?.subProfiles[1].label).toBe('Giant Cave Squig')
+    const sp1 = unit?.subProfiles[1]
+    assert(sp1 !== undefined, 'subProfiles[1] must exist')
+    expect(sp1.label).toBe('Giant Cave Squig')
   })
 
   it('[2.1-UNIT-015] extracts 3 sub-profiles for "Bande de Gobelins de la Nuit sur Squigs"', () => {
@@ -212,7 +217,9 @@ Warhammer: The Old World, Empire, Colonne de Bataille
 
 *Créé avec "Old World Builder"* - https://old-world-builder.com`
     const result = parseOwbExport(minimalOwb)
-    expect(result.units[0].specialRules).toBeNull()
+    const unit025 = result.units[0]
+    assert(unit025 !== undefined, 'units[0] must exist')
+    expect(unit025.specialRules).toBeNull()
   })
 
   it('[2.1-UNIT-026] returns null options when no -# line present', () => {
@@ -225,7 +232,9 @@ Warhammer: The Old World, Empire, Colonne de Bataille
 
 *Créé avec "Old World Builder"* - https://old-world-builder.com`
     const result = parseOwbExport(minimalOwb)
-    expect(result.units[0].options).toBeNull()
+    const unit026 = result.units[0]
+    assert(unit026 !== undefined, 'units[0] must exist')
+    expect(unit026.options).toBeNull()
   })
 })
 

@@ -8,6 +8,7 @@ import { useForm } from '@tanstack/react-form'
 import { parseOwbExport } from '../lib/owb-parser'
 import { addUnitsToArmyFn } from '../lib/server-fns/add-units-to-army'
 import { owbTextFormSchema } from '../lib/validators/army'
+import { invariant } from '../lib/invariant'
 
 interface AddUnitsSheetProps {
   armyId: string
@@ -85,8 +86,8 @@ export function AddUnitsSheet({ armyId, open, onClose, onSuccess }: AddUnitsShee
       if (e.key === 'Tab' && sheetRef.current) {
         const focusable = sheetRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
         if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
+        const first = invariant(focusable[0], 'focus trap: first focusable must exist after length check')
+        const last = invariant(focusable[focusable.length - 1], 'focus trap: last focusable must exist after length check')
 
         if (e.shiftKey && document.activeElement === first) {
           e.preventDefault()

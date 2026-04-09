@@ -3,6 +3,8 @@
 // Input: raw OWB text export → Output: ParsedArmy
 // Throws a descriptive error on malformed input.
 
+import { invariant } from './invariant'
+
 export interface ParsedSubProfile {
   label: string
   isMount: boolean
@@ -40,13 +42,14 @@ export interface ParsedArmy {
 function extractStat(line: string, statName: string): string | null {
   const re = new RegExp(`${statName}\\((\\([^)]+\\)|[^)]+)\\)`)
   const m = line.match(re)
-  return m ? m[1] : null
+  if (!m) return null
+  return invariant(m[1], `extractStat: regex for ${statName} must capture group 1`)
 }
 
 function parseSubProfile(line: string): ParsedSubProfile | null {
   const labelMatch = line.match(/\[([^\]]+)\]/)
   if (!labelMatch) return null
-  const label = labelMatch[1].trim()
+  const label = invariant(labelMatch[1], 'parseSubProfile: regex must capture label group 1').trim()
   // Extract stats only from the portion AFTER the closing bracket
   // to avoid false matches if the label contains stat-like patterns (e.g. "I(mperial)")
   const statsSection = line.slice(line.indexOf(']') + 1)
@@ -82,10 +85,10 @@ export function normalizePlainText(text: string): string {
   // Line 0: army header — strip trailing comma, prepend "## "
   out.push('## ' + (lines[0] ?? '').replace(/,\s*$/, ''))
   // Line 1: faction line — pass through
-  if (lines.length > 1) out.push(lines[1])
+  if (lines.length > 1) out.push(invariant(lines[1], 'normalizePlainText: lines[1] must exist when length > 1'))
 
   for (let i = 2; i < lines.length; i++) {
-    const line = lines[i]
+    const line = invariant(lines[i], `normalizePlainText: line ${i} must exist within bounds`)
 
     // Lone comma separator — drop
     if (/^,\s*$/.test(line)) continue
@@ -243,8 +246,8 @@ export function parseOwbExport(text: string): ParsedArmy {
       'Format OWB invalide — la première ligne doit être "## Nom de l\'armée [N pts]"',
     )
   }
-  const armyName = headerMatch[1].trim()
-  const totalPoints = parseInt(headerMatch[2], 10)
+  const armyName = invariant(headerMatch[1], 'parseOwbExport: header regex must capture army name (group 1)').trim()
+  const totalPoints = parseInt(invariant(headerMatch[2], 'parseOwbExport: header regex must capture points (group 2)'), 10)
 
   // Line 2: Warhammer: The Old World, Faction, Colonne de Bataille
   const factionLine = lines[1] ?? ''
@@ -254,20 +257,20 @@ export function parseOwbExport(text: string): ParsedArmy {
       'Format OWB invalide — la deuxième ligne doit commencer par "Warhammer: The Old World, {faction},"',
     )
   }
-  const faction = factionMatch[1].trim()
+  const faction = invariant(factionMatch[1], 'parseOwbExport: faction regex must capture faction name (group 1)').trim()
 
   const units: ParsedUnit[] = []
   let currentType = ''
   let currentUnit: ParsedUnit | null = null
 
   for (let i = 2; i < lines.length; i++) {
-    const line = lines[i]
+    const line = invariant(lines[i], `parseOwbExport: line ${i} must exist within bounds`)
 
     // Section header: ### Personnages [102 pts]
     if (line.startsWith('### ')) {
       const typeMatch = line.match(/^### (.+?) \[/)
       if (typeMatch) {
-        currentType = normalizeSectionType(typeMatch[1].trim())
+        currentType = normalizeSectionType(invariant(typeMatch[1], 'section header regex must capture type name').trim())
       }
       continue
     }
@@ -285,8 +288,8 @@ export function parseOwbExport(text: string): ParsedArmy {
       const unitMatch = line.match(/^- (\d+ )?(.+?) \[(\d+) pts\]/)
       if (unitMatch) {
         const modelCount = unitMatch[1] ? parseInt(unitMatch[1].trim(), 10) : null
-        const rawName = unitMatch[2].trim()
-        const points = parseInt(unitMatch[3], 10)
+        const rawName = invariant(unitMatch[2], 'unit regex must capture name (group 2)').trim()
+        const points = parseInt(invariant(unitMatch[3], 'unit regex must capture points (group 3)'), 10)
         // Nickname extraction: OWB exports use "Nickname, UnitType" when the user names a unit.
         // INVARIANT: canonical OWB unit type names never contain commas — verified across
         // known exports. If OWB ever changes this, the split would produce incorrect results.
@@ -314,14 +317,14 @@ export function parseOwbExport(text: string): ParsedArmy {
     // Equipment/options line: " -# (...)"
     if (line.includes('-# ') && currentUnit) {
       const optMatch = line.match(/-# \((.+)\)/)
-      if (optMatch) currentUnit.options = optMatch[1].trim()
+      if (optMatch) currentUnit.options = invariant(optMatch[1], 'options regex must capture content (group 1)').trim()
       continue
     }
 
     // Special rules line: " - __Règles spéciales:__ *...*"
     if (line.includes('__Règles spéciales:__') && currentUnit) {
       const rulesMatch = line.match(/__Règles spéciales:__ \*(.+)\*/)
-      if (rulesMatch) currentUnit.specialRules = rulesMatch[1].trim()
+      if (rulesMatch) currentUnit.specialRules = invariant(rulesMatch[1], 'special rules regex must capture content (group 1)').trim()
       continue
     }
 

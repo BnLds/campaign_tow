@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { authMiddleware } from '../lib/middleware'
 import { STALE_TIME_SESSION } from '../lib/query-constants'
 import { invalidateArmyState } from '../lib/invalidation-helpers'
+import { invariant } from '../lib/invariant'
 import {
   Dialog,
   DialogContent,
@@ -182,7 +183,7 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
   // Dialog state
   const [searchFilter, setSearchFilter] = useState('')
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0] ?? '')
   const [time, setTime] = useState(() => {
     const now = new Date()
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
@@ -215,7 +216,7 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
       return
     }
     // M5 — reset date to today and time to now when dialog opens
-    setDate(new Date().toISOString().split('T')[0])
+    setDate(new Date().toISOString().split('T')[0] ?? '')
     const now = new Date()
     setTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`)
     setSelectedOpponent(null)
@@ -256,10 +257,11 @@ export function CreateMatchFab({ session: _session, armyId, initialXpCompleted }
   const selectedOpponentName = opponents.find((o) => o.playerId === selectedOpponent)?.playerUsername ?? 'cet adversaire'
 
   const doCreateMatch = async () => {
+    const opponent = invariant(selectedOpponent, 'doCreateMatch requires a selected opponent')
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await createMatchFn({ data: { opponentPlayerId: selectedOpponent!, date, time } })
+      await createMatchFn({ data: { opponentPlayerId: opponent, date, time } })
       setOpen(false)
       setSelectedOpponent(null)
       setIsSubmitting(false)

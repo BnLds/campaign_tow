@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import type { Improvement } from '../lib/constants'
 import { isMinorSkillImprovement, isMajorSkillImprovement, MAJOR_SKILL_OPTIONS } from '../lib/constants'
+import { invariant } from '../lib/invariant'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -87,7 +88,8 @@ export function TierUpStep({
     } else if (majorCount === 1) {
       // Radio mode — always replace current selection
       // Reset skill choice if replacing a skill with a non-skill (or vice versa)
-      if (!isMajorSkillImprovement(id) || (selectedMajorIds.length > 0 && isMajorSkillImprovement(selectedMajorIds[0]))) {
+      const prevMajor = selectedMajorIds[0]
+      if (!isMajorSkillImprovement(id) || (prevMajor !== undefined && isMajorSkillImprovement(prevMajor))) {
         setSkillChoice(null)
       }
       setSelectedMajorIds([id])
@@ -111,7 +113,8 @@ export function TierUpStep({
     } else if (minorCount === 1) {
       // Radio mode — always replace current selection
       // Reset skill text if replacing a skill with a non-skill (or vice versa)
-      if (!isMinorSkillImprovement(id) || (selectedMinorIds.length > 0 && isMinorSkillImprovement(selectedMinorIds[0]))) {
+      const prevMinor = selectedMinorIds[0]
+      if (!isMinorSkillImprovement(id) || (prevMinor !== undefined && isMinorSkillImprovement(prevMinor))) {
         setSkillText('')
       }
       setSelectedMinorIds([id])
@@ -122,7 +125,7 @@ export function TierUpStep({
 
   function resolveDescription(imp: Improvement, isMajor: boolean): string {
     if (!isMajor && isMinorSkillImprovement(imp.id)) return skillText.trim()
-    if (isMajor && isMajorSkillImprovement(imp.id)) return skillChoice!
+    if (isMajor && isMajorSkillImprovement(imp.id)) return invariant(skillChoice, 'skillChoice must be set when a major skill is selected')
     return imp.label
   }
 

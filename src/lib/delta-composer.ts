@@ -3,6 +3,7 @@
 
 import type { UnitGainType } from '../db/queries/units'
 import { stripConstraintHint } from './format'
+import { invariant } from './invariant'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,12 +119,12 @@ export function parseGainStat(description: string): { stat: StatKey; delta: numb
   // Check legacy combined pattern first
   const legacyMatch = LEGACY_COMBINED_PATTERN.exec(description)
   if (legacyMatch) {
-    return { stat: 'cc', delta: parseInt(legacyMatch[1], 10) }
+    return { stat: 'cc', delta: parseInt(invariant(legacyMatch[1], 'parseGainStat: legacy pattern must have capture group 1'), 10) }
   }
   for (const { pattern, stat } of GAIN_STAT_PATTERNS) {
     const match = pattern.exec(description)
     if (match) {
-      return { stat, delta: parseInt(match[1], 10) }
+      return { stat, delta: parseInt(invariant(match[1], 'parseGainStat: gain pattern must have capture group 1'), 10) }
     }
   }
   return null

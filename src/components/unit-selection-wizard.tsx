@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { cn } from '#/lib/utils'
 import { Button } from '#/components/ui/button'
 import type { ServerResult } from '../lib/types'
+import { invariant } from '../lib/invariant'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -107,8 +108,8 @@ export function UnitSelectionWizard({
       if (e.key === 'Tab' && overlayRef.current) {
         const focusable = overlayRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
         if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
+        const first = invariant(focusable[0], 'focus trap: first focusable must exist after length check')
+        const last = invariant(focusable[focusable.length - 1], 'focus trap: last focusable must exist after length check')
         if (e.shiftKey && document.activeElement === first) {
           e.preventDefault()
           last.focus()
