@@ -320,7 +320,7 @@ function CampaignView() {
       const result = await deleteMatchFn({ data: { matchId } })
       const message = result.success
         ? `${session?.username ?? 'Joueur'} a supprimé le match`
-        : (result.error.message ?? 'Erreur lors de la suppression')
+        : result.error.message
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
       if (blockToastTimeoutRef.current) clearTimeout(blockToastTimeoutRef.current)
       setBlockToast(null)
@@ -343,7 +343,7 @@ function CampaignView() {
     try {
       const result = await skipInitialXpFn()
       if (!result.success) {
-        setSkipXpError(result.error.message ?? 'Erreur lors du passage de l\'XP initiale')
+        setSkipXpError(result.error.message)
         return
       }
       setSkipXpConfirmOpen(false)
@@ -598,14 +598,14 @@ function CampaignView() {
                         ? {
                             name: entry.opponent.name ?? entry.opponent.playerName,
                             faction: entry.opponent.faction ?? '',
-                            playerName: entry.opponent.playerName ?? undefined,
+                            playerName: entry.opponent.playerName,
                           }
                         : null
                       }
                       result={toValidResult(entry.result)}
                       date={entry.date}
                       hasEvolutions={entry.hasEvolutions}
-                      isEditable={!isGuest && army !== null}
+                      isEditable={!isGuest}
                       isLatestMatch={entry.isLatestMatch}
                       onResultSubmit={handleResultSubmit}
                       onEvolutionStart={handleEvolutionStart}

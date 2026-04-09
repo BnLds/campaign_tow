@@ -50,7 +50,7 @@ export async function getPendingMatches(playerId: string): Promise<PendingMatchD
     date: row.date.toISOString(),
     opponentArmyName: row.opponentArmyName ?? null,
     opponentFaction: row.opponentFaction ?? null,
-    opponentPlayerName: row.opponentPlayerName ?? 'Adversaire',
+    opponentPlayerName: row.opponentPlayerName,
     myResult: row.myResult,
     myEvolutionsEnteredAt: row.myEvolutionsEnteredAt ? row.myEvolutionsEnteredAt.toISOString() : null,
   }))

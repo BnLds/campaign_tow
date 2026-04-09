@@ -45,9 +45,9 @@ export async function getAllMatchesForAdmin(): Promise<AdminMatchRow[]> {
   return rows.map((r) => ({
     matchId: r.matchId,
     date: r.date.toISOString(),
-    matchType: (r.matchType ?? 'standard') as MatchType,
-    player1Name: r.player1Name ?? 'Joueur',
-    player2Name: r.player2Name ?? 'Joueur',
+    matchType: r.matchType as MatchType,
+    player1Name: r.player1Name,
+    player2Name: r.player2Name,
     result1: r.result1,
     result2: r.result2,
     evolutions1EnteredAt: r.evolutions1EnteredAt ? r.evolutions1EnteredAt.toISOString() : null,

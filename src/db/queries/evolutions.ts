@@ -1,5 +1,6 @@
 import { eq, and, inArray, or, sql, desc } from 'drizzle-orm'
 import { db } from '../index'
+import { invariant } from '../../lib/invariant'
 import { units, statModifiers, unitGains, matchParticipants, matchXpEntries, matches, armies } from '../schema'
 import type { ConsequenceEntry } from '../../lib/validators'
 import { detectLostThresholds } from '../../lib/tier'
@@ -24,7 +25,7 @@ export async function getMatchParticipantForEvolutionByPlayer(
     .from(matchParticipants)
     .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))
     .limit(1)
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 export async function incrementUnitXp(
@@ -35,7 +36,7 @@ export async function incrementUnitXp(
     .set({ xp: sql`${units.xp} + ${xpGained}` })
     .where(eq(units.id, unitId))
     .returning({ id: units.id, xp: units.xp })
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 export async function markEvolutionsEntered(matchParticipantId: string): Promise<boolean> {
@@ -54,7 +55,7 @@ export async function getMatchParticipantArmyId(
     .from(matchParticipants)
     .where(eq(matchParticipants.id, matchParticipantId))
     .limit(1)
-  return rows.length > 0 ? rows[0].armyId : null
+  return rows[0]?.armyId ?? null
 }
 
 export async function getMatchParticipantEvolutionsStatus(
@@ -66,7 +67,8 @@ export async function getMatchParticipantEvolutionsStatus(
     .where(eq(matchParticipants.id, matchParticipantId))
     .limit(1)
   if (rows.length === 0) return { found: false, evolutionsEnteredAt: null }
-  return { found: true, evolutionsEnteredAt: rows[0].evolutionsEnteredAt }
+  const row = invariant(rows[0], 'SELECT matchParticipants must return row when length > 0')
+  return { found: true, evolutionsEnteredAt: row.evolutionsEnteredAt }
 }
 
 export async function deleteUnitGainsForMatchParticipant(matchParticipantId: string): Promise<number> {
@@ -93,7 +95,9 @@ export async function upsertMatchXpEntry(
       )
       .limit(1)
 
-    const previousXpGained = existing.length > 0 ? existing[0].xpGained : null
+    const previousXpGained = existing.length > 0
+      ? invariant(existing[0], 'SELECT matchXpEntries must return row when length > 0').xpGained
+      : null
 
     await tx.insert(matchXpEntries)
       .values({ matchParticipantId, unitId, xpGained })
@@ -124,8 +128,11 @@ export async function upsertMatchXpEntryWithIncrement(
       )
       .limit(1)
 
-    const previousXpGained = existing.length > 0 ? existing[0].xpGained : null
-    const previousDerouteXpLost = existing.length > 0 ? existing[0].derouteXpLost : 0
+    const existingRow = existing.length > 0
+      ? invariant(existing[0], 'SELECT matchXpEntries must return row when length > 0')
+      : null
+    const previousXpGained = existingRow?.xpGained ?? null
+    const previousDerouteXpLost = existingRow?.derouteXpLost ?? 0
 
     await tx.insert(matchXpEntries)
       .values({ matchParticipantId, unitId, xpGained, derouteXpLost })
@@ -137,18 +144,20 @@ export async function upsertMatchXpEntryWithIncrement(
     // Compute delta: (newXpGained - prevXpGained) - (newDerouteXpLost - prevDerouteXpLost)
     const delta = (xpGained - (previousXpGained ?? 0)) - (derouteXpLost - previousDerouteXpLost)
     if (delta !== 0) {
-      const [updated] = await tx.update(units)
+      const [updatedRow] = await tx.update(units)
         .set({ xp: sql`GREATEST(0, ${units.xp} + ${delta})` })
         .where(eq(units.id, unitId))
         .returning({ xp: units.xp })
+      const updated = invariant(updatedRow, 'UPDATE units must return one row')
       return { previousXpGained, previousDerouteXpLost, newUnitXp: updated.xp }
     }
 
     // delta === 0: read current XP
-    const [current] = await tx.select({ xp: units.xp })
+    const [currentRow] = await tx.select({ xp: units.xp })
       .from(units)
       .where(eq(units.id, unitId))
       .limit(1)
+    const current = invariant(currentRow, 'SELECT units by id must return one row')
     return { previousXpGained, previousDerouteXpLost, newUnitXp: current.xp }
   })
 }
@@ -194,7 +203,7 @@ async function lockAndCheckReentry(
         .where(eq(matchParticipants.armyId, armyId))
         .orderBy(desc(matches.date), desc(matches.createdAt))
         .limit(1)
-      if (latestRows.length === 0 || latestRows[0].matchId !== matchId) {
+      if (latestRows.length === 0 || latestRows[0]?.matchId !== matchId) {
         throw new Error('NOT_LATEST_MATCH')
       }
     }
@@ -321,16 +330,19 @@ async function processConsequences(
   // Process consequence entries (AC4, AC5, AC6, AC8, AC15-AC21)
   for (const consequence of consequences) {
     switch (consequence.type) {
-      case 'permanent_injury':
+      case 'permanent_injury': {
+        const stat = invariant(consequence.stat, 'permanent_injury must have stat (enforced by Zod validator)')
+        const delta = invariant(consequence.delta, 'permanent_injury must have delta (enforced by Zod validator)')
         await tx.insert(statModifiers).values({
           unitId: consequence.unitId,
-          stat: consequence.stat!,
-          delta: consequence.delta!,
+          stat,
+          delta,
           source: 'injury',
           temporary: false,
           matchParticipantId,
         })
         break
+      }
       case 'grave_injury':
         await tx.insert(statModifiers).values({
           unitId: consequence.unitId,

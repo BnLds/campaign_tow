@@ -76,7 +76,7 @@ function validateConsequenceEntry(
     if (!entry.stat || entry.stat.trim() === '') {
       ctx.addIssue({ code: 'custom', message: 'Le champ stat est requis pour ce type de conséquence', path: ['stat'] })
     }
-    if (entry.delta === undefined || entry.delta === null) {
+    if (entry.delta === undefined) {
       ctx.addIssue({ code: 'custom', message: 'Le champ delta est requis pour ce type de conséquence', path: ['delta'] })
     }
   }
@@ -89,7 +89,7 @@ function validateConsequenceEntry(
     }
   }
   if (entry.type === 'deroute_sanglante') {
-    if (entry.xpLostAmount === undefined || entry.xpLostAmount === null || entry.xpLostAmount <= 0) {
+    if (entry.xpLostAmount === undefined || entry.xpLostAmount <= 0) {
       ctx.addIssue({ code: 'custom', message: 'Le champ xpLostAmount (> 0) est requis pour deroute_sanglante', path: ['xpLostAmount'] })
     }
   }

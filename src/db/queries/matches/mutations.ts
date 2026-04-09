@@ -1,5 +1,6 @@
 import { eq, and, ne, desc, isNull, gte } from 'drizzle-orm'
 import { db } from '../../index'
+import { invariant } from '../../../lib/invariant'
 import { matches, matchParticipants } from '../../schema'
 import { getArmyXpAndPointsTotalsBatch, getUnitsTotalsByIds } from '../units'
 import { getUnitSelectionForParticipant } from './unit-selections'
@@ -18,10 +19,11 @@ export async function createMatchWithParticipants(params: {
   const evolutionsEnteredAt = params.evolutionsEntered ? params.matchDate : null
 
   return db.transaction(async (tx) => {
-    const [inserted] = await tx
+    const [insertedRow] = await tx
       .insert(matches)
       .values({ date: params.matchDate, createdByPlayerId: params.createdByPlayerId })
       .returning({ id: matches.id })
+    const inserted = invariant(insertedRow, 'INSERT into matches must return one row')
 
     await tx.insert(matchParticipants).values([
       { matchId: inserted.id, playerId: params.player1Id, armyId: params.army1Id, result: params.result1, evolutionsEnteredAt },
@@ -77,13 +79,14 @@ export async function createInitialSetupMatch(playerId: string, armyId: string):
       .innerJoin(matches, eq(matchParticipants.matchId, matches.id))
       .where(and(eq(matchParticipants.armyId, armyId), eq(matches.matchType, 'initial_setup')))
       .limit(1)
-    if (existing.length > 0) return existing[0].matchId
+    if (existing.length > 0) return invariant(existing[0], 'existing match row must be defined').matchId
 
-    const [inserted] = await tx
+    const [insertedRow] = await tx
       .insert(matches)
       // Historical placeholder date — sorts initial_setup to bottom of timeline (ORDER BY date DESC)
       .values({ date: new Date('1993-08-19'), matchType: 'initial_setup', createdByPlayerId: playerId })
       .returning({ id: matches.id })
+    const inserted = invariant(insertedRow, 'INSERT into matches must return one row')
 
     await tx.insert(matchParticipants).values({
       matchId: inserted.id,
@@ -126,7 +129,7 @@ export async function updateMatchResultOnLatest(
       .where(latestWhere)
       .orderBy(desc(matches.date), desc(matches.createdAt))
       .limit(1)
-    if (latestRows.length === 0 || latestRows[0].matchId !== matchId) return false
+    if (latestRows.length === 0 || latestRows[0]?.matchId !== matchId) return false
 
     const mine = await tx
       .update(matchParticipants)
@@ -161,14 +164,14 @@ export async function snapshotArmyTotalsForMatch(matchId: string, tx?: Parameter
     .from(matchParticipants)
     .where(eq(matchParticipants.matchId, matchId))
 
-  const eligible = rows.filter((r) => r.armyId != null)
+  const eligible = rows.filter((r): r is typeof r & { armyId: string } => r.armyId != null)
   if (eligible.length === 0) return
 
   // For participants with unit selections, compute from selected units
   // For participants without, fall back to full army totals
   const noSelectionArmyIds = eligible
     .filter((r) => !r.unitSelectionCompletedAt)
-    .map((r) => r.armyId!)
+    .map((r) => r.armyId)
   const fullArmyTotalsMap = noSelectionArmyIds.length > 0
     ? await getArmyXpAndPointsTotalsBatch(noSelectionArmyIds, tx)
     : new Map<string, { totalXp: number; totalPoints: number }>()
@@ -185,7 +188,7 @@ export async function snapshotArmyTotalsForMatch(matchId: string, tx?: Parameter
           : { totalXp: 0, totalPoints: 0 }
       } else {
         // Fall back to full army totals
-        totals = fullArmyTotalsMap.get(r.armyId!) ?? { totalXp: 0, totalPoints: 0 }
+        totals = fullArmyTotalsMap.get(r.armyId) ?? { totalXp: 0, totalPoints: 0 }
       }
 
       return executor

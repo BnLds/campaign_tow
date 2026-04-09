@@ -3,6 +3,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+import { submitUnitXpAction, completeEvolutionsAction } from '../server-actions'
+import type { ConsequenceEntry } from '../types'
+
 const mockSubmitUnitXpFn = vi.fn()
 const mockCompleteEvolutionsWithGainsFn = vi.fn()
 
@@ -10,9 +13,6 @@ vi.mock('../../../routes/match/$matchId/post-match', () => ({
   submitUnitXpFn: mockSubmitUnitXpFn,
   completeEvolutionsWithGainsFn: mockCompleteEvolutionsWithGainsFn,
 }))
-
-import { submitUnitXpAction, completeEvolutionsAction } from '../server-actions'
-import type { ConsequenceEntry } from '../types'
 
 // ---------------------------------------------------------------------------
 // Helpers

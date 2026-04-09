@@ -8,6 +8,7 @@ import { stripConstraintHint, isNegativeConsequenceGain, isTemporaryConsequenceG
 import type { TierLevel } from '../lib/tier'
 import { cn } from '#/lib/utils'
 import { chipClasses } from '#/lib/chip-styles'
+import { invariant } from '../lib/invariant'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -107,7 +108,7 @@ function StatsTable({ subProfiles }: { subProfiles: ComposedSubProfile[] }) {
                         idx > 0 && 'border-t border-cw-border',
                       )}
                     >
-                      <StatCell statKey={key} entry={sp.stats[key]} />
+                      <StatCell statKey={key} entry={invariant(sp.stats[key], `unit-card: stat '${key}' must exist in composed sub-profile`)} />
                     </td>
                   ))}
                 </tr>

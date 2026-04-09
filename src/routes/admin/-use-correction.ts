@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { invariant } from '#/lib/invariant'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { updateSubProfileFn, getArmyUnitsFn } from '#/server-fns/admin-armies'
 import type { AdminQueries } from './-use-admin-queries'
@@ -88,7 +89,7 @@ export function useCorrection(queries: AdminQueries): CorrectionApi {
     // If unit has exactly 1 sub-profile, auto-select
     const unit = corrUnits.find((u) => u.id === id)
     if (unit && unit.subProfiles.length === 1) {
-      const sp = unit.subProfiles[0]
+      const sp = invariant(unit.subProfiles[0], 'subProfiles array must have one element when length === 1')
       setCorrSubProfileIdRaw(sp.id)
       setCorrStats({
         m: sp.m ?? '',

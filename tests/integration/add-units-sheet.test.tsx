@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { addUnitsToArmyFn } from '../../src/lib/server-fns/add-units-to-army'
+import { parseOwbExport } from '../../src/lib/owb-parser'
+
+import { AddUnitsSheet } from '../../src/components/add-units-sheet'
 
 vi.mock('../../src/lib/server-fns/add-units-to-army', () => ({
   addUnitsToArmyFn: vi.fn(),
@@ -10,12 +14,8 @@ vi.mock('../../src/lib/server-fns/add-units-to-army', () => ({
 vi.mock('../../src/lib/owb-parser', () => ({
   parseOwbExport: vi.fn(),
 }))
-import { addUnitsToArmyFn } from '../../src/lib/server-fns/add-units-to-army'
-import { parseOwbExport } from '../../src/lib/owb-parser'
 const mockAddUnitsFn = addUnitsToArmyFn as ReturnType<typeof vi.fn>
 const mockParseOwb = parseOwbExport as ReturnType<typeof vi.fn>
-
-import { AddUnitsSheet } from '../../src/components/add-units-sheet'
 
 function renderSheet(
   props: Partial<{

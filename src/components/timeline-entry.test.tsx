@@ -7,7 +7,7 @@ import { TimelineEntry } from './timeline-entry'
 const baseProps = {
   matchId: 'match-1',
   date: '2026-03-01T00:00:00Z',
-  result: null as null,
+  result: null,
   hasEvolutions: false,
 }
 

@@ -7,6 +7,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { armyOwnerMiddleware } from '../middleware'
 import { addUnitsToArmySchema } from '../validators'
 import type { ServerResult } from '../types'
+import { invariant } from '../invariant'
 
 export const addUnitsToArmyFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
@@ -18,7 +19,7 @@ export const addUnitsToArmyFn = createServerFn({ method: 'POST' })
     try {
       const unitCount = await db.transaction(async (tx) => {
         for (const unit of data.units) {
-          const [insertedUnit] = await tx
+          const [insertedUnitRow] = await tx
             .insert(units)
             .values({
               armyId: data.armyId,
@@ -31,6 +32,7 @@ export const addUnitsToArmyFn = createServerFn({ method: 'POST' })
               options: unit.options,
             })
             .returning({ id: units.id })
+          const insertedUnit = invariant(insertedUnitRow, 'INSERT into units must return one row')
 
           if (unit.subProfiles.length > 0) {
             await tx.insert(subProfiles).values(

@@ -96,9 +96,9 @@ export type WizardAccumulator = {
   submittedTierUpsByStep: Map<number, string[]>
 
   // Methods
-  recordXp(unitId: string, oldXp: number, newXp: number): void
-  recordConsequence(unitId: string, result: InjuryResult | ExtendedDestructionResult): void
-  recordTierUp(step: number, tierUpEntry: TierUpQueueEntry, descriptions: string[]): void
-  rollbackTierUp(step: number, prevEntry: TierUpQueueEntry): void
-  setFlaggedUnits(units: FlaggedUnit[]): void
+  recordXp: (unitId: string, oldXp: number, newXp: number) => void
+  recordConsequence: (unitId: string, result: InjuryResult | ExtendedDestructionResult) => void
+  recordTierUp: (step: number, tierUpEntry: TierUpQueueEntry, descriptions: string[]) => void
+  rollbackTierUp: (step: number, prevEntry: TierUpQueueEntry) => void
+  setFlaggedUnits: (units: FlaggedUnit[]) => void
 }

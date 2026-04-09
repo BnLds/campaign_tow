@@ -94,7 +94,7 @@ export function buildConsequenceEntry({
     return { unitId, type: 'grave_injury', stat: 'pv', delta: -1 }
   }
   if ((type === 'haine' || type === 'rancune') && player) {
-    return { unitId, type: type as 'haine' | 'rancune', opponentPlayerName: player.playerDisplayName }
+    return { unitId, type: type, opponentPlayerName: player.playerDisplayName }
   }
   if (type === 'haine' && !player) {
     console.warn('[buildConsequenceEntry] haine requires a player but none was provided')

@@ -2,6 +2,7 @@
 // Runtime tests for parseOwbExport and normalizeBlockText.
 // Covers the "block text" format (=== delimiters, ++ sections ++, bare unit lines).
 
+import assert from 'node:assert'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -124,7 +125,8 @@ describe('[OWB-NICK] nickname extraction', () => {
     const result = parseOwbExport(army3text)
     const saurus = result.units.find(u => u.nickname?.includes('Gardiens'))
     expect(saurus).toBeDefined()
-    expect(saurus!.name).toBe('Guerriers Saurus')
+    assert(saurus, 'saurus unit with nickname "Gardiens" must be found')
+    expect(saurus.name).toBe('Guerriers Saurus')
   })
 
   it('[OWB-PT-NICK] handles plaintext format with nickname (comma in unit name)', () => {

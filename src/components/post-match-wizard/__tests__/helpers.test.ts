@@ -1,3 +1,4 @@
+import assert from 'node:assert'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   buildConsequencesArray,
@@ -6,6 +7,9 @@ import {
   buildBatchGainsPayload,
   buildFlaggedUnits,
 } from '../helpers'
+
+import { detectTierCrossings } from '../../../lib/tier'
+import { expandQueueEntry } from '../phase-tierup'
 
 // ---------------------------------------------------------------------------
 // Mocks — hoisted before imports by Vitest
@@ -18,9 +22,6 @@ vi.mock('../../../lib/tier', () => ({
 vi.mock('../phase-tierup', () => ({
   expandQueueEntry: vi.fn(),
 }))
-
-import { detectTierCrossings } from '../../../lib/tier'
-import { expandQueueEntry } from '../phase-tierup'
 
 const mockDetectTierCrossings = vi.mocked(detectTierCrossings)
 const mockExpandQueueEntry = vi.mocked(expandQueueEntry)
@@ -253,7 +254,10 @@ describe('buildTierUpQueue', () => {
     const result = buildTierUpQueue(units, xpResults)
     // expandQueueEntry should be called with the filtered improvement list
     expect(mockExpandQueueEntry).toHaveBeenCalledOnce()
-    const calledWith = mockExpandQueueEntry.mock.calls[0][0]
+    const firstCall = mockExpandQueueEntry.mock.calls[0]
+    assert(firstCall, 'expandQueueEntry must have been called at least once')
+    const calledWith = firstCall[0]
+    assert(calledWith, 'first call must have a first argument')
     expect(calledWith.minorImprovements).toEqual([
       { id: '2', label: 'Champion gratuit', category: 'honour' },
     ])
@@ -299,7 +303,10 @@ describe('buildTierUpQueue', () => {
     ]
     const xpResults = new Map([['u1', { oldXp: 0, newXp: 12 }]])
     buildTierUpQueue(units, xpResults)
-    const calledWith = mockExpandQueueEntry.mock.calls[0][0]
+    const firstCall = mockExpandQueueEntry.mock.calls[0]
+    assert(firstCall, 'expandQueueEntry must have been called at least once')
+    const calledWith = firstCall[0]
+    assert(calledWith, 'first call must have a first argument')
     expect(calledWith.minorImprovements).toEqual([{ id: '1', label: '+1 CC', category: 'minor' }])
   })
 })
@@ -321,18 +328,20 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
     const lostGainTypes = new Map([['u1', new Set(['honour_champion'])]])
     const result = buildTierUpQueue(units, xpResults, lostGainTypes)
     expect(result).toHaveLength(1)
-    expect(result[0]).toMatchObject({
+    const entry0 = result[0]
+    assert(entry0, 'result must have a first element')
+    expect(entry0).toMatchObject({
       unitId: 'u1',
       tierLabel: "Récupération d'honneur",
       honourKind: 'recovery',
       xp: 0,
       minorCount: 1,
     })
-    const labels = result[0].minorImprovements.map((m) => m.label)
+    const labels = entry0.minorImprovements.map((m) => m.label)
     expect(labels).toContain('Champion gratuit')
     expect(labels).toContain('Non applicable')
     // IDs inside minorImprovements include unitId and slot index
-    const ids = result[0].minorImprovements.map((m) => m.id)
+    const ids = entry0.minorImprovements.map((m) => m.id)
     expect(ids.some((id) => /u-retrigger-u1/.test(id))).toBe(true)
   })
 
@@ -490,8 +499,9 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
     // Normal crossing: honourKind: 'new', must NOT contain 'Bannière gratuite'
     const normalEntry = result.find((e) => e.xp === 9)
     expect(normalEntry).toBeDefined()
+    assert(normalEntry, 'normalEntry must exist (xp === 9)')
     expect(normalEntry).toMatchObject({ honourKind: 'new', tierLabel: 'Honneur de bataille' })
-    const normalLabels = normalEntry!.minorImprovements.map((m) => m.label)
+    const normalLabels = normalEntry.minorImprovements.map((m) => m.label)
     expect(normalLabels).not.toContain('Bannière gratuite')
 
     // Retrigger entry: honourKind: 'recovery', MUST contain 'Bannière gratuite' + 'Non applicable'
@@ -499,8 +509,9 @@ describe('buildTierUpQueue — honour re-selection after loss', () => {
       (e) => e.xp === 0 && e.minorImprovements.some((m) => m.id.includes('u-retrigger'))
     )
     expect(retriggerEntry).toBeDefined()
+    assert(retriggerEntry, 'retriggerEntry must exist')
     expect(retriggerEntry).toMatchObject({ honourKind: 'recovery', tierLabel: "Récupération d'honneur" })
-    const retriggerLabels = retriggerEntry!.minorImprovements.map((m) => m.label)
+    const retriggerLabels = retriggerEntry.minorImprovements.map((m) => m.label)
     expect(retriggerLabels).toContain('Bannière gratuite')
     expect(retriggerLabels).toContain('Non applicable')
   })
@@ -548,7 +559,9 @@ describe('buildBatchGainsPayload', () => {
       ['u1', [{ descriptions: ['+1 CC'], thresholdXp: null }]],
     ])
     const result = buildBatchGainsPayload(pendingGains)
-    expect(result[0].thresholdXp).toBeNull()
+    const first = result[0]
+    assert(first, 'result must have a first element')
+    expect(first.thresholdXp).toBeNull()
   })
 })
 
@@ -580,9 +593,13 @@ describe('buildFlaggedUnits', () => {
       ['u3', true],
     ])
     const result = buildFlaggedUnits(units, flags)
-    expect(result[0].id).toBe('u2')
-    expect(result[1].id).toBe('u1')
-    expect(result[2].id).toBe('u3')
+    const [r0, r1, r2] = result
+    assert(r0, 'result must have a first element')
+    assert(r1, 'result must have a second element')
+    assert(r2, 'result must have a third element')
+    expect(r0.id).toBe('u2')
+    expect(r1.id).toBe('u1')
+    expect(r2.id).toBe('u3')
   })
 
   it('returns FlaggedUnit with correct shape', () => {
@@ -610,7 +627,9 @@ describe('buildFlaggedUnits', () => {
     const units = [makeWizardUnit({ id: 'u1' })]
     const flags = new Map([['u1', true]])
     const result = buildFlaggedUnits(units, flags)
-    expect(result[0].existingGains).toEqual([])
+    const first = result[0]
+    assert(first, 'result must have a first element')
+    expect(first.existingGains).toEqual([])
   })
 
   it('only includes units whose flag is true', () => {
@@ -624,6 +643,8 @@ describe('buildFlaggedUnits', () => {
     ])
     const result = buildFlaggedUnits(units, flags)
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('u2')
+    const first = result[0]
+    assert(first, 'result must have a first element')
+    expect(first.id).toBe('u2')
   })
 })

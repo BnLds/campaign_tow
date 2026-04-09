@@ -1,6 +1,7 @@
 import { and, eq, ilike, isNull, ne, sql } from 'drizzle-orm'
 import { db } from '../index'
 import { players, armies } from '../schema'
+import { invariant } from '../../lib/invariant'
 
 export async function getPlayerById(playerId: string): Promise<{ id: string; username: string } | null> {
   const rows = await db
@@ -8,7 +9,7 @@ export async function getPlayerById(playerId: string): Promise<{ id: string; use
     .from(players)
     .where(eq(players.id, playerId))
     .limit(1)
-  return rows.length > 0 ? rows[0] : null
+  return rows[0] ?? null
 }
 
 export async function updatePlayerUsername(playerId: string, username: string): Promise<void> {
@@ -33,7 +34,7 @@ export async function createPlayer(
   username: string,
 ): Promise<{ id: string; username: string; inviteToken: string }> {
   const inviteToken = crypto.randomUUID()
-  const [player] = await db
+  const [row] = await db
     .insert(players)
     .values({
       username,
@@ -42,7 +43,12 @@ export async function createPlayer(
       inviteToken,
     })
     .returning({ id: players.id, username: players.username, inviteToken: players.inviteToken })
-  return { ...player, inviteToken: player.inviteToken! }
+  const player = invariant(row, 'INSERT into players must return one row')
+  return {
+    id: player.id,
+    username: player.username,
+    inviteToken: invariant(player.inviteToken, 'inviteToken must be set after createPlayer'),
+  }
 }
 
 export async function getAllPlayers() {
@@ -70,14 +76,13 @@ export async function ensureGhostPlayer(): Promise<string> {
     isAdmin: false,
   }).onConflictDoNothing({ target: players.username })
 
-  const result = await db
+  const [row] = await db
     .select({ id: players.id })
     .from(players)
     .where(eq(players.username, '__guest__'))
     .limit(1)
 
-  if (result.length === 0) throw new Error('[DB] Ghost player lookup failed')
-  return result[0].id
+  return invariant(row, '[DB] Ghost player lookup failed').id
 }
 
 export async function getAllPlayersWithArmyInfo(): Promise<Array<{ playerId: string; username: string; armyId: string | null; armyName: string | null; faction: string | null }>> {
@@ -101,13 +106,13 @@ export async function getGhostPlayerId(): Promise<string | null> {
     .from(players)
     .where(eq(players.username, '__guest__'))
     .limit(1)
-  return result.length > 0 ? result[0].id : null
+  return result[0]?.id ?? null
 }
 
 export async function getPlayerByInviteToken(
   token: string,
 ): Promise<{ id: string; username: string; passwordHash: string | null; inviteToken: string } | null> {
-  const result = await db
+  const [row] = await db
     .select({
       id: players.id,
       username: players.username,
@@ -117,8 +122,13 @@ export async function getPlayerByInviteToken(
     .from(players)
     .where(eq(players.inviteToken, token))
     .limit(1)
-  if (result.length === 0) return null
-  return { ...result[0], inviteToken: result[0].inviteToken! }
+  if (row === undefined) return null
+  return {
+    id: row.id,
+    username: row.username,
+    passwordHash: row.passwordHash,
+    inviteToken: invariant(row.inviteToken, 'inviteToken must be set when looked up by token'),
+  }
 }
 
 export async function activatePlayer(
@@ -138,13 +148,13 @@ export async function activatePlayer(
 
 export async function regenerateInviteToken(playerId: string): Promise<string | null> {
   const newToken = crypto.randomUUID()
-  const result = await db
+  const [row] = await db
     .update(players)
     .set({ inviteToken: newToken })
     .where(eq(players.id, playerId))
     .returning({ inviteToken: players.inviteToken })
-  if (result.length === 0) return null
-  return result[0].inviteToken!
+  if (row === undefined) return null
+  return invariant(row.inviteToken, 'inviteToken must be set after regenerateInviteToken')
 }
 
 export async function updatePlayerPassword(playerId: string, passwordHash: string): Promise<void> {
@@ -154,13 +164,13 @@ export async function updatePlayerPassword(playerId: string, passwordHash: strin
 export async function getPlayerInviteToken(
   playerId: string,
 ): Promise<{ inviteToken: string | null } | null> {
-  const result = await db
+  const [row] = await db
     .select({ inviteToken: players.inviteToken })
     .from(players)
     .where(eq(players.id, playerId))
     .limit(1)
-  if (result.length === 0) return null
-  return { inviteToken: result[0].inviteToken ?? null }
+  if (row === undefined) return null
+  return { inviteToken: row.inviteToken ?? null }
 }
 
 export async function generateAllMissingInviteTokens(): Promise<number> {

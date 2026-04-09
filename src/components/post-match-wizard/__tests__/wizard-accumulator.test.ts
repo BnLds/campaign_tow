@@ -1,3 +1,4 @@
+import assert from 'node:assert'
 import { describe, it, expect } from 'vitest'
 import { createWizardAccumulator } from '../wizard-accumulator'
 import type { TierUpQueueEntry, ExtendedDestructionResult } from '../types'
@@ -142,7 +143,8 @@ describe('recordTierUp', () => {
 
     const groups = acc.pendingGains.get('unit-1')
     expect(groups).toHaveLength(1)
-    expect(groups![0]).toEqual({ descriptions: ['+1 CC'], thresholdXp: 25 })
+    assert(groups?.[0], 'pendingGains must have one group')
+    expect(groups[0]).toEqual({ descriptions: ['+1 CC'], thresholdXp: 25 })
   })
 
   it('merges descriptions into existing group with same thresholdXp', () => {
@@ -154,7 +156,8 @@ describe('recordTierUp', () => {
 
     const groups = acc.pendingGains.get('unit-1')
     expect(groups).toHaveLength(1)
-    expect(groups![0].descriptions).toEqual(['+1 CC', '+1 Force'])
+    assert(groups?.[0], 'pendingGains must have one group')
+    expect(groups[0].descriptions).toEqual(['+1 CC', '+1 Force'])
   })
 
   it('creates separate groups for different threshold XP values', () => {
@@ -167,8 +170,10 @@ describe('recordTierUp', () => {
 
     const groups = acc.pendingGains.get('unit-1')
     expect(groups).toHaveLength(2)
-    expect(groups![0]).toEqual({ descriptions: ['+1 Initiative'], thresholdXp: 10 })
-    expect(groups![1]).toEqual({ descriptions: ['+1 CT'], thresholdXp: 25 })
+    assert(groups?.[0], 'pendingGains must have first group')
+    assert(groups[1], 'pendingGains must have second group')
+    expect(groups[0]).toEqual({ descriptions: ['+1 Initiative'], thresholdXp: 10 })
+    expect(groups[1]).toEqual({ descriptions: ['+1 CT'], thresholdXp: 25 })
   })
 
   it('updates cumulativeGains', () => {
@@ -235,7 +240,8 @@ describe('recordTierUp', () => {
     acc.recordTierUp(1, entry, ['2 améliorations mineures', '+1 CC'])
 
     const groups = acc.pendingGains.get('unit-1')
-    expect(groups![0].descriptions).toEqual(['+1 CC'])
+    assert(groups?.[0], 'pendingGains must have a first group')
+    expect(groups[0].descriptions).toEqual(['+1 CC'])
     expect(acc.cumulativeGains.get('unit-1')).toEqual(['+1 CC'])
   })
 
@@ -353,7 +359,8 @@ describe('rollbackTierUp', () => {
     // Step 1 gains must still be present
     const groups = acc.pendingGains.get('unit-1')
     expect(groups).toHaveLength(1)
-    expect(groups![0]).toEqual({ descriptions: ['+1 Initiative'], thresholdXp: 10 })
+    assert(groups?.[0], 'pendingGains must have one group after rollback')
+    expect(groups[0]).toEqual({ descriptions: ['+1 Initiative'], thresholdXp: 10 })
 
     expect(acc.cumulativeGains.get('unit-1')).toEqual(['+1 Initiative'])
     expect(acc.submittedTierUpsByStep.has(1)).toBe(true)
@@ -376,7 +383,8 @@ describe('rollbackTierUp', () => {
 
     // pendingGains should only have the actual minor improvements (not the meta-option)
     const groups = acc.pendingGains.get('unit-1')
-    expect(groups![0].descriptions).toEqual(['+1 CC', '+1 Initiative'])
+    assert(groups?.[0], 'pendingGains must have a first group')
+    expect(groups[0].descriptions).toEqual(['+1 CC', '+1 Initiative'])
 
     acc.rollbackTierUp(1, entry)
 

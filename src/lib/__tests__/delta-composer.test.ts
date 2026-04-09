@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import assert from 'node:assert'
 import { composeUnitView } from '../../lib/delta-composer'
 import type { StatModifier, UnitGain } from '../../lib/delta-composer'
 
@@ -62,9 +63,12 @@ describe('composeUnitView — cavalry mount rule', () => {
 
     const result = composeUnitView(subProfiles, modifiers, NO_GAINS)
 
-    const rider = result.subProfiles.find((sp) => !sp.isMount)!
-    const mount = result.subProfiles.find((sp) => sp.isMount)!
-
+    const rider = result.subProfiles.find((sp) => !sp.isMount)
+    const mount = result.subProfiles.find((sp) => sp.isMount)
+    assert(rider !== undefined, 'rider sub-profile must exist')
+    assert(mount !== undefined, 'mount sub-profile must exist')
+    assert(rider.stats.cc !== undefined, 'rider.stats.cc must exist')
+    assert(mount.stats.cc !== undefined, 'mount.stats.cc must exist')
     expect(rider.stats.cc.delta).toBe(1)
     expect(mount.stats.cc.delta).toBeNull()
   })
@@ -81,9 +85,12 @@ describe('composeUnitView — cavalry mount rule', () => {
 
     const result = composeUnitView(subProfiles, modifiers, NO_GAINS)
 
-    const rider = result.subProfiles.find((sp) => !sp.isMount)!
-    const mount = result.subProfiles.find((sp) => sp.isMount)!
-
+    const rider = result.subProfiles.find((sp) => !sp.isMount)
+    const mount = result.subProfiles.find((sp) => sp.isMount)
+    assert(rider !== undefined, 'rider sub-profile must exist')
+    assert(mount !== undefined, 'mount sub-profile must exist')
+    assert(rider.stats.ct !== undefined, 'rider.stats.ct must exist')
+    assert(mount.stats.ct !== undefined, 'mount.stats.ct must exist')
     expect(rider.stats.ct.delta).toBeNull()
     expect(mount.stats.ct.delta).toBe(1)
   })

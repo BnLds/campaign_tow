@@ -2,6 +2,7 @@
 // Initial XP Entry Flow — static file-contract tests.
 // Verifies code patterns exist without a test DB.
 
+import assert from 'node:assert'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -187,10 +188,11 @@ describe('[INIT-TL] Timeline — initialXpCompletedAt gating', () => {
     // Match the where clause that follows the main query chain (after .leftJoin(oppPlayer...))
     const mainQueryWhere = fnBody.match(/\.leftJoin\(oppPlayer[\s\S]{0,200}\.where\(([\s\S]{0,300})\)/)
     expect(mainQueryWhere).not.toBeNull()
+    assert(mainQueryWhere, 'regex must match the where clause')
     // Should contain matchParticipants.armyId
-    expect(mainQueryWhere![1]).toContain('matchParticipants.armyId')
+    expect(mainQueryWhere[1]).toContain('matchParticipants.armyId')
     // Should NOT contain oppArmy or opp_army references in the where clause
-    expect(mainQueryWhere![1]).not.toMatch(/opp.*initialXpCompletedAt/)
+    expect(mainQueryWhere[1]).not.toMatch(/opp.*initialXpCompletedAt/)
   })
 })
 

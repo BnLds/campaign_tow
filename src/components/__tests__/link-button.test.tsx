@@ -32,8 +32,8 @@ describe('LinkButton', () => {
 
   it('has type="button" (not submit)', () => {
     render(<LinkButton>Texte</LinkButton>)
-    const btn = screen.getByText('Texte') as HTMLButtonElement
-    expect(btn.type).toBe('button')
+    const btn = screen.getByText('Texte')
+    expect(btn).toHaveAttribute('type', 'button')
   })
 
   it('variant danger applies malus color classes', () => {

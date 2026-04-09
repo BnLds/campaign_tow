@@ -126,7 +126,7 @@ export function ArmyImportForm({ onSuccess }: ArmyImportFormProps) {
         )}
       </form.Subscribe>
 
-      {mutation.isSuccess && mutation.data && (() => {
+      {mutation.isSuccess && (() => {
         const { armyName, faction, unitCount } = mutation.data
         return (
           <p

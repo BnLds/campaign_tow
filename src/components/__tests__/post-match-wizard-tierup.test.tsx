@@ -226,7 +226,7 @@ describe('[AC8][P0] PostMatchWizard — Phase 2 back button between steps (Task 
 
     // Select an improvement and advance to step 2
     const firstOption = screen.getAllByRole('radio')[0] ?? screen.getAllByRole('checkbox')[0]
-    fireEvent.click(firstOption)
+    if (firstOption) fireEvent.click(firstOption)
     fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
 
     // Should now be on step 2
@@ -406,7 +406,7 @@ describe('[AC1][P0] PostMatchWizard — Phase 2 last step "Terminer" calls compl
 
     // Select an improvement to enable the confirm button
     const firstOption = screen.getAllByRole('radio')[0] ?? screen.getAllByRole('checkbox')[0]
-    fireEvent.click(firstOption)
+    if (firstOption) fireEvent.click(firstOption)
 
     fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
 
@@ -541,8 +541,9 @@ describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
 
     // Complete honour steps (xp=3, xp=9) by selecting Champion/Bannière
     const honourOptions = screen.queryAllByRole('radio')
-    if (honourOptions.length > 0) {
-      fireEvent.click(honourOptions[0])
+    const firstHonour = honourOptions[0]
+    if (firstHonour !== undefined) {
+      fireEvent.click(firstHonour)
       fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
     }
 
@@ -553,8 +554,9 @@ describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
 
     // Complete second honour step
     const honourOptions2 = screen.queryAllByRole('radio')
-    if (honourOptions2.length > 0) {
-      fireEvent.click(honourOptions2[0])
+    const firstHonour2 = honourOptions2[0]
+    if (firstHonour2 !== undefined) {
+      fireEvent.click(firstHonour2)
       fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
     }
 
@@ -607,8 +609,9 @@ describe('[CC-AC2/AC7] PostMatchWizard — constraint enforcement', () => {
     // Complete honour steps
     const selectAndConfirm = async () => {
       const radios = screen.queryAllByRole('radio')
-      if (radios.length > 0) {
-        fireEvent.click(radios[0])
+      const firstRadio = radios[0]
+      if (firstRadio !== undefined) {
+        fireEvent.click(firstRadio)
         fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
         await waitFor(() => {
           expect(screen.getByTestId('tier-up-step')).not.toBeNull()
@@ -674,8 +677,9 @@ describe('[CC-AC6] PostMatchWizard — "2 améliorations mineures" sub-flow', ()
 
     // Complete Aguerri (select a minor improvement)
     const aguerriRadios = screen.queryAllByRole('radio')
-    if (aguerriRadios.length > 0) {
-      fireEvent.click(aguerriRadios[0])
+    const firstAguerri = aguerriRadios[0]
+    if (firstAguerri !== undefined) {
+      fireEvent.click(firstAguerri)
       fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
     }
 
@@ -699,7 +703,8 @@ describe('[CC-AC6] PostMatchWizard — "2 améliorations mineures" sub-flow', ()
 
       // Select a minor improvement in sub-step 1
       const subStep1Radios = screen.queryAllByRole('radio')
-      fireEvent.click(subStep1Radios[0])
+      const firstSubStep1 = subStep1Radios[0]
+      if (firstSubStep1 !== undefined) fireEvent.click(firstSubStep1)
       fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
 
       // Sub-step 2: "Mineure 2/2" — radio mode (minorCount=1)
@@ -755,8 +760,9 @@ describe('[CAP] PostMatchWizard — stat cap constraint', () => {
 
     const selectAndConfirm = async () => {
       const radios = screen.queryAllByRole('radio')
-      if (radios.length > 0) {
-        fireEvent.click(radios[0])
+      const firstRadio = radios[0]
+      if (firstRadio !== undefined) {
+        fireEvent.click(firstRadio)
         fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
         await waitFor(() => {
           expect(screen.getByTestId('tier-up-step')).not.toBeNull()

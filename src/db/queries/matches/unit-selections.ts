@@ -1,5 +1,6 @@
 import { eq, and, inArray, sql } from 'drizzle-orm'
 import { db } from '../../index'
+import { invariant } from '../../../lib/invariant'
 import { matchUnitSelections, matchParticipants, units, unitGains } from '../../schema'
 
 export async function submitUnitSelection(
@@ -59,7 +60,8 @@ export async function submitUnitSelection(
       .from(units)
       .where(inArray(units.id, unitIds))
 
-    return { totalXp: Number(totals.totalXp), totalPoints: Number(totals.totalPoints) }
+    const row = invariant(totals, 'aggregate SELECT must return one row')
+    return { totalXp: Number(row.totalXp), totalPoints: Number(row.totalPoints) }
   }
   return externalTx ? run(externalTx) : db.transaction(run)
 }
@@ -130,5 +132,5 @@ export async function hasCompletedUnitSelection(matchParticipantId: string): Pro
     .where(eq(matchParticipants.id, matchParticipantId))
     .limit(1)
 
-  return rows.length > 0 && rows[0].unitSelectionCompletedAt !== null
+  return rows.length > 0 && rows[0]?.unitSelectionCompletedAt !== null
 }

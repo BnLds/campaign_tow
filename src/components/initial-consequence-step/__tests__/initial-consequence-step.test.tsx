@@ -2,9 +2,9 @@
 // src/components/initial-consequence-step/__tests__/initial-consequence-step.test.tsx
 // Tests for InitialConsequenceStep — past consequences multi-select (initial-xp mode)
 
+import assert from 'node:assert'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { renderHook, act } from '@testing-library/react'
+import { render, screen, fireEvent, renderHook, act  } from '@testing-library/react'
 import { InitialConsequenceStep } from '../initial-consequence-step'
 import type { InitialConsequenceItem } from '../initial-consequence-step'
 import { useConsequenceForm } from '../use-consequence-form'
@@ -190,7 +190,9 @@ describe('[IC-007] permanent_injury confirm shape', () => {
     fireEvent.click(screen.getByTestId('initial-consequence-stat-cc'))
     fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
     expect(onAdd).toHaveBeenCalledWith({ unitId: UNIT_ID, type: 'permanent_injury', stat: 'cc', delta: -1 })
-    expect(onAdd.mock.calls[0][0]).not.toHaveProperty('bannerLost')
+    const firstCall = onAdd.mock.calls[0]
+    assert(firstCall, 'onAdd must have been called at least once')
+    expect(firstCall[0]).not.toHaveProperty('bannerLost')
   })
 })
 
@@ -206,7 +208,9 @@ describe('[IC-008] grave_injury confirm shape', () => {
     fireEvent.click(screen.getByTestId('initial-consequence-type-grave_injury'))
     fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
     expect(onAdd).toHaveBeenCalledWith({ unitId: UNIT_ID, type: 'grave_injury', stat: 'pv', delta: -1 })
-    expect(onAdd.mock.calls[0][0]).not.toHaveProperty('bannerLost')
+    const firstCall = onAdd.mock.calls[0]
+    assert(firstCall, 'onAdd must have been called at least once')
+    expect(firstCall[0]).not.toHaveProperty('bannerLost')
   })
 })
 
@@ -223,7 +227,9 @@ describe('[IC-009] haine confirm shape', () => {
     fireEvent.change(screen.getByTestId('initial-consequence-player-select'), { target: { value: 'player-1' } })
     fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
     expect(onAdd).toHaveBeenCalledWith({ unitId: UNIT_ID, type: 'haine', opponentPlayerName: 'Alice' })
-    expect(onAdd.mock.calls[0][0]).not.toHaveProperty('bannerLost')
+    const firstCall = onAdd.mock.calls[0]
+    assert(firstCall, 'onAdd must have been called at least once')
+    expect(firstCall[0]).not.toHaveProperty('bannerLost')
   })
 })
 
@@ -240,7 +246,9 @@ describe('[IC-010] rancune confirm shape', () => {
     fireEvent.change(screen.getByTestId('initial-consequence-player-select'), { target: { value: 'player-2' } })
     fireEvent.click(screen.getByTestId('initial-consequence-confirm-btn'))
     expect(onAdd).toHaveBeenCalledWith({ unitId: UNIT_ID, type: 'rancune', opponentPlayerName: 'Bob' })
-    expect(onAdd.mock.calls[0][0]).not.toHaveProperty('bannerLost')
+    const firstCall = onAdd.mock.calls[0]
+    assert(firstCall, 'onAdd must have been called at least once')
+    expect(firstCall[0]).not.toHaveProperty('bannerLost')
   })
 })
 

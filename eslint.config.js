@@ -12,6 +12,21 @@ export default [
       '@typescript-eslint/array-type': 'off',
       '@typescript-eslint/require-await': 'off',
       'pnpm/json-enforce-catalog': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'error',
+    },
+  },
+  {
+    // Test files — use dedicated tsconfig.test.json that includes tests/**
+    files: [
+      'tests/**/*.{ts,tsx}',
+      'src/**/*.test.{ts,tsx}',
+      'src/**/__tests__/**/*.{ts,tsx}',
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.test.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
   {

@@ -7,6 +7,7 @@ import { compare } from 'bcryptjs'
 import { eq, and, gt } from 'drizzle-orm'
 import { db } from '../db/index'
 import { sessions, players } from '../db/schema'
+import { invariant } from './invariant'
 
 const SESSION_COOKIE = 'session_id'
 const SESSION_DURATION_DAYS = 30
@@ -39,7 +40,7 @@ export async function getSession(): Promise<SessionData | null> {
 
   if (result.length === 0) return null
 
-  const row = result[0]
+  const row = invariant(result[0], 'SELECT sessions must return row when length > 0')
   return {
     playerId: row.playerId,
     isAdmin: row.isAdmin,
@@ -52,10 +53,11 @@ export async function createSession(playerId: string): Promise<void> {
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS)
 
-  const [session] = await db
+  const [sessionRow] = await db
     .insert(sessions)
     .values({ playerId, expiresAt })
     .returning({ id: sessions.id })
+  const session = invariant(sessionRow, 'INSERT into sessions must return one row')
 
   setCookie(SESSION_COOKIE, session.id, {
     httpOnly: true,
