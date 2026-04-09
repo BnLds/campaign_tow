@@ -406,9 +406,9 @@ describe('[AC6][P0] TimelineEntry — buttons disabled during submission (isSubm
       const victoryBtn = screen.getByTestId('result-select-victory')
       const defeatBtn = screen.getByTestId('result-select-defeat')
       const drawBtn = screen.getByTestId('result-select-draw')
-      expect(victoryBtn.disabled).toBe(true)
-      expect(defeatBtn.disabled).toBe(true)
-      expect(drawBtn.disabled).toBe(true)
+      expect(victoryBtn).toBeDisabled()
+      expect(defeatBtn).toBeDisabled()
+      expect(drawBtn).toBeDisabled()
     })
 
     // Cleanup: resolve promise
@@ -460,7 +460,7 @@ describe('[AC6][P0] TimelineEntry — buttons disabled during submission (isSubm
 
     await waitFor(() => {
       const drawBtn = screen.getByTestId('result-select-draw')
-      expect(drawBtn.disabled).toBe(false)
+      expect(drawBtn).not.toBeDisabled()
     })
   })
 })

@@ -123,7 +123,7 @@ describe('[AC4][P0] TierUpStep — button disabled when no selection (Task 11.2)
       />
     )
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
   })
 
   it('[4.2-TUS-005] confirm button is disabled in mixed mode before both sections are filled', () => {
@@ -140,7 +140,7 @@ describe('[AC4][P0] TierUpStep — button disabled when no selection (Task 11.2)
       />
     )
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
   })
 })
 
@@ -166,7 +166,7 @@ describe('[AC4][P0] TierUpStep — button enabled after required selection (Task
     fireEvent.click(firstOption)
 
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 
   it('[4.2-TUS-007] confirm button enabled after selecting 1 major improvement (Expérimenté, majorCount=1)', () => {
@@ -185,7 +185,7 @@ describe('[AC4][P0] TierUpStep — button enabled after required selection (Task
     fireEvent.click(firstOption)
 
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 })
 
@@ -262,7 +262,7 @@ describe('[AC2][P0] TierUpStep — radio mode for single selection (Task 11.5)',
     // After clicking second, first should no longer be selected (radio behavior)
     // Check: button is still enabled (one selection)
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 })
 
@@ -286,11 +286,11 @@ describe('[AC2][P0] TierUpStep — checkbox mode for multi-selection (Task 11.6)
     const btn = screen.getByTestId('tier-up-confirm-button')
     // Select only 1 — button still disabled
     fireEvent.click(screen.getByLabelText(/\+1 Initiative/))
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
 
     // Select 2nd — button now enabled
     fireEvent.click(screen.getByLabelText(/\+1 CC/))
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 
   it('[4.2-TUS-012] onConfirm called with both selected descriptions (Vétéran, 2 minors)', () => {
@@ -313,7 +313,10 @@ describe('[AC2][P0] TierUpStep — checkbox mode for multi-selection (Task 11.6)
     expect(onConfirm).toHaveBeenCalledWith({
       descriptions: expect.arrayContaining(['+1 Initiative', '+1 CC']),
     })
-    expect(onConfirm.mock.calls[0][0].descriptions).toHaveLength(2)
+    const confirmCall = onConfirm.mock.calls[0]
+    expect(confirmCall).toBeDefined()
+    if (!confirmCall) return
+    expect(confirmCall[0].descriptions).toHaveLength(2)
   })
 })
 
@@ -357,7 +360,7 @@ describe('[AC2][P0] TierUpStep — mixed mode (two sections: Task 11.7)', () => 
 
     // Button still disabled (minor not selected)
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
   })
 
   it('[4.2-TUS-015] mixed mode: button enabled after filling both major (2) and minor (1) sections', () => {
@@ -378,7 +381,7 @@ describe('[AC2][P0] TierUpStep — mixed mode (two sections: Task 11.7)', () => 
     fireEvent.click(screen.getByLabelText(/\+1 Initiative/))
 
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 
   it('[4.2-TUS-016] onConfirm called with majors first then minors in descriptions', () => {
@@ -399,7 +402,10 @@ describe('[AC2][P0] TierUpStep — mixed mode (two sections: Task 11.7)', () => 
     fireEvent.click(screen.getByLabelText(/\+1 Initiative/))
     fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
 
-    const { descriptions } = onConfirm.mock.calls[0][0]
+    const confirmCall = onConfirm.mock.calls[0]
+    expect(confirmCall).toBeDefined()
+    if (!confirmCall) return
+    const { descriptions } = confirmCall[0]
     expect(descriptions).toHaveLength(3)
     // Majors come first
     expect(descriptions[0]).toMatch(/\+1 CT|\+1 Force/)
@@ -435,18 +441,18 @@ describe('[AC2][P0] TierUpStep — Endurance as normal selection in majorCount=2
     fireEvent.click(screen.getByLabelText(/\+1 Endurance/))
 
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
 
     // Select second major — now 2 major slots filled
     fireEvent.click(screen.getByLabelText(/\+1 Force/))
     // Still disabled (need 2 minors)
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
 
     // Select 2 minors
     fireEvent.click(screen.getByLabelText(/\+1 Initiative/))
     fireEvent.click(screen.getByLabelText(/\+1 CT/))
 
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 
   it('[4.2-TUS-018] after selecting Endurance, one more major slot remains in majorCount=2', () => {
@@ -472,8 +478,8 @@ describe('[AC2][P0] TierUpStep — Endurance as normal selection in majorCount=2
     // Other major options should still be selectable (not disabled)
     const forceCb = screen.getByLabelText(/\+1 Force/)
     const pvCb = screen.getByLabelText(/\+1 PV/)
-    expect(forceCb.disabled).toBe(false)
-    expect(pvCb.disabled).toBe(false)
+    expect(forceCb).not.toBeDisabled()
+    expect(pvCb).not.toBeDisabled()
   })
 })
 
@@ -674,17 +680,17 @@ describe('[CC-AC1] TierUpStep — radio toggle fix', () => {
     // Select first option
     fireEvent.click(screen.getByLabelText('+1 CT'))
     const ctRadio = screen.getByLabelText('+1 CT')
-    expect(ctRadio.checked).toBe(true)
+    expect(ctRadio).toBeChecked()
 
     // Click a different option — should replace
     fireEvent.click(screen.getByLabelText('+1 Force'))
     const forceRadio = screen.getByLabelText('+1 Force')
-    expect(forceRadio.checked).toBe(true)
-    expect(ctRadio.checked).toBe(false)
+    expect(forceRadio).toBeChecked()
+    expect(ctRadio).not.toBeChecked()
 
     // Confirm button should be enabled (not disabled)
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 
   it('[CC-TUS-002] confirm sends the replaced selection, not the original', () => {
@@ -733,15 +739,15 @@ describe('[CC-AC2/AC3/AC7] TierUpStep — disabledImprovementIds', () => {
 
     // Mouvement should be disabled
     const mouvInput = screen.getByLabelText('+1 Mouvement (unique)')
-    expect(mouvInput.disabled).toBe(true)
+    expect(mouvInput).toBeDisabled()
 
     // Clicking it should not select it
     fireEvent.click(mouvInput)
-    expect(mouvInput.checked).toBe(false)
+    expect(mouvInput).not.toBeChecked()
 
     // Other items should still be selectable
     fireEvent.click(screen.getByLabelText('+1 Initiative'))
-    expect((screen.getByLabelText('+1 Initiative')).checked).toBe(true)
+    expect(screen.getByLabelText('+1 Initiative')).toBeChecked()
   })
 
   it('[CC-TUS-004] disabled major improvements are not selectable', () => {
@@ -760,12 +766,12 @@ describe('[CC-AC2/AC3/AC7] TierUpStep — disabledImprovementIds', () => {
     )
 
     // Endurance and Attaque should be disabled
-    expect((screen.getByLabelText('+1 Endurance (max +1)')).disabled).toBe(true)
-    expect((screen.getByLabelText('+1 Attaque (max +1)')).disabled).toBe(true)
+    expect(screen.getByLabelText('+1 Endurance (max +1)')).toBeDisabled()
+    expect(screen.getByLabelText('+1 Attaque (max +1)')).toBeDisabled()
 
     // CT and Force should be selectable
     fireEvent.click(screen.getByLabelText('+1 CT'))
-    expect((screen.getByLabelText('+1 CT')).checked).toBe(true)
+    expect(screen.getByLabelText('+1 CT')).toBeChecked()
   })
 
   it('[CC-TUS-005] disabled improvements in mixed mode are not selectable in either section', () => {
@@ -784,9 +790,9 @@ describe('[CC-AC2/AC3/AC7] TierUpStep — disabledImprovementIds', () => {
     )
 
     // Major Endurance disabled
-    expect((screen.getByLabelText('+1 Endurance (max +1)')).disabled).toBe(true)
+    expect(screen.getByLabelText('+1 Endurance (max +1)')).toBeDisabled()
     // Minor Mouvement disabled
-    expect((screen.getByLabelText('+1 Mouvement (unique)')).disabled).toBe(true)
+    expect(screen.getByLabelText('+1 Mouvement (unique)')).toBeDisabled()
   })
 })
 
@@ -812,7 +818,7 @@ describe('[CAP] TierUpStep — capBlockedImprovementIds UI', () => {
 
     // Commandement should be disabled
     const cdInput = screen.getByLabelText('+1 Commandement')
-    expect(cdInput.disabled).toBe(true)
+    expect(cdInput).toBeDisabled()
 
     // Should show "valeur 10 atteinte" text
     expect(screen.getByText(/valeur 10 atteinte/)).not.toBeNull()
@@ -834,7 +840,7 @@ describe('[CAP] TierUpStep — capBlockedImprovementIds UI', () => {
     )
 
     // Mouvement disabled but no cap text
-    expect((screen.getByLabelText('+1 Mouvement (unique)')).disabled).toBe(true)
+    expect(screen.getByLabelText('+1 Mouvement (unique)')).toBeDisabled()
     expect(screen.queryByText(/valeur 10 atteinte/)).toBeNull()
   })
 
@@ -853,7 +859,7 @@ describe('[CAP] TierUpStep — capBlockedImprovementIds UI', () => {
       />,
     )
 
-    expect((screen.getByLabelText('+1 Force')).disabled).toBe(true)
+    expect(screen.getByLabelText('+1 Force')).toBeDisabled()
     expect(screen.getByText(/valeur 10 atteinte/)).not.toBeNull()
   })
 })
@@ -916,7 +922,7 @@ describe('[SKILL] TierUpStep — minor skill text input', () => {
 
     fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
   })
 
   it('[SKILL-TUS-004] confirm enabled when skill selected and text filled', () => {
@@ -935,7 +941,7 @@ describe('[SKILL] TierUpStep — minor skill text input', () => {
     fireEvent.click(screen.getByLabelText("1 compétence de la fiche d'unité"))
     fireEvent.change(screen.getByTestId('skill-text-input'), { target: { value: 'vétéran' } })
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 
   it('[SKILL-TUS-005] onConfirm receives raw text, not the label, for minor skill', () => {
@@ -1019,7 +1025,7 @@ describe('[SKILL] TierUpStep — major skill radio group', () => {
 
     fireEvent.click(screen.getByLabelText('Compétence au choix'))
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(true)
+    expect(btn).toBeDisabled()
   })
 
   it('[SKILL-TUS-009] confirm enabled when major skill selected and sub-option chosen', () => {
@@ -1038,7 +1044,7 @@ describe('[SKILL] TierUpStep — major skill radio group', () => {
     fireEvent.click(screen.getByLabelText('Compétence au choix'))
     fireEvent.click(screen.getByLabelText('Bien entraîné'))
     const btn = screen.getByTestId('tier-up-confirm-button')
-    expect(btn.disabled).toBe(false)
+    expect(btn).not.toBeDisabled()
   })
 
   it('[SKILL-TUS-010] onConfirm receives sub-option name, not the long label, for major skill', () => {
@@ -1092,7 +1098,10 @@ describe('[SKILL] TierUpStep — mixed mode with minor skill', () => {
 
     fireEvent.click(screen.getByTestId('tier-up-confirm-button'))
 
-    const { descriptions } = onConfirm.mock.calls[0][0]
+    const confirmCall = onConfirm.mock.calls[0]
+    expect(confirmCall).toBeDefined()
+    if (!confirmCall) return
+    const { descriptions } = confirmCall[0]
     expect(descriptions).toHaveLength(3)
     // Majors first (labels), then minor skill (raw text)
     expect(descriptions[0]).toMatch(/\+1 CT|\+1 Force/)

@@ -33,7 +33,7 @@ describe('LinkButton', () => {
   it('has type="button" (not submit)', () => {
     render(<LinkButton>Texte</LinkButton>)
     const btn = screen.getByText('Texte')
-    expect(btn.type).toBe('button')
+    expect(btn).toHaveAttribute('type', 'button')
   })
 
   it('variant danger applies malus color classes', () => {

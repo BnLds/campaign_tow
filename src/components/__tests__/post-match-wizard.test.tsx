@@ -353,7 +353,7 @@ describe('[AC6][P0] PostMatchWizard — button disabled during submission (Task 
 
     await waitFor(() => {
       const btn = screen.getByTestId('wizard-next-button')
-      expect(btn.disabled).toBe(true)
+      expect(btn).toBeDisabled()
     })
 
     // Cleanup
@@ -850,7 +850,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('wizard-progress').textContent).toMatch(/1\s*\/\s*3/)
       expect(screen.getByTestId('wizard-unit-name').textContent).toContain('Hallebardiers')
-      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
+      expect(screen.getByTestId('xp-condition-deployed')).toBeChecked()
     })
   })
 
@@ -883,8 +883,8 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
-      expect((screen.getByTestId('xp-condition-survived')).checked).toBe(true)
+      expect(screen.getByTestId('xp-condition-deployed')).toBeChecked()
+      expect(screen.getByTestId('xp-condition-survived')).toBeChecked()
       expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
     })
   })
@@ -918,7 +918,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     // Back to step 1
     fireEvent.click(screen.getByTestId('wizard-back-button'))
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
+      expect(screen.getByTestId('xp-condition-deployed')).toBeChecked()
     })
 
     // Uncheck both, advance again (0 XP)
@@ -937,7 +937,7 @@ describe('PostMatchWizard — back button (previous unit)', () => {
     // Back again — should show no checkboxes checked
     fireEvent.click(screen.getByTestId('wizard-back-button'))
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(false)
+      expect(screen.getByTestId('xp-condition-deployed')).not.toBeChecked()
     })
   })
 
@@ -1197,8 +1197,8 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
-      expect((screen.getByTestId('xp-condition-survived')).checked).toBe(true)
+      expect(screen.getByTestId('xp-condition-deployed')).toBeChecked()
+      expect(screen.getByTestId('xp-condition-survived')).toBeChecked()
       expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
     })
   })
@@ -1269,8 +1269,8 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
 
     fireEvent.click(screen.getByTestId('xp-condition-general_draw'))
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('1')
-    expect((screen.getByTestId('xp-condition-general_win')).checked).toBe(false)
-    expect((screen.getByTestId('xp-condition-general_draw')).checked).toBe(true)
+    expect(screen.getByTestId('xp-condition-general_win')).not.toBeChecked()
+    expect(screen.getByTestId('xp-condition-general_draw')).toBeChecked()
   })
 
   it('[XP-CB-008b] general_win can be unchecked by clicking again', () => {
@@ -1286,11 +1286,11 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     const generalWin = screen.getByTestId('xp-condition-general_win')
     // Check
     fireEvent.click(generalWin)
-    expect(generalWin.checked).toBe(true)
+    expect(generalWin).toBeChecked()
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
     // Uncheck by clicking again
     fireEvent.click(generalWin)
-    expect(generalWin.checked).toBe(false)
+    expect(generalWin).not.toBeChecked()
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('0')
   })
 
@@ -1316,7 +1316,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
 
     // Check general_win on character step
     fireEvent.click(screen.getByTestId('xp-condition-general_win'))
-    expect((screen.getByTestId('xp-condition-general_win')).checked).toBe(true)
+    expect(screen.getByTestId('xp-condition-general_win')).toBeChecked()
 
     // Advance to next unit
     fireEvent.click(screen.getByTestId('wizard-next-button'))
@@ -1331,7 +1331,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     })
 
     // general_win should still be checked
-    expect((screen.getByTestId('xp-condition-general_win')).checked).toBe(true)
+    expect(screen.getByTestId('xp-condition-general_win')).toBeChecked()
     expect(screen.getByTestId('wizard-xp-total').textContent).toContain('2')
   })
 
@@ -1370,7 +1370,7 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
     fireEvent.click(screen.getByTestId('wizard-back-button'))
 
     await waitFor(() => {
-      expect((screen.getByTestId('xp-condition-deployed')).checked).toBe(true)
+      expect(screen.getByTestId('xp-condition-deployed')).toBeChecked()
       expect(screen.queryByTestId('wizard-previous-xp')).toBeNull()
     })
   })
@@ -1400,9 +1400,9 @@ describe('PostMatchWizard — XP checkboxes behavior', () => {
       />
     )
     const generalWin = screen.getByTestId('xp-condition-general_win')
-    expect(generalWin.type).toBe('checkbox')
+    expect(generalWin).toHaveAttribute('type', 'checkbox')
     const generalDraw = screen.getByTestId('xp-condition-general_draw')
-    expect(generalDraw.type).toBe('checkbox')
+    expect(generalDraw).toHaveAttribute('type', 'checkbox')
     // No "Aucun (pas le général)" option
     expect(screen.queryByTestId('xp-condition-general_none')).toBeNull()
     // Accessible group wrapping general conditions
@@ -1521,7 +1521,7 @@ describe('[AC3,AC4] PostMatchWizard — initial-xp mode', () => {
       />
     )
     const input = screen.getByTestId('wizard-xp-numeric-input')
-    expect(input.value).toBe('0')
+    expect(input).toHaveValue(0)
   })
 
   it('[INIT-XP-004] pre-fills numeric input with previousXpGained on re-entry', () => {
@@ -1539,7 +1539,7 @@ describe('[AC3,AC4] PostMatchWizard — initial-xp mode', () => {
       />
     )
     const input = screen.getByTestId('wizard-xp-numeric-input')
-    expect(input.value).toBe('15')
+    expect(input).toHaveValue(15)
   })
 
   it('[INIT-XP-005] submits entered numeric value via onSubmitUnitXp', async () => {
@@ -1700,13 +1700,18 @@ describe('[INIT-CSQ] PostMatchWizard — initial-xp consequence flow', () => {
     })
 
     const callArgs = onComplete.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (!callArgs) return
     const consequences = callArgs[3] as Array<{ type: string; opponentPlayerName?: string }>
     expect(consequences).toBeDefined()
     expect(consequences.length).toBe(1)
-    expect(consequences[0].type).toBe('rancune')
+    const firstConsequence = consequences[0]
+    expect(firstConsequence).toBeDefined()
+    if (!firstConsequence) return
+    expect(firstConsequence.type).toBe('rancune')
     // Must use per-consequence player name, NOT wizard-level opponentPlayerName
-    expect(consequences[0].opponentPlayerName).toBe('Alice')
-    expect(consequences[0].opponentPlayerName).not.toBe('WizardOpponent')
+    expect(firstConsequence.opponentPlayerName).toBe('Alice')
+    expect(firstConsequence.opponentPlayerName).not.toBe('WizardOpponent')
   })
 
   // [INIT-CSQ-005] Consequences for multiple units accumulate correctly
@@ -1755,6 +1760,8 @@ describe('[INIT-CSQ] PostMatchWizard — initial-xp consequence flow', () => {
     })
 
     const callArgs = onComplete.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (!callArgs) return
     const consequences = callArgs[3] as Array<{ type: string; unitId: string }>
     expect(consequences).toBeDefined()
     expect(consequences.length).toBe(2)
@@ -1791,6 +1798,8 @@ describe('[INIT-CSQ] PostMatchWizard — initial-xp consequence flow', () => {
     })
 
     const callArgs = onComplete.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (!callArgs) return
     const consequences = callArgs[3] as unknown[] | undefined
     // Either undefined or empty array — both valid (server handles both)
     const len = consequences?.length ?? 0
@@ -1851,8 +1860,10 @@ describe('[INIT-CSQ] PostMatchWizard — initial-xp consequence flow', () => {
 
     // Unit-1's consequence must still be in the batch (state preserved across step change)
     const callArgs = onComplete.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (!callArgs) return
     const consequences = callArgs[3] as Array<{ type: string; unitId: string }>
-    expect(consequences?.find((c) => c.unitId === 'unit-1' && c.type === 'moral_brise')).toBeDefined()
+    expect(consequences.find((c) => c.unitId === 'unit-1' && c.type === 'moral_brise')).toBeDefined()
   })
 
   // [INIT-CSQ-009] bannerLost absent (not false) on initial-xp entries
@@ -1887,8 +1898,10 @@ describe('[INIT-CSQ] PostMatchWizard — initial-xp consequence flow', () => {
     })
 
     const callArgs = onComplete.mock.calls[0]
+    expect(callArgs).toBeDefined()
+    if (!callArgs) return
     const consequences = callArgs[3] as Array<Record<string, unknown>>
-    expect(consequences?.length).toBeGreaterThan(0)
+    expect(consequences.length).toBeGreaterThan(0)
     // bannerLost must be absent (undefined), not false
     expect(consequences[0]).not.toHaveProperty('bannerLost')
   })
