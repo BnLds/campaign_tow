@@ -37,13 +37,32 @@ export interface ParsedArmy {
   units: ParsedUnit[]
 }
 
+// OWB exports stats in the app's language. Each canonical (French) stat name
+// maps to the set of aliases we accept when matching against a sub-profile line.
+// Order matters: we try the canonical name first, then English fallbacks.
+const STAT_ALIASES: Record<string, ReadonlyArray<string>> = {
+  M: ['M'],
+  CC: ['CC', 'WS'],
+  CT: ['CT', 'BS'],
+  F: ['F', 'S'],
+  E: ['E', 'T'],
+  PV: ['PV', 'W'],
+  I: ['I'],
+  A: ['A'],
+  Cd: ['Cd', 'Ld'],
+}
+
 // Extract a single stat value from a sub-profile line.
 // Handles nested parentheses: PV((+1)) → "(+1)"
+// Uses \b so that short names like F/S/T/W don't match inside longer ones (WS, BS…).
 function extractStat(line: string, statName: string): string | null {
-  const re = new RegExp(`${statName}\\((\\([^)]+\\)|[^)]+)\\)`)
-  const m = line.match(re)
-  if (!m) return null
-  return invariant(m[1], `extractStat: regex for ${statName} must capture group 1`)
+  const aliases = STAT_ALIASES[statName] ?? [statName]
+  for (const alias of aliases) {
+    const re = new RegExp(`\\b${alias}\\((\\([^)]+\\)|[^)]+)\\)`)
+    const m = line.match(re)
+    if (m) return invariant(m[1], `extractStat: regex for ${alias} must capture group 1`)
+  }
+  return null
 }
 
 function parseSubProfile(line: string): ParsedSubProfile | null {

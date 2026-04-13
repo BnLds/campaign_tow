@@ -1,0 +1,79 @@
+===
+Freakshow [788 pts]
+Warhammer: The Old World, Warriors of Chaos, Battle March
+===
+
+++ Characters [205 pts] ++
+
+Exalted Sorcerer [125 pts] 
+- Hand weapon
+- Light armour
+- Mark of Chaos [Mark of Chaos Undivided]
+- Wizard [Level 2 Wizard]
+- General
+- On foot
+- Favour of the Gods
+- Battle Magic
+
+[Exalted Sorcerer] M(4) WS(4) BS(3) S(4) T(4) W(2) I(3) A(2) Ld(8)
+
+Aspiring Champion [80 pts] 
+- Hand weapon
+- Heavy armour
+- Mark of Chaos [Mark of Nurgle]
+- On foot
+
+[Aspiring Champion] M(4) WS(5) BS(3) S(4) T(4) W(2) I(4) A(3) Ld(8)
+
+++ Core Units [345 pts] ++
+
+16 Chaos Marauders [128 pts] 
+- Hand weapons
+- Light armour
+- Shields
+- Chaotic Cult [None]
+- Formation [Close Order]
+- Dark Hearts
+
+[Chaos Marauder] M(4) WS(4) BS(3) S(3) T(3) W(1) I(3) A(1) Ld(6)
+[Marauder Headman] M(4) WS(4) BS(3) S(3) T(3) W(1) I(3) A(2) Ld(7)
+
+8 Forsaken [152 pts] 
+- Mutated weapons (Hand weapons)
+- Heavy armour
+- Forsaken by Khorne
+
+[Forsaken] M(5) WS(4) BS(0) S(4) T(4) W(1) I(3) A(D3) Ld(8)
+
+5 Marauder Horsemen [65 pts] 
+- Hand weapons
+- Flails
+- Light armour
+- Shields
+- Chaotic Cult [None]
+- Formation [Skirmishers]
+
+[Marauder Horseman] M(-) WS(4) BS(3) S(3) T(3) W(1) I(3) A(1) Ld(6)
+[Marauder Horsemaster] M(-) WS(4) BS(3) S(3) T(3) W(1) I(3) A(2) Ld(7)
+[Warhorse] M(8) WS(3) BS(-) S(3) T(-) W(-) I(3) A(1) Ld(-)
+
+++ Special Units [238 pts] ++
+
+2 Chaos Spawn [106 pts] 
+- Flailing appendages (Hand weapons)
+- Scaly skin (Heavy armour)
+- Spawn of Khorne
+
+[Chaos Spawn] M(2D6+1) WS(3) BS(0) S(4) T(5) W(3) I(3) A(D6) Ld(10)
+
+2 Dragon Ogres [132 pts] 
+- Great weapons
+- Heavy armour
+
+[Dragon Ogre] M(7) WS(4) BS(2) S(5) T(4) W(4) I(2) A(3) Ld(8)
+[Shartak] M(7) WS(4) BS(2) S(5) T(4) W(4) I(2) A(4) Ld(8)
+
+---
+Created with "Old World Builder"
+
+[https://old-world-builder.com]

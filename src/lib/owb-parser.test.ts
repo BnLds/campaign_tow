@@ -350,3 +350,153 @@ describe('[AC4][P0] parseOwbExport — error handling', () => {
     expect(errorMessage.length).toBeGreaterThan(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// English OWB exports — WS/BS/S/T/W/Ld stat aliases
+// Regression: stats were silently parsed as null when the OWB app language
+// was set to English. The parser must accept the English abbreviations and
+// map them to the canonical French fields (CC/CT/F/E/PV/Cd).
+// ---------------------------------------------------------------------------
+
+const ENGLISH_SAMPLE = readFileSync(
+  resolve(__dirname, '__fixtures__/owb-english-sample.txt'),
+  'utf-8',
+)
+
+describe('[AC1][P0] parseOwbExport — English stat aliases (WS/BS/S/T/W/Ld)', () => {
+  it('parses the English block-text export without errors', () => {
+    const result = parseOwbExport(ENGLISH_SAMPLE)
+    expect(result.name).toBe('Freakshow')
+    expect(result.faction).toBe('Warriors of Chaos')
+    expect(result.totalPoints).toBe(788)
+  })
+
+  it('normalizes English section names to canonical French types', () => {
+    const result = parseOwbExport(ENGLISH_SAMPLE)
+    const exalted = result.units.find((u) => u.name === 'Exalted Sorcerer')
+    const marauders = result.units.find((u) => u.name === 'Chaos Marauders')
+    const spawn = result.units.find((u) => u.name === 'Chaos Spawn')
+    expect(exalted?.type).toBe('Personnages')
+    expect(marauders?.type).toBe('Unités de base')
+    expect(spawn?.type).toBe('Unités spéciales')
+  })
+
+  it('maps English WS/BS/S/T/W/Ld to cc/ct/f/e/pv/cd on sub-profiles', () => {
+    const result = parseOwbExport(ENGLISH_SAMPLE)
+    const exalted = result.units.find((u) => u.name === 'Exalted Sorcerer')
+    const sp = exalted?.subProfiles[0]
+    assert(sp !== undefined, 'Exalted Sorcerer must have a sub-profile')
+    // [Exalted Sorcerer] M(4) WS(4) BS(3) S(4) T(4) W(2) I(3) A(2) Ld(8)
+    expect(sp.m).toBe('4')
+    expect(sp.cc).toBe('4') // WS
+    expect(sp.ct).toBe('3') // BS
+    expect(sp.f).toBe('4') // S — must NOT match inside WS(4)/BS(3)
+    expect(sp.e).toBe('4') // T
+    expect(sp.pv).toBe('2') // W
+    expect(sp.i).toBe('3')
+    expect(sp.a).toBe('2')
+    expect(sp.cd).toBe('8') // Ld
+  })
+
+  it('does not confuse S( with the S inside WS(/BS(', () => {
+    // [Marauder Horseman] M(-) WS(4) BS(3) S(3) T(3) W(1) I(3) A(1) Ld(6)
+    // If \b were missing, "S(" could match inside "WS(4)" and return "4" instead of "3".
+    const result = parseOwbExport(ENGLISH_SAMPLE)
+    const horsemen = result.units.find((u) => u.name === 'Marauder Horsemen')
+    const rider = horsemen?.subProfiles.find((s) => s.label === 'Marauder Horseman')
+    assert(rider !== undefined, 'Marauder Horseman sub-profile must exist')
+    expect(rider.f).toBe('3')
+    expect(rider.cc).toBe('4')
+    expect(rider.ct).toBe('3')
+  })
+
+  it('parses dice-expression stats in English exports (A(D3), M(2D6+1), A(D6))', () => {
+    const result = parseOwbExport(ENGLISH_SAMPLE)
+    const forsaken = result.units.find((u) => u.name === 'Forsaken')
+    const forsakenSp = forsaken?.subProfiles[0]
+    assert(forsakenSp !== undefined, 'Forsaken sub-profile must exist')
+    expect(forsakenSp.a).toBe('D3')
+
+    const spawn = result.units.find((u) => u.name === 'Chaos Spawn')
+    const spawnSp = spawn?.subProfiles[0]
+    assert(spawnSp !== undefined, 'Chaos Spawn sub-profile must exist')
+    expect(spawnSp.m).toBe('2D6+1')
+    expect(spawnSp.a).toBe('D6')
+  })
+
+  it('parses dash placeholder stats in English exports (M(-), BS(-))', () => {
+    const result = parseOwbExport(ENGLISH_SAMPLE)
+    const horsemen = result.units.find((u) => u.name === 'Marauder Horsemen')
+    const warhorse = horsemen?.subProfiles.find((s) => s.label === 'Warhorse')
+    const rider = horsemen?.subProfiles.find((s) => s.label === 'Marauder Horseman')
+    assert(warhorse !== undefined && rider !== undefined, 'horsemen sub-profiles must exist')
+    expect(rider.m).toBe('-')
+    expect(warhorse.ct).toBe('-') // BS(-)
+    expect(warhorse.e).toBe('-') // T(-)
+    expect(warhorse.cd).toBe('-') // Ld(-)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// English Lizardmen export — real-world edge cases
+// - Faction line with 4 comma-separated fields (army + variant + march)
+// - French nicknames with commas on unit lines
+// - Equipment containing nested parentheses
+// ---------------------------------------------------------------------------
+
+const ENGLISH_LIZARDMEN_SAMPLE = readFileSync(
+  resolve(__dirname, '__fixtures__/owb-english-lizardmen-sample.txt'),
+  'utf-8',
+)
+
+describe('[AC1][P0] parseOwbExport — English Lizardmen edge cases', () => {
+  it('parses a 4-field faction line (army, variant, march)', () => {
+    const result = parseOwbExport(ENGLISH_LIZARDMEN_SAMPLE)
+    // "Warhammer: The Old World, Lizardmen, Renegade, Battle March"
+    // The non-greedy regex must capture only "Lizardmen" as the faction.
+    expect(result.faction).toBe('Lizardmen')
+  })
+
+  it('parses the army header with non-ASCII characters', () => {
+    const result = parseOwbExport(ENGLISH_LIZARDMEN_SAMPLE)
+    expect(result.name).toBe('Xlaco\u2011Tok et les lézards')
+    expect(result.totalPoints).toBe(500)
+  })
+
+  it('splits French nickname from unit type on the leading comma', () => {
+    const result = parseOwbExport(ENGLISH_LIZARDMEN_SAMPLE)
+    const veteran = result.units.find((u) => u.nickname === 'Xlaco\u2011Tok')
+    assert(veteran !== undefined, 'Xlaco-Tok unit must exist')
+    expect(veteran.name).toBe('Vétéran Scarifié Saurus')
+    expect(veteran.type).toBe('Personnages')
+    expect(veteran.points).toBe(96)
+  })
+
+  it('maps English stats on a Saurus Scar-Veteran sub-profile', () => {
+    const result = parseOwbExport(ENGLISH_LIZARDMEN_SAMPLE)
+    const veteran = result.units.find((u) => u.nickname === 'Xlaco\u2011Tok')
+    const sp = veteran?.subProfiles[0]
+    assert(sp !== undefined, 'Saurus Scar-Veteran sub-profile must exist')
+    // [Saurus Scar-Veteran] M(4) WS(5) BS(0) S(5) T(5) W(2) I(3) A(4) Ld(8)
+    expect(sp.label).toBe('Saurus Scar-Veteran')
+    expect(sp.cc).toBe('5')
+    expect(sp.ct).toBe('0')
+    expect(sp.f).toBe('5')
+    expect(sp.e).toBe('5')
+    expect(sp.pv).toBe('2')
+    expect(sp.cd).toBe('8')
+  })
+
+  it('preserves nested parentheses inside equipment options', () => {
+    const result = parseOwbExport(ENGLISH_LIZARDMEN_SAMPLE)
+    const veteran = result.units.find((u) => u.nickname === 'Xlaco\u2011Tok')
+    // Equipment: Great weapon, Heavy armour (Scaly skin), Shield, General, On foot
+    // The "(Scaly skin)" nested group must survive the flattening pass.
+    expect(veteran?.options).toContain('Heavy armour (Scaly skin)')
+  })
+
+  it('counts the 6 units of the Lizardmen army', () => {
+    const result = parseOwbExport(ENGLISH_LIZARDMEN_SAMPLE)
+    expect(result.units).toHaveLength(6)
+  })
+})
