@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import React, { useEffect } from 'react'
 import * as Sentry from '@sentry/tanstackstart-react'
+import { computeMatchSnapshotDeltas } from '../../../lib/match-deltas'
 import { useHydrated } from '../../../lib/useHydrated'
 import { authMiddleware } from '../../../lib/middleware'
 import { submitInitialXpSchema, loadPostMatchDataSchema, completeEvolutionsWithGainsSchema } from '../../../lib/validators'
@@ -43,7 +44,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
     }
-    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo, getArmyXpAndPointsTotalsBatch, getUnitSelectionForParticipant, getUnitsTotalsByIds } = await import('../../../db/queries')
+    const { getPlayerArmy, getMatchParticipantForEvolutionByPlayer, getLatestMatchIdForArmy, getUnitsForArmy, getMatchXpEntries, getUnitDeltas, getAllPlayersWithArmyInfo, getUnitSelectionForParticipant } = await import('../../../db/queries')
 
     // Load drizzle deps before round 1 (needed for match type + opponent query)
     const [
@@ -61,11 +62,20 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
     const oppPlayerAlias = alias(playersTable, 'opp_player')
 
     // Round 1 (parallel): army + participant + opponent name + matchType
+    // oppRows also carries the opponent's frozen snapshotXp so the catchup
+    // delta is computed from the same value the timeline entry displays —
+    // not from the opponent's live XP (which changes if they submit their
+    // post-match first).
     const [army, participant, oppRows, matchRows] = await Promise.all([
       getPlayerArmy(context.session.playerId),
       getMatchParticipantForEvolutionByPlayer(data.matchId, context.session.playerId),
       db
-        .select({ playerName: oppPlayerAlias.username, oppArmyId: oppParticipant.armyId })
+        .select({
+          playerName: oppPlayerAlias.username,
+          oppArmyId: oppParticipant.armyId,
+          oppSnapshotXp: oppParticipant.snapshotXp,
+          oppSnapshotPoints: oppParticipant.snapshotPoints,
+        })
         .from(oppParticipant)
         .innerJoin(oppPlayerAlias, dbEq(oppParticipant.playerId, oppPlayerAlias.id))
         .where(dbAnd(dbEq(oppParticipant.matchId, data.matchId), dbNe(oppParticipant.playerId, context.session.playerId)))
@@ -113,40 +123,27 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
       ? await getUnitSelectionForParticipant(participant.id)
       : null // null = no selection, load all units
 
-    // Compute catchup bonus XP — use per-participant selected totals when available
-    const oppArmyId = oppRows[0]?.oppArmyId ?? null
-    // Get opponent participant for their selection
-    const oppParticipantRows = oppArmyId
-      ? await db
-          .select({ id: mpTable.id, unitSelectionCompletedAt: mpTable.unitSelectionCompletedAt })
-          .from(mpTable)
-          .where(dbAnd(dbEq(mpTable.matchId, data.matchId), dbNe(mpTable.playerId, context.session.playerId)))
-          .limit(1)
-      : []
-    const oppParticipantInfo = oppParticipantRows[0] ?? null
-
-    // Player totals: from selection if exists, else full army
-    let playerTotal: { totalXp: number; totalPoints: number }
-    if (playerSelectionUnitIds && playerSelectionUnitIds.length > 0) {
-      playerTotal = await getUnitsTotalsByIds(playerSelectionUnitIds)
-    } else {
-      const totalsMap = await getArmyXpAndPointsTotalsBatch([army.id])
-      playerTotal = totalsMap.get(army.id) ?? { totalXp: 0, totalPoints: 0 }
+    // Catchup delta XP — read from the frozen snapshots taken when the match
+    // result was entered (and refreshed on unit-selection changes). Using
+    // snapshots keeps the value consistent with the timeline entry and stops
+    // the opponent's post-match gains from shifting our own catchup bonus
+    // when they submit first.
+    const mySnapshotXp = participant.snapshotXp
+    const oppSnapshotXp = oppRows[0]?.oppSnapshotXp ?? null
+    const mySnapshotPoints = participant.snapshotPoints
+    const oppSnapshotPoints = oppRows[0]?.oppSnapshotPoints ?? null
+    if (mode !== 'initial-xp' && (mySnapshotXp == null || oppSnapshotXp == null)) {
+      Sentry.captureMessage('post-match snapshot missing', {
+        level: 'warning',
+        extra: { matchId: data.matchId, mySnapshotXp, oppSnapshotXp, matchType },
+      })
     }
-
-    // Opponent totals: from their selection if exists, else full army
-    let opponentTotal: { totalXp: number; totalPoints: number } = { totalXp: 0, totalPoints: 0 }
-    if (oppArmyId) {
-      if (oppParticipantInfo?.unitSelectionCompletedAt) {
-        const oppSelectedIds = await getUnitSelectionForParticipant(oppParticipantInfo.id)
-        opponentTotal = oppSelectedIds.length > 0 ? await getUnitsTotalsByIds(oppSelectedIds) : { totalXp: 0, totalPoints: 0 }
-      } else {
-        const totalsMap = await getArmyXpAndPointsTotalsBatch([oppArmyId])
-        opponentTotal = totalsMap.get(oppArmyId) ?? { totalXp: 0, totalPoints: 0 }
-      }
-    }
-    const catchupDeltaXp = mode === 'initial-xp' ? 0 : Math.max(0, opponentTotal.totalXp - playerTotal.totalXp)
-    const catchupBonusXp = Math.floor(catchupDeltaXp / 10)
+    const { catchupDeltaXp, catchupBonusXp } = computeMatchSnapshotDeltas({
+      mySnapshotXp,
+      oppSnapshotXp,
+      mySnapshotPoints,
+      oppSnapshotPoints,
+    })
 
     // Reentry: restore persisted bonusXp instead of live-computed value
     let finalCatchupBonusXp = catchupBonusXp

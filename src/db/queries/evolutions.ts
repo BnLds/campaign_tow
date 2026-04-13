@@ -11,7 +11,7 @@ type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 export async function getMatchParticipantForEvolutionByPlayer(
   matchId: string,
   playerId: string,
-): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null; evolutionsEnteredAt: Date | null; unitSelectionCompletedAt: Date | null } | null> {
+): Promise<{ id: string; matchId: string; playerId: string; armyId: string | null; result: string | null; evolutionsEnteredAt: Date | null; unitSelectionCompletedAt: Date | null; snapshotXp: number | null; snapshotPoints: number | null } | null> {
   const rows = await db
     .select({
       id: matchParticipants.id,
@@ -21,6 +21,8 @@ export async function getMatchParticipantForEvolutionByPlayer(
       result: matchParticipants.result,
       evolutionsEnteredAt: matchParticipants.evolutionsEnteredAt,
       unitSelectionCompletedAt: matchParticipants.unitSelectionCompletedAt,
+      snapshotXp: matchParticipants.snapshotXp,
+      snapshotPoints: matchParticipants.snapshotPoints,
     })
     .from(matchParticipants)
     .where(and(eq(matchParticipants.matchId, matchId), eq(matchParticipants.playerId, playerId)))

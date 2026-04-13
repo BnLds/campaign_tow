@@ -6,6 +6,7 @@ import type { UnitGainType } from '../units'
 import { getArmyXpAndPointsTotalsBatch, getUnitsTotalsByIds } from '../units'
 import { getUnitSelectionForParticipant } from './unit-selections'
 import { invariant } from '../../../lib/invariant'
+import { computeMatchSnapshotDeltas } from '../../../lib/match-deltas'
 
 export type MatchType = 'standard' | 'initial_setup'
 
@@ -181,13 +182,19 @@ export async function getTimelineForArmy(armyId: string, initialXpCompletedAt: D
       const snapshotPoints = invariant(row.snapshotPoints, 'hasSnapshot guarantees snapshotPoints is set')
       const oppSnapshotXp = invariant(row.oppSnapshotXp, 'hasSnapshot guarantees oppSnapshotXp is set')
       const oppSnapshotPoints = invariant(row.oppSnapshotPoints, 'hasSnapshot guarantees oppSnapshotPoints is set')
+      const { signedDeltaXp, signedDeltaPoints } = computeMatchSnapshotDeltas({
+        mySnapshotXp: snapshotXp,
+        oppSnapshotXp,
+        mySnapshotPoints: snapshotPoints,
+        oppSnapshotPoints,
+      })
       armyTotals = {
         playerXp: snapshotXp,
         playerPoints: snapshotPoints,
         opponentXp: oppSnapshotXp,
         opponentPoints: oppSnapshotPoints,
-        deltaXp: snapshotXp - oppSnapshotXp,
-        deltaPoints: snapshotPoints - oppSnapshotPoints,
+        deltaXp: signedDeltaXp,
+        deltaPoints: signedDeltaPoints,
       }
     } else {
       // No snapshot — use selection-aware totals if available, else full army

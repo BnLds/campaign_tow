@@ -7,6 +7,7 @@
 //   import { authMiddleware } from '../lib/middleware'
 
 import { createMiddleware } from '@tanstack/react-start'
+import { redirect } from '@tanstack/react-router'
 
 // authMiddleware: validates session, injects it into server function context.
 // Dynamic import of getSession prevents auth.ts (which imports @tanstack/react-start/server)
@@ -15,7 +16,7 @@ import { createMiddleware } from '@tanstack/react-start'
 export const authMiddleware = createMiddleware({ type: 'function' }).server(async ({ next }) => {
   const { getSession } = await import('./auth')
   const session = await getSession()
-  if (!session) throw new Error('UNAUTHORIZED')
+  if (!session) throw redirect({ to: '/login' })
   return next({ context: { session } })
 })
 
