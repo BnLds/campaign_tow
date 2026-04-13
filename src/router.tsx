@@ -1,4 +1,4 @@
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { createRouter as createTanStackRouter, isRedirect } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import * as Sentry from "@sentry/tanstackstart-react";
 
@@ -42,6 +42,10 @@ export function getRouter() {
     // Learn more at https://docs.sentry.io/platforms/javascript/session-replay/configuration/#general-integration-configuration
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
+    beforeSend(event, hint) {
+      if (isRedirect(hint.originalException)) return null
+      return event
+    },
     });
   }
 
