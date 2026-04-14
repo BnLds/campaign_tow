@@ -26,10 +26,22 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
       { title: "Campagne TOW 2026 - Launa'Gamers" },
+      { name: 'description', content: 'Suivi de campagne The Old World' },
+      { name: 'theme-color', content: '#334155' },
+      { name: 'mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-title', content: 'Campagne TOW' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'manifest', href: '/manifest.webmanifest' },
+      { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/icons/maskable-icon-96.png' },
+      { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/icons/maskable-icon-192.png' },
+      { rel: 'apple-touch-icon', sizes: '192x192', href: '/icons/apple-touch-icon.png' },
+    ],
   }),
   beforeLoad: async ({ location, context: { queryClient } }) => {
     // Always return { session } so TanStack Router updates context on every navigation.
