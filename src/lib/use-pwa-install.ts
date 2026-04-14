@@ -1,21 +1,38 @@
 import { useState, useEffect } from 'react'
 
 interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>
+  prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+type PwaPlatform = 'chromium' | 'firefox' | 'ios-safari' | 'other'
+
 interface PwaInstallResult {
   canPrompt: boolean
-  isIOS: boolean
+  platform: PwaPlatform
   isInstalled: boolean
   promptInstall: () => Promise<void>
+}
+
+declare global {
+  interface Window {
+    __deferredPwaPrompt?: BeforeInstallPromptEvent | null
+  }
+}
+
+function detectPlatform(): PwaPlatform {
+  if (typeof navigator === 'undefined') return 'other'
+  const ua = navigator.userAgent
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios-safari'
+  if (/firefox|fxios/i.test(ua)) return 'firefox'
+  if (/chrome|chromium|edg|opr|samsungbrowser/i.test(ua)) return 'chromium'
+  return 'other'
 }
 
 export function usePwaInstall(): PwaInstallResult {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
+  const [platform, setPlatform] = useState<PwaPlatform>('other')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -29,30 +46,31 @@ export function usePwaInstall(): PwaInstallResult {
       return
     }
 
-    setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent))
+    setPlatform(detectPlatform())
 
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
-        // enregistrement silencieux — le SW no-op est optionnel
-      })
+    // Récupère l'event déjà stashé par le bootstrap inline (__root.tsx)
+    // au cas où il aurait été tiré avant hydration.
+    if (window.__deferredPwaPrompt) {
+      setDeferredPrompt(window.__deferredPwaPrompt)
     }
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
+    const handleAvailable = () => {
+      if (window.__deferredPwaPrompt) {
+        setDeferredPrompt(window.__deferredPwaPrompt)
+      }
     }
 
-    const handleAppInstalled = () => {
+    const handleInstalled = () => {
       setDeferredPrompt(null)
       setIsInstalled(true)
     }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    window.addEventListener('appinstalled', handleAppInstalled)
+    window.addEventListener('pwa-install-available', handleAvailable)
+    window.addEventListener('pwa-installed', handleInstalled)
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-      window.removeEventListener('appinstalled', handleAppInstalled)
+      window.removeEventListener('pwa-install-available', handleAvailable)
+      window.removeEventListener('pwa-installed', handleInstalled)
     }
   }, [])
 
@@ -61,11 +79,14 @@ export function usePwaInstall(): PwaInstallResult {
     await deferredPrompt.prompt()
     await deferredPrompt.userChoice
     setDeferredPrompt(null)
+    if (typeof window !== 'undefined') {
+      window.__deferredPwaPrompt = null
+    }
   }
 
   return {
     canPrompt: deferredPrompt !== null,
-    isIOS,
+    platform,
     isInstalled,
     promptInstall,
   }

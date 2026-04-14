@@ -45,8 +45,9 @@ export function AppHeader({
   const queryClient = useQueryClient()
   const [loggingOut, setLoggingOut] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
-  const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false)
-  const { canPrompt, isIOS, isInstalled, promptInstall } = usePwaInstall()
+  const [installInstructionsOpen, setInstallInstructionsOpen] = useState(false)
+  const { canPrompt, platform, isInstalled, promptInstall } = usePwaInstall()
+  const showInstallItem = !isInstalled && platform !== 'other'
 
   const handleLogout = async () => {
     if (loggingOut) return
@@ -143,14 +144,14 @@ export function AppHeader({
                 >
                   Paramètres
                 </DropdownMenuItem>
-                {!isInstalled && (canPrompt || isIOS) && (
+                {showInstallItem && (
                   <DropdownMenuItem
                     data-testid="install-pwa-link"
                     onSelect={async () => {
-                      if (isIOS) {
-                        setIosInstructionsOpen(true)
-                      } else {
+                      if (platform === 'chromium' && canPrompt) {
                         await promptInstall()
+                      } else {
+                        setInstallInstructionsOpen(true)
                       }
                     }}
                   >
@@ -171,7 +172,7 @@ export function AppHeader({
         )}
       </header>
 
-      <Dialog open={iosInstructionsOpen} onOpenChange={(isOpen) => { if (!isOpen) setIosInstructionsOpen(false) }}>
+      <Dialog open={installInstructionsOpen} onOpenChange={(isOpen) => { if (!isOpen) setInstallInstructionsOpen(false) }}>
         <DialogContent className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-[340px]">
           <DialogHeader>
             <DialogTitle className="font-[family-name:var(--font-display)] text-[var(--color-text-primary)]">
@@ -179,12 +180,39 @@ export function AppHeader({
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 pt-2 text-sm font-[family-name:var(--font-body)] text-[var(--color-text-primary)]">
-            <p>Pour installer l'app sur votre écran d'accueil :</p>
-            <ol className="flex flex-col gap-2 list-none pl-0">
-              <li>1. Touchez l'icône <strong>Partager</strong> ⬆️ dans la barre d'outils Safari</li>
-              <li>2. Faites défiler et choisissez <strong>« Sur l'écran d'accueil »</strong></li>
-              <li>3. Touchez <strong>« Ajouter »</strong> en haut à droite</li>
-            </ol>
+            {platform === 'ios-safari' && (
+              <>
+                <p>Pour installer l'app sur votre écran d'accueil :</p>
+                <ol className="flex flex-col gap-2 list-none pl-0">
+                  <li>1. Touchez l'icône <strong>Partager</strong> ⬆️ dans la barre d'outils Safari</li>
+                  <li>2. Faites défiler et choisissez <strong>« Sur l'écran d'accueil »</strong></li>
+                  <li>3. Touchez <strong>« Ajouter »</strong> en haut à droite</li>
+                </ol>
+              </>
+            )}
+            {platform === 'firefox' && (
+              <>
+                <p>Firefox ne permet pas à l'app de lancer l'installation directement. Pour l'installer :</p>
+                <ol className="flex flex-col gap-2 list-none pl-0">
+                  <li>1. Ouvrez le menu Firefox <strong>⋮</strong> en haut à droite</li>
+                  <li>2. Choisissez <strong>« Installer »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong></li>
+                  <li>3. Confirmez l'installation</li>
+                </ol>
+              </>
+            )}
+            {platform === 'chromium' && (
+              <>
+                <p>L'invite d'installation n'est pas encore disponible. Vous pouvez l'installer manuellement :</p>
+                <ol className="flex flex-col gap-2 list-none pl-0">
+                  <li>1. Ouvrez le menu du navigateur <strong>⋮</strong></li>
+                  <li>2. Choisissez <strong>« Installer l'application »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong></li>
+                  <li>3. Confirmez l'installation</li>
+                </ol>
+                <p className="text-[var(--color-text-muted)] text-xs">
+                  Astuce : interagissez avec l'app (naviguez, touchez) puis rouvrez ce menu — Chrome active l'invite directe après quelques secondes d'utilisation.
+                </p>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

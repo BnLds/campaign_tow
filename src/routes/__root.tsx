@@ -138,11 +138,34 @@ function RootLayout() {
   )
 }
 
+// Capture `beforeinstallprompt` avant hydration React. Si on attend un
+// useEffect pour attacher le listener, Chromium tire l'event en premier et
+// on ne peut plus le rejouer — le menu "Installer" reste désactivé à vie.
+// Note : on N'APPELLE PAS preventDefault() pour laisser Chrome afficher aussi
+// sa mini-infobar native en parallèle du menu de l'app.
+const pwaBootstrap = `
+(function(){
+  if (typeof window === 'undefined') return;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  }
+  window.addEventListener('beforeinstallprompt', function(e){
+    window.__deferredPwaPrompt = e;
+    window.dispatchEvent(new CustomEvent('pwa-install-available'));
+  });
+  window.addEventListener('appinstalled', function(){
+    window.__deferredPwaPrompt = null;
+    window.dispatchEvent(new CustomEvent('pwa-installed'));
+  });
+})();
+`
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: pwaBootstrap }} />
       </head>
       <body>
         <TanStackQueryProvider>{children}</TanStackQueryProvider>
