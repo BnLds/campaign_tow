@@ -12,6 +12,7 @@ import {
 } from './ui/dropdown-menu'
 import { Menu } from 'lucide-react'
 import type { SessionData } from '../lib/auth'
+import { usePwaInstall } from '../lib/use-pwa-install'
 
 function RecordBadge({ record }: { record: { wins: number; draws: number; losses: number } }) {
   const total = record.wins + record.draws + record.losses
@@ -44,6 +45,8 @@ export function AppHeader({
   const queryClient = useQueryClient()
   const [loggingOut, setLoggingOut] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false)
+  const { canPrompt, isIOS, isInstalled, promptInstall } = usePwaInstall()
 
   const handleLogout = async () => {
     if (loggingOut) return
@@ -140,6 +143,20 @@ export function AppHeader({
                 >
                   Paramètres
                 </DropdownMenuItem>
+                {!isInstalled && (canPrompt || isIOS) && (
+                  <DropdownMenuItem
+                    data-testid="install-pwa-link"
+                    onSelect={async () => {
+                      if (isIOS) {
+                        setIosInstructionsOpen(true)
+                      } else {
+                        await promptInstall()
+                      }
+                    }}
+                  >
+                    Installer l'app
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onSelect={() => {
@@ -153,6 +170,24 @@ export function AppHeader({
           </div>
         )}
       </header>
+
+      <Dialog open={iosInstructionsOpen} onOpenChange={(isOpen) => { if (!isOpen) setIosInstructionsOpen(false) }}>
+        <DialogContent className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-[340px]">
+          <DialogHeader>
+            <DialogTitle className="font-[family-name:var(--font-display)] text-[var(--color-text-primary)]">
+              Installer l'application
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2 text-sm font-[family-name:var(--font-body)] text-[var(--color-text-primary)]">
+            <p>Pour installer l'app sur votre écran d'accueil :</p>
+            <ol className="flex flex-col gap-2 list-none pl-0">
+              <li>1. Touchez l'icône <strong>Partager</strong> ⬆️ dans la barre d'outils Safari</li>
+              <li>2. Faites défiler et choisissez <strong>« Sur l'écran d'accueil »</strong></li>
+              <li>3. Touchez <strong>« Ajouter »</strong> en haut à droite</li>
+            </ol>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={optionsOpen} onOpenChange={(isOpen) => { if (!isOpen) setOptionsOpen(false) }}>
         <DialogContent className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-[340px]">
