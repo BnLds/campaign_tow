@@ -1,5 +1,5 @@
 // Campaign TOW — Settings page
-// AC7: password change (requires current password for activated accounts)
+// AC7: password change (no current password required — session auth is sufficient)
 // AC10: accessible via header menu for non-guest players
 
 import { createFileRoute, redirect, useRouteContext, useRouter } from '@tanstack/react-router'
@@ -26,27 +26,7 @@ const changePasswordFn = createServerFn({ method: 'POST' })
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
     }
 
-    const { db } = await import('../db/index')
-    const { players } = await import('../db/schema')
-    const { eq } = await import('drizzle-orm')
     const bcryptjs = await import('bcryptjs')
-
-    const playerRow = await db.query.players.findFirst({ where: eq(players.id, context.session.playerId) })
-    if (!playerRow) {
-      return { success: false, error: { code: 'NOT_FOUND', message: 'Joueur introuvable' } }
-    }
-
-    // If player has a password set, current password is required
-    if (playerRow.passwordHash) {
-      if (!data.currentPassword) {
-        return { success: false, error: { code: 'INVALID_CURRENT_PASSWORD', message: 'Le mot de passe actuel est requis' } }
-      }
-      const valid = await bcryptjs.compare(data.currentPassword, playerRow.passwordHash)
-      if (!valid) {
-        return { success: false, error: { code: 'INVALID_CURRENT_PASSWORD', message: 'Mot de passe actuel incorrect' } }
-      }
-    }
-
     const newHash = await bcryptjs.hash(data.newPassword, 12)
     const { updatePlayerPassword } = await import('../db/queries')
     await updatePlayerPassword(context.session.playerId, newHash)
@@ -111,7 +91,7 @@ function SettingsPage() {
   const queryClient = useQueryClient()
 
   const passwordMutation = useMutation({
-    mutationFn: async (data: { currentPassword: string; newPassword: string; confirmNewPassword: string }) => {
+    mutationFn: async (data: { newPassword: string; confirmNewPassword: string }) => {
       const result = await changePasswordFn({ data })
       if (!result.success) throw new Error(result.error.message)
       return result.data
@@ -135,7 +115,7 @@ function SettingsPage() {
   })
 
   const passwordForm = useForm({
-    defaultValues: { currentPassword: '', newPassword: '', confirmNewPassword: '' },
+    defaultValues: { newPassword: '', confirmNewPassword: '' },
     validators: { onSubmit: changePasswordSchema },
     onSubmit: ({ value }) => {
       passwordMutation.reset()
@@ -234,29 +214,6 @@ function SettingsPage() {
       <section style={sectionStyle}>
         <h2 style={headingStyle}>Mot de passe</h2>
         <form onSubmit={(e) => { e.preventDefault(); passwordForm.handleSubmit() }}>
-          <passwordForm.Field name="currentPassword">
-            {(field) => (
-              <div style={{ marginBottom: '1rem' }}>
-                <Label htmlFor="currentPassword">Mot de passe actuel</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  data-testid="settings-current-password-input"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  style={{ marginTop: '0.25rem' }}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p style={{ color: 'var(--color-malus)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                    {typeof field.state.meta.errors[0] === 'string'
-                      ? field.state.meta.errors[0]
-                      : (field.state.meta.errors[0] as { message: string } | undefined)?.message}
-                  </p>
-                )}
-              </div>
-            )}
-          </passwordForm.Field>
           <passwordForm.Field name="newPassword">
             {(field) => (
               <div style={{ marginBottom: '1rem' }}>

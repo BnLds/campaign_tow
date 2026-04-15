@@ -23,9 +23,10 @@ describe('[AC7][AC10][P0] Settings route — src/routes/settings.tsx', () => {
     expect(route).toMatch(/changePasswordFn\s*=\s*createServerFn[\s\S]{0,400}\.middleware\(\[authMiddleware\]\)/)
   })
 
-  it('[settings-INT-004] changePasswordFn enforces current password check when passwordHash is set (coupled guard)', () => {
+  it('[settings-INT-004] changePasswordFn does NOT require current password (session auth is sufficient)', () => {
     const route = readFileSync(resolve(root, 'src/routes/settings.tsx'), 'utf-8')
-    expect(route).toMatch(/changePasswordFn[\s\S]{0,1500}INVALID_CURRENT_PASSWORD/)
+    expect(route).not.toMatch(/INVALID_CURRENT_PASSWORD/)
+    expect(route).not.toMatch(/currentPassword/)
   })
 
   it('[settings-INT-005] changePasswordFn hashes new password with bcryptjs 12 rounds (coupled)', () => {
