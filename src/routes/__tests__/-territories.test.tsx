@@ -142,14 +142,16 @@ describe('[AC7][P0] Root layout — flex column structure (Tasks 4.2, 4.3)', () 
     expect(root_tsx).toMatch(/100dvh|100vh/)
   })
 
-  it('[3.1b-TER-016] __root.tsx has scrollable content wrapper with flex: 1 and overflow-y auto', () => {
+  it('[3.1b-TER-016] scrollable content wrapper has overflow-y auto (in PullToRefreshContainer)', () => {
     const root_tsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(root_tsx).toMatch(/overflowY.*auto|overflow-y.*auto/)
+    expect(root_tsx).toMatch(/<PullToRefreshContainer[\s\S]*<Outlet/)
+    const container = readFileSync(resolve(root, 'src/components/pull-to-refresh-container.tsx'), 'utf-8')
+    expect(container).toMatch(/overflowY.*['"]auto['"]|overflow-y.*auto/)
   })
 
-  it('[3.1b-TER-017] __root.tsx scrollable wrapper has padding-bottom 68px to clear TabBar', () => {
-    const root_tsx = readFileSync(resolve(root, 'src/routes/__root.tsx'), 'utf-8')
-    expect(root_tsx).toMatch(/paddingBottom.*68|68.*paddingBottom|padding-bottom.*68/)
+  it('[3.1b-TER-017] scrollable wrapper has padding-bottom 68px to clear TabBar (in PullToRefreshContainer)', () => {
+    const container = readFileSync(resolve(root, 'src/components/pull-to-refresh-container.tsx'), 'utf-8')
+    expect(container).toMatch(/paddingBottom.*68|68.*paddingBottom|padding-bottom.*68/)
   })
 
   it('[3.1b-TER-018] __root.tsx scrollable wrapper has minHeight: 0 (critical for flex shrink)', () => {

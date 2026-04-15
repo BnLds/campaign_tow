@@ -6,8 +6,10 @@ import {
   redirect,
   useLocation,
   useRouteContext,
+  useRouter,
 } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import * as Sentry from '@sentry/tanstackstart-react'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import { TabBar } from '../components/tab-bar'
@@ -17,6 +19,10 @@ import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 import type { SessionData } from '../lib/auth'
 import { sessionQueryOptions, armyInfoQueryOptions } from '../lib/session-queries'
+import { PullToRefreshContainer } from '../components/pull-to-refresh-container'
+import { invalidateArmyState } from '../lib/invalidation-helpers'
+
+const NO_PULL_REFRESH_PATTERNS: RegExp[] = [/^\/match\/[^/]+\/post-match/]
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -94,6 +100,13 @@ function RootLayout() {
   const { session } = useRouteContext({ from: '__root__' })
   const location = useLocation()
   const currentPath = location.pathname
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const pullEnabled = !NO_PULL_REFRESH_PATTERNS.some((r) => r.test(currentPath))
+  const handleRefresh = useCallback(
+    () => invalidateArmyState(queryClient, router),
+    [queryClient, router],
+  )
 
   // Reactive queries: subscribe to cache so header updates on invalidation
   // (beforeLoad only runs on navigation, not on router.invalidate)
@@ -116,16 +129,9 @@ function RootLayout() {
       }}
     >
       {session && <AppHeader key={session.playerId} session={session} army={army} record={record} />}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          paddingBottom: 68,
-          minHeight: 0,
-        }}
-      >
+      <PullToRefreshContainer enabled={pullEnabled} onRefresh={handleRefresh}>
         <Outlet />
-      </div>
+      </PullToRefreshContainer>
       {session && !session.isGuest && (
         <CreateMatchFab
           session={{ playerId: session.playerId, isGuest: session.isGuest }}
