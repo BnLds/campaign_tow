@@ -9,9 +9,21 @@ import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
+  // Sourcemaps pour tous les builds Vite (client + SSR) — nécessaire pour que
+  // les traces d'erreurs remontent au code source original dans Sentry.
+  build: {
+    sourcemap: true,
+  },
   plugins: [
     devtools(),
-    nitro({ rollupConfig: { external: [/^@sentry\//] } }),
+    // sourcemap: true → émet aussi les sourcemaps du bundle serveur final
+    // (.output/server). Sans ça, seules les erreurs *client* ont des traces
+    // lisibles dans Sentry ; les erreurs serveur (routes API, server fns)
+    // restent minifiées (build Nitro de prod : sourcemap désactivée par défaut).
+    nitro({
+      sourcemap: true,
+      rollupConfig: { external: [/^@sentry\//] },
+    }),
     tsconfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),
     tanstackStart(),
