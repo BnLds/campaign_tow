@@ -29,9 +29,6 @@ ARG SENTRY_RELEASE
 ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 ENV SENTRY_RELEASE=$SENTRY_RELEASE
-# TEMPORAIRE : logs debug de l'upload sourcemaps Sentry.
-# À retirer une fois l'upload confirmé OK dans les logs de déploiement.
-ENV SENTRY_LOG_LEVEL=debug
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
