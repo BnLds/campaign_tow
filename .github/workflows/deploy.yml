@@ -15,7 +15,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /opt/campaign_tow
+            cd ~/campaign_tow
             GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy" git pull origin main
             sudo docker compose -f docker-compose.prod.yml build --no-cache app
 
