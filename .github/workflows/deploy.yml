@@ -22,7 +22,8 @@ jobs:
             cd ~/campaign_tow
             GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy" git pull origin main
 
-            COMPOSE="sudo docker compose -f docker-compose.prod.yml"
+            # Pas de sudo : vps_ben est membre du groupe docker
+            COMPOSE="docker compose -f docker-compose.prod.yml"
 
             $COMPOSE build --no-cache app
 
@@ -40,7 +41,7 @@ jobs:
             # Attendre que le nouveau conteneur soit réellement healthy (max 60s)
             echo "Attente du healthcheck..."
             for i in $(seq 1 30); do
-              STATUS=$(sudo docker inspect -f '{{.State.Health.Status}}' "$NEW_CONTAINER")
+              STATUS=$(docker inspect -f '{{.State.Health.Status}}' "$NEW_CONTAINER")
               echo "  [$i/30] $STATUS"
               [ "$STATUS" = "healthy" ] && break
               if [ "$i" = "30" ]; then
@@ -51,10 +52,10 @@ jobs:
             done
 
             # Bascule réussie : retirer l'ancien conteneur
-            sudo docker stop "$OLD_CONTAINER"
-            sudo docker rm "$OLD_CONTAINER"
+            docker stop "$OLD_CONTAINER"
+            docker rm "$OLD_CONTAINER"
 
             # Revenir à scale=1
             $COMPOSE up -d --no-deps --scale app=1 --no-recreate app
 
-            sudo docker image prune -f
+            docker image prune -f
