@@ -11,6 +11,12 @@ RUN pnpm install --frozen-lockfile
 FROM node:22-slim AS build
 WORKDIR /app
 
+# ca-certificates : requis par le binaire sentry-cli (Rust) pour vérifier le
+# TLS lors de l'upload des sourcemaps. node:22-slim ne l'inclut pas — sans ça :
+# "SSL certificate problem: unable to get local issuer certificate".
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Build-time args : variables Vite (préfixe VITE_) inlinées dans le bundle client.
