@@ -15,22 +15,46 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            # set -e : toute commande qui échoue arrête le script et fait
+            # échouer le job (sinon le pipeline reste vert sans rien déployer).
+            set -eo pipefail
+
             cd ~/campaign_tow
             GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy" git pull origin main
-            sudo docker compose -f docker-compose.prod.yml build --no-cache app
 
-            # Blue-green : scale à 2 (ancien + nouveau)
-            sudo docker compose -f docker-compose.prod.yml up -d --no-deps --scale app=2 --no-recreate app
+            COMPOSE="sudo docker compose -f docker-compose.prod.yml"
 
-            # Attendre que le nouveau container soit healthy
-            echo "Waiting for new container to be healthy..."
-            sleep 20
+            $COMPOSE build --no-cache app
 
-            # Supprimer l'ancien container (celui créé en premier)
-            OLD_CONTAINER=$(sudo docker compose -f docker-compose.prod.yml ps -q app | head -1)
-            sudo docker stop "$OLD_CONTAINER" && sudo docker rm "$OLD_CONTAINER"
+            # Conteneur actuel, capturé AVANT le scale (identification fiable)
+            OLD_CONTAINER=$($COMPOSE ps -q app)
+            echo "Ancien conteneur : $OLD_CONTAINER"
+
+            # Blue-green : démarre le nouveau conteneur à côté de l'ancien
+            $COMPOSE up -d --no-deps --scale app=2 --no-recreate app
+
+            # Le nouveau conteneur = celui qui n'est pas l'ancien
+            NEW_CONTAINER=$($COMPOSE ps -q app | grep -v "$OLD_CONTAINER")
+            echo "Nouveau conteneur : $NEW_CONTAINER"
+
+            # Attendre que le nouveau conteneur soit réellement healthy (max 60s)
+            echo "Attente du healthcheck..."
+            for i in $(seq 1 30); do
+              STATUS=$(sudo docker inspect -f '{{.State.Health.Status}}' "$NEW_CONTAINER")
+              echo "  [$i/30] $STATUS"
+              [ "$STATUS" = "healthy" ] && break
+              if [ "$i" = "30" ]; then
+                echo "ÉCHEC : le nouveau conteneur n'est jamais devenu healthy"
+                exit 1
+              fi
+              sleep 2
+            done
+
+            # Bascule réussie : retirer l'ancien conteneur
+            sudo docker stop "$OLD_CONTAINER"
+            sudo docker rm "$OLD_CONTAINER"
 
             # Revenir à scale=1
-            sudo docker compose -f docker-compose.prod.yml up -d --no-deps --scale app=1 --no-recreate app
+            $COMPOSE up -d --no-deps --scale app=1 --no-recreate app
 
             sudo docker image prune -f
