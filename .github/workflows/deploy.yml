@@ -22,6 +22,13 @@ jobs:
             cd ~/campaign_tow
             GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy" git pull origin main
 
+            # Release Sentry = SHA du commit déployé. Le .git étant exclu du
+            # contexte Docker, on passe la valeur via l'env — lue par
+            # docker-compose.prod.yml en build-arg (sourcemaps) ET en runtime
+            # (tag des events). export = visible par les commandes docker compose.
+            export SENTRY_RELEASE=$(git rev-parse HEAD)
+            echo "Release Sentry : $SENTRY_RELEASE"
+
             # Pas de sudo : vps_ben est membre du groupe docker
             COMPOSE="docker compose -f docker-compose.prod.yml"
 

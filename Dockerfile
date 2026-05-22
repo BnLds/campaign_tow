@@ -16,10 +16,16 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # Build-time args : variables Vite (préfixe VITE_) inlinées dans le bundle client.
 # Doivent être passées via --build-arg ou docker-compose `build.args`.
 # SENTRY_AUTH_TOKEN sert au plugin Sentry Vite pour uploader les sourcemaps.
+# SENTRY_RELEASE (SHA du commit) nomme la release sous laquelle elles sont uploadées.
 ARG VITE_SENTRY_DSN
 ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_RELEASE
 ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+ENV SENTRY_RELEASE=$SENTRY_RELEASE
+# TEMPORAIRE : logs debug de l'upload sourcemaps Sentry.
+# À retirer une fois l'upload confirmé OK dans les logs de déploiement.
+ENV SENTRY_LOG_LEVEL=debug
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

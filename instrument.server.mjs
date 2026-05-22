@@ -12,6 +12,10 @@ Sentry.init({
   dsn: "https://664a7de2790704de171af7b18b9fb389@o4511188817870848.ingest.de.sentry.io/4511188820033616",
   environment: process.env.NODE_ENV ?? 'development',
 
+  // Release = SHA du commit déployé (injecté via SENTRY_RELEASE par docker-compose).
+  // Doit matcher la release sous laquelle les sourcemaps sont uploadées au build.
+  release: process.env.SENTRY_RELEASE,
+
   // Adds request headers and IP for users, for more info visit:
   // https://docs.sentry.io/platforms/javascript/guides/tanstackstart-react/configuration/options/#sendDefaultPii
   sendDefaultPii: true,

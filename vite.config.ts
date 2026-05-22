@@ -20,6 +20,10 @@ const config = defineConfig({
       org: "benjamin-landes",
       project: "javascript-tanstackstart-react",
       authToken: process.env.SENTRY_AUTH_TOKEN,
+      // Release = SHA du commit, passé en build-arg (cf. Dockerfile + deploy.yml).
+      // Le .git étant exclu du contexte Docker, l'auto-détection git ne peut pas
+      // fonctionner — sans ça le plugin envoie `--release undefined` et l'upload échoue.
+      release: { name: process.env.SENTRY_RELEASE },
     }),
   ],
 })
