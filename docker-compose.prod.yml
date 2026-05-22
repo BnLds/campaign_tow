@@ -70,7 +70,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 5 
+      retries: 5
 
   # ── Backup cron ──
   pg_backup:
