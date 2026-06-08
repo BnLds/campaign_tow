@@ -19,7 +19,7 @@ jobs:
             # échouer le job (sinon le pipeline reste vert sans rien déployer).
             set -eo pipefail
 
-            cd ~/campaign_tow
+            cd ~/prod/campaign_tow
             GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy" git pull origin main
 
             # Release Sentry = SHA du commit déployé. Le .git étant exclu du
