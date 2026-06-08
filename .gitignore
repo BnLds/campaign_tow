@@ -19,8 +19,6 @@ todos.json
 .auth
 test-results
 .env.local
-_bmad
-
 
 # Claude Code sandbox artifacts (empty read-only placeholder files)
 /.bash_profile
