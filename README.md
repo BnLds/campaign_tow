@@ -17,6 +17,48 @@ To build this application for production:
 pnpm build
 ```
 
+## Production Deployment
+
+Production is described by `docker-compose.prod.yml`.
+
+Traefik must not mount `/var/run/docker.sock` directly. Docker discovery goes through `docker-socket-proxy`, which is only reachable on the internal Compose network:
+
+```text
+traefik -> docker-socket-proxy -> /var/run/docker.sock
+```
+
+The proxy currently allows only the Docker API endpoints Traefik needs for container discovery:
+
+```yaml
+CONTAINERS: 1
+EVENTS: 1
+INFO: 1
+NETWORKS: 1
+POST: 0
+```
+
+Before deploying a Compose change, validate the rendered configuration:
+
+```bash
+docker compose -f docker-compose.prod.yml config --quiet
+```
+
+For a targeted Traefik/socket-proxy rollout, do not rebuild the app and do not restart the database:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d docker-socket-proxy
+docker compose -f docker-compose.prod.yml up -d --force-recreate traefik
+```
+
+Post-deployment checks:
+
+```bash
+curl -I https://old-world-campaign.ben-lds.com
+docker inspect campaign_tow-traefik-1
+```
+
+`campaign_tow-traefik-1` should not have `/var/run/docker.sock` mounted. Only `docker-socket-proxy` should mount the Docker socket.
+
 ## Testing
 
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
