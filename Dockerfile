@@ -1,51 +1,29 @@
-# ── Stage 1: Install dependencies ──
-FROM node:22-slim AS deps
+FROM node:22-alpine AS base
 WORKDIR /app
+RUN corepack enable
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
+FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# ── Stage 2: Build ──
-FROM node:22-slim AS build
-WORKDIR /app
+FROM deps AS build
+COPY . .
 
-# ca-certificates : requis par le binaire sentry-cli (Rust) pour vérifier le
-# TLS lors de l'upload des sourcemaps. node:22-slim ne l'inclut pas — sans ça :
-# "SSL certificate problem: unable to get local issuer certificate".
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# Build-time args : variables Vite (préfixe VITE_) inlinées dans le bundle client.
-# Doivent être passées via --build-arg ou docker-compose `build.args`.
-# SENTRY_AUTH_TOKEN sert au plugin Sentry Vite pour uploader les sourcemaps.
-# SENTRY_RELEASE (SHA du commit) nomme la release sous laquelle elles sont uploadées.
 ARG VITE_SENTRY_DSN
 ARG SENTRY_AUTH_TOKEN
-ARG SENTRY_RELEASE
-ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
-ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
-ENV SENTRY_RELEASE=$SENTRY_RELEASE
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+ARG SENTRY_RELEASE=unknown
 
 RUN pnpm build
 
-# ── Stage 3: Production image ──
-FROM node:22-slim AS production
-WORKDIR /app
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM base AS runner
+ENV NODE_ENV=production
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/.output ./.output
 COPY --from=build /app/drizzle ./drizzle
-COPY package.json pnpm-lock.yaml drizzle.config.ts ./
+COPY --from=build /app/src/db ./src/db
+COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=build /app/package.json ./package.json
 
 EXPOSE 3000
-
-CMD ["sh", "-c", "pnpm db:migrate && node --import ./.output/server/instrument.server.mjs .output/server/index.mjs"] 
+CMD ["pnpm", "start"]
