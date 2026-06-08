@@ -1,3 +1,4 @@
+_bmad/
 _bmad/custom/config.user.toml
 node_modules
 .DS_Store
@@ -18,6 +19,8 @@ todos.json
 .auth
 test-results
 .env.local
+_bmad
+
 
 # Claude Code sandbox artifacts (empty read-only placeholder files)
 /.bash_profile
