@@ -1,8 +1,18 @@
+networks:
+  public:
+  backend:
+    internal: true
+  socket:
+    internal: true
+
 services:
   # ── Reverse proxy ──
   traefik:
     image: traefik:v2.11
     restart: unless-stopped
+    networks:
+      - public
+      - socket
     depends_on:
       - docker-socket-proxy
     security_opt:
@@ -33,6 +43,8 @@ services:
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy:0.3.0
     restart: unless-stopped
+    networks:
+      - socket
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -59,6 +71,9 @@ services:
         # Release Sentry = SHA du commit (exporté par deploy.yml avant le build).
         SENTRY_RELEASE: ${SENTRY_RELEASE:-unknown}
     restart: unless-stopped
+    networks:
+      - public
+      - backend
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -89,6 +104,7 @@ services:
       - traefik.http.routers.app.entrypoints=websecure
       - traefik.http.routers.app.tls.certresolver=letsencrypt
       - traefik.http.services.app.loadbalancer.server.port=3000
+      - traefik.docker.network=TRAEFIK_DOCKER_NETWORK_REDACTED
 
   # ── Database ──
   db:
@@ -96,6 +112,8 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    networks:
+      - backend
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -112,6 +130,8 @@ services:
   pg_backup:
     image: postgres:16
     restart: unless-stopped
+    networks:
+      - backend
     security_opt:
       - no-new-privileges:true
     cap_drop:
