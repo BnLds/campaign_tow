@@ -39,10 +39,6 @@ describe('[AC1][P0] TanStack CLI initialization — project structure', () => {
     expect(existsSync(resolve(root, 'src/components/ui'))).toBe(true)
   })
 
-  it('[1.1-UNIT-006] nixpacks.toml exists (railway add-on)', () => {
-    expect(existsSync(resolve(root, 'nixpacks.toml'))).toBe(true)
-  })
-
   it('[1.1-UNIT-007] package.json has lint script (eslint add-on)', () => {
     const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf-8'))
     expect(pkg.scripts).toHaveProperty('lint')

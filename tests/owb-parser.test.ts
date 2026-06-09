@@ -10,9 +10,9 @@ import { parseOwbExport, normalizeBlockText } from '../src/lib/owb-parser'
 
 const ROOT = resolve(__dirname, '..')
 
-const army3text = readFileSync(resolve(ROOT, 'docs/army_3_txt'), 'utf-8')
+const army3text = readFileSync(resolve(ROOT, 'docs/examples/export_OWB_FR.txt'), 'utf-8')
 
-describe('[OWB-BT] parseOwbExport — block text format (army_3_txt)', () => {
+describe('[OWB-BT] parseOwbExport — block text format (export_OWB_FR.txt)', () => {
   it('[OWB-BT-001] parses without throwing', () => {
     expect(() => parseOwbExport(army3text)).not.toThrow()
   })
@@ -104,8 +104,8 @@ describe('[OWB-NICK] nickname extraction', () => {
     expect(xlaco.name).toMatch(/Saurus/)
   })
 
-  it('[OWB-BT-010] units without comma in name have null nickname (plaintext army_2.txt)', () => {
-    const army2text = readFileSync(resolve(ROOT, 'docs/army_2.txt'), 'utf-8')
+  it('[OWB-BT-010] units without comma in name have null nickname (export_OWB_txt.txt)', () => {
+    const army2text = readFileSync(resolve(ROOT, 'docs/examples/export_OWB_txt.txt'), 'utf-8')
     const result = parseOwbExport(army2text)
     for (const unit of result.units) {
       expect(unit.nickname, `${unit.name} should have null nickname`).toBeNull()
