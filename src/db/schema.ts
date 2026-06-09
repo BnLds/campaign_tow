@@ -56,6 +56,18 @@ export const factions = pgTable('factions', {
   displayName: text('display_name').notNull(),
 })
 
+export const playerTerritories = pgTable('player_territories', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  coBalance: integer('co_balance').notNull().default(0),
+  lastIncomeWeek: integer('last_income_week').notNull().default(0),
+  setupCompletedAt: timestamp('setup_completed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [
+  uniqueIndex('player_territories_player_id_unique').on(table.playerId),
+])
+
 export const armies = pgTable('armies', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
@@ -218,4 +230,8 @@ export const matchParticipantsRelations = relations(matchParticipants, ({ one })
     fields: [matchParticipants.armyId],
     references: [armies.id],
   }),
+}))
+
+export const playerTerritoriesRelations = relations(playerTerritories, ({ one }) => ({
+  player: one(players, { fields: [playerTerritories.playerId], references: [players.id] }),
 }))
