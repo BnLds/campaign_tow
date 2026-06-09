@@ -8,7 +8,7 @@
 
 | Tuile | Revenu | Village | Ville | Particularités |
 |-------|--------|---------|-------|----------------|
-| Tuile de départ | 50 CO | — | — | 1 par joueur. +500 pts d'armée. Fortifications *(règles à venir)*. |
+| Port (tuile de départ) | 50 CO | — | — | 1 par joueur. +500 pts d'armée. Fortifications *(règles à venir)*. |
 | Plaines | 30 CO | Oui | Oui | — |
 | Plaine agricole | 20 CO | Oui | Non | Ferme gratuite à la construction du village (hors limite de bâtiments). Peut accueillir 2 fermes supplémentaires. |
 | Lisière forestière | 40 CO | Oui | Non | Ne peut pas recevoir de scierie. |
