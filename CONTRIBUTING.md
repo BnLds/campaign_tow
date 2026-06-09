@@ -1,6 +1,6 @@
 # Contribution Guide
 
-This repository is private. Contributions are by invitation only and go through pull requests to `main`.
+This repository is public for transparency, but the project remains maintainer-controlled and proprietary. Contributions are accepted by invitation or explicit maintainer approval, and every change must go through a pull request to `main`.
 
 ## Local Setup
 
@@ -86,6 +86,8 @@ Package manager: **pnpm 10.33**. Node: **22+**.
 4. Run the relevant checks before opening the PR.
 5. Open the PR against `main` and fill in the template.
 6. Wait for review and approval from the code owner before merge.
+
+Direct pushes to `main` are reserved for the maintainer and should be blocked by GitHub branch protection.
 
 Recommended checks before opening a PR:
 
