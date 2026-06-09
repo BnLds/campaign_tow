@@ -32,17 +32,41 @@ jobs:
             # Pas de sudo : vps_ben est membre du groupe docker
             COMPOSE="docker compose -p campaign_tow --env-file .env -f ops/docker-compose.prod.yml"
 
+            on_error() {
+              echo "ÉCHEC : état Compose au moment de l'erreur"
+              $COMPOSE ps || true
+            }
+            trap on_error ERR
+
+            # Garantir que les services de support existent avant le blue-green app.
+            $COMPOSE up -d db docker-socket-proxy traefik pg_backup
+
             $COMPOSE build --no-cache app
 
             # Conteneur actuel, capturé AVANT le scale (identification fiable)
-            OLD_CONTAINER=$($COMPOSE ps -q app)
+            OLD_CONTAINERS=$($COMPOSE ps -q app)
+            OLD_COUNT=$(printf '%s\n' "$OLD_CONTAINERS" | sed '/^$/d' | wc -l | tr -d ' ')
+            if [ "$OLD_COUNT" != "1" ]; then
+              echo "ÉCHEC : attendu exactement 1 ancien conteneur app, trouvé $OLD_COUNT"
+              $COMPOSE ps app
+              exit 1
+            fi
+            OLD_CONTAINER=$OLD_CONTAINERS
             echo "Ancien conteneur : $OLD_CONTAINER"
 
             # Blue-green : démarre le nouveau conteneur à côté de l'ancien
             $COMPOSE up -d --no-deps --scale app=2 --no-recreate app
 
             # Le nouveau conteneur = celui qui n'est pas l'ancien
-            NEW_CONTAINER=$($COMPOSE ps -q app | grep -v "$OLD_CONTAINER")
+            APP_CONTAINERS=$($COMPOSE ps -q app)
+            NEW_CONTAINERS=$(printf '%s\n' "$APP_CONTAINERS" | grep -v -F "$OLD_CONTAINER" || true)
+            NEW_COUNT=$(printf '%s\n' "$NEW_CONTAINERS" | sed '/^$/d' | wc -l | tr -d ' ')
+            if [ "$NEW_COUNT" != "1" ]; then
+              echo "ÉCHEC : attendu exactement 1 nouveau conteneur app, trouvé $NEW_COUNT"
+              $COMPOSE ps app
+              exit 1
+            fi
+            NEW_CONTAINER=$NEW_CONTAINERS
             echo "Nouveau conteneur : $NEW_CONTAINER"
 
             # Attendre que le nouveau conteneur soit réellement healthy (max 60s)
