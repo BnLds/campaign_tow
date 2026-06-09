@@ -49,19 +49,16 @@
 **When** Story 6.2 is complete
 **Then** an `undoLastTransactionFn = createServerFn({ method: 'POST' }).validator(z.object({ playerId: z.string().uuid() })).middleware([authMiddleware]).handler(…)` returns `ServerResult<{ reversedTransactionId: string, newBalance: number }>`
 **And** the handler runs inside `db.transaction({ isolationLevel: 'serializable' })` to prevent racing two undos on the same ledger
-**And** it SELECTs `FOR UPDATE` the most recent transaction where `player_id = $1 AND type NOT IN ('reversal')` ordered `created_at DESC, id DESC LIMIT 1` — if none exists, return `BAD_REQUEST` "Aucune action à annuler"
-**And** if the most recent transaction is already flagged `reversed_at IS NOT NULL` (a later reversal row points back to it), return `BAD_REQUEST` — this cannot normally happen under LIFO but the guard is belt-and-braces
-
-**Given** the migration for `co_transactions`
-**When** Story 6.2 is complete
-**Then** the table gains a nullable `reversed_by_transaction_id` (uuid) column — when an undo is performed, the reversed row is updated to reference the new `reversal` row, giving a permanent audit trail
+**And** the handler resolves `session.playerId → playerTerritoryId`, then SELECTs `FOR UPDATE` the most recent transaction where `player_territory_id = $1 AND type != 'reversal' AND reversed_by_transaction_id IS NULL` ordered `created_at DESC, id DESC LIMIT 1` — if none exists, return `BAD_REQUEST` "Aucune action à annuler"
+**And** the `reversed_by_transaction_id` filter ensures the most recent unreversed transaction is selected — the column was already created in Story 3.1, no migration is added in this story
+**And** after performing the inverse state cascade and calling `withCoTransaction` to insert the `reversal` row, the handler UPDATEs the original transaction's `reversed_by_transaction_id` to point to the new reversal's id (permanent audit trail in both directions)
 
 **Given** the handler dispatches the state cascade based on `type`
 **When** the reversed transaction is of a given type
 **Then** the handler applies the exact inverse within the same transaction:
-  - `income_generation` / `manual_income` → no state cascade; only the `withCoTransaction(tx, { type: 'reversal', amount: -original.amount, metadata: { originalId } })` fires
+  - `income_generation` / `manual_income` → no state cascade; only the `withCoTransaction(tx, { playerTerritoryId, type: 'reversal', amount: -original.amount, label: 'Annulation — ' + original.label, metadata: { originalTransactionId: original.id } })` fires (and the FK `reversed_transaction_id` on the new reversal row is set to `original.id`)
   - `manual_expense` → same, only the ledger entry is reversed
-  - `building_construction` → DELETE the `buildings` row referenced by `metadata.buildingId`. If the deleted building has `hasLevels = true` and metadata indicates it REPLACED a previous level (e.g., `grande_tour` replaced `tour_sorcier`), the previous level is RE-INSERTED from the snapshot stored in `metadata.replacedBuilding` — the transaction must capture this snapshot at construction time (Story 6.2 retrofits `buildBuildingFn` from Story 4.2 and Story 4.5 to persist the replaced building JSON into `metadata.replacedBuilding` when applicable)
+  - `building_construction` → DELETE the `buildings` row referenced by `metadata.buildingId`. If the deleted building has `hasLevels = true` and `metadata.replacedBuilding` is non-null (a previous level was replaced — captured at construction time by Story 4.2/4.5 in their `withCoTransaction` call), re-insert the previous level from that snapshot in the same transaction
   - `colony_construction` → DELETE the `colonies` row from `metadata.colonyId`. Any buildings on the colony are already protected: the handler refuses the undo if `buildings` rows still reference the colony, returning `BAD_REQUEST` "Supprimez d'abord les bâtiments de cette colonie"
   - `colony_upgrade` (village → city) → revert the colony's `type` from `'city'` to `'village'`. If the city has more than 1 building slot occupied, refuse (`BAD_REQUEST` "Supprimez d'abord les bâtiments excédentaires")
 
@@ -77,7 +74,7 @@
 
 **Given** integration tests against real PostgreSQL
 **When** they run
-**Then** a test seeds a player with 500 CO, adds a tile (+30 CO base income assumed not relevant), builds a Forge (60 CO → balance 440), undoes → asserts balance is back to 500, the `buildings` row is deleted, and `co_transactions` contains 3 rows: construction, reversal pointing back, and the construction row's `reversed_by_transaction_id` is set
+**Then** a test seeds a player with 500 CO, adds a tile, builds a Forge (60 CO → balance 440), undoes → asserts balance is back to 500, the `buildings` row is deleted, and `co_transactions` contains 2 rows: the original `building_construction` (with `reversed_by_transaction_id` now pointing to the reversal) and the new `reversal` row (with `reversed_transaction_id` pointing back to the construction row)
 **And** a test seeds a player with a village + 1 Forge, tries to undo the village construction, and asserts `BAD_REQUEST` "Supprimez d'abord les bâtiments de cette colonie"
 **And** a test seeds a player who built `tour_sorcier` then `grande_tour` (which deleted `tour_sorcier`), undoes → asserts `grande_tour` is deleted and `tour_sorcier` is reinstated from `metadata.replacedBuilding`, and CO balance matches the delta-refund (160 CO)
 **And** a test calls `undoLastTransactionFn` twice in parallel via `Promise.all` on the same player and asserts exactly one succeeds (serializable isolation guarantees LIFO integrity)

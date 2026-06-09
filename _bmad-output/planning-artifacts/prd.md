@@ -31,7 +31,7 @@ The territory module gives each player a dashboard of their empire — tiles own
 
 An initial setup flow (similar to the existing XP bootstrap) lets players input their current territory state mid-campaign: existing tiles, colonies, buildings, and CO balance.
 
-**Project Classification:** Web App (SPA responsive, mobile-first — extending existing app). General domain (tabletop wargaming campaign management). Medium complexity (faction-specific rules for ~15 factions, tile/building/economy interactions, weekly income calculation). Brownfield project.
+**Project Classification:** Web App (SPA responsive, mobile-first — extending existing app). General domain (tabletop wargaming campaign management). Medium complexity (faction-specific rules for 18 factions, tile/building/economy interactions, weekly income calculation). Brownfield project.
 
 ### What Makes This Special
 
@@ -150,7 +150,7 @@ Marc wants to upgrade to a Major Portal (300 CO). The app shows the upgrade opti
 
 **MVP Approach:** Experience MVP — the minimum that lets every player see and manage their empire in-app, replacing Discord/paper entirely. Same philosophy as the tactical layer MVP: the app must feel useful from first use.
 
-**Key constraint:** All ~15 factions must be supported at MVP. A player whose faction isn't implemented can't use the module — partial faction support breaks adoption. Faction rules are data-driven (lookup tables, not per-faction code), so marginal cost per faction is low once the structure exists.
+**Key constraint:** All 18 factions must be supported at MVP. A player whose faction isn't implemented can't use the module — partial faction support breaks adoption. Faction rules are data-driven (lookup tables, not per-faction code), so marginal cost per faction is low once the structure exists.
 
 ### MVP Feature Set (Phase 1)
 
@@ -186,7 +186,7 @@ Marc wants to upgrade to a Major Portal (300 CO). The app shows the upgrade opti
 
 ### Risk Mitigation
 
-**Technical — Faction data volume:** ~15 factions with unique rules. Mitigation: data-driven architecture (faction config as structured data, not per-faction code). One generic engine, faction-specific parameters.
+**Technical — Faction data volume:** 18 factions with unique rules. Mitigation: data-driven architecture (faction config as structured data, not per-faction code). One generic engine, faction-specific parameters.
 
 **Technical — Faction standardization:** Faction names must be standardized across existing army data and OWB import. Mitigation: create canonical faction list, update import script, backfill existing armies.
 
@@ -325,5 +325,5 @@ Unchanged from existing app — Chrome/Chromium (mobile + desktop), Safari iOS, 
 
 ### Integration
 
-- **NFR12:** OWB import script correctly identifies faction for all ~15 campaign factions
+- **NFR12:** OWB import script correctly identifies faction for all 18 campaign factions
 - **NFR13:** Faction data (colonization rules, buildings, special structures) is maintained as structured configuration, not hardcoded logic — enabling rule updates without code changes

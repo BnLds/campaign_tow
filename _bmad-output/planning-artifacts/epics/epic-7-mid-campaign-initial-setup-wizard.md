@@ -20,7 +20,7 @@
 **And** the wizard has 5 steps with a progress indicator at the top ("Étape {n}/5") and back/next buttons at the bottom (back hidden on step 1, next replaced by "Terminer" on step 5):
   1. **Faction** — `Select` populated from the `factions` table (18 entries from `docs/factions.md`); pre-filled from the player's existing army faction if it exists in `armies`; read-only hint "Votre faction d'armée définit les règles de colonisation"
   2. **Tuiles initiales** — dynamic list of tile rows; each row has a `Select` for tile type (filtered by `TILE_CATALOG` to the options legal for the chosen faction via `canFactionAddTile(factionId, tileType)` — UX-DR19 hides illegal options); "Ajouter une tuile" button appends a row; delete icon removes
-  3. **Colonies existantes** — for each tile added in step 2 that supports colonies, a collapsible panel shows the tile and lets the player declare `none | village | ville`; for Chaos Warriors/Marauders, an inline `Select` for the god/cult appears when a colony is declared (khorne / tzeentch / nurgle / slaanesh)
+  3. **Colonies existantes** — for each tile added in step 2 that supports colonies, a collapsible panel shows the tile and lets the player declare `none | village | city` (DB enum values; UI labels are localised to "Aucune" / "Village" / "Ville"); for Chaos Warriors/Marauders, an inline `Select` for the god/cult appears when a colony is declared (khorne / tzeentch / nurgle / slaanesh)
   4. **Bâtiments** — for each colony declared in step 3, a list of pre-existing buildings the player can add via a multi-select from `BUILDING_CATALOG` (filtered by faction and by tile type via the same rules as Story 4.2); free buildings auto-added (farm on plaine agricole, menagerie on marais, mine on Dwarf mountain) are shown as pre-checked disabled chips
   5. **Solde CO de départ** — numeric input for the current CO balance (integer ≥ 0); helper text "Ce montant sera enregistré comme recette manuelle avec pour motif 'Setup campagne — Semaine {n}'"
 
@@ -57,14 +57,14 @@
   factionId: z.string(),
   initialBalance: z.number().int().min(0),
   tiles: z.array(z.object({ type: TileTypeEnum })),
-  colonies: z.array(z.object({ tileIndex: z.number().int(), type: z.enum(['village', 'ville']), chaosGod: ChaosGodEnum.optional() })),
+  colonies: z.array(z.object({ tileIndex: z.number().int(), type: z.enum(['village', 'city']), chaosGod: ChaosGodEnum.optional() })),
   buildings: z.array(z.object({ tileIndex: z.number().int(), colonyIndex: z.number().int().optional(), buildingType: z.string() })),
 }
 ```
 **And** the handler runs entirely inside `db.transaction({ isolationLevel: 'serializable' })`
 **And** it first checks that NO `player_territories` row exists for the caller — if one does, return `BAD_REQUEST` "Territoire déjà configuré" (Story 7.3 ensures the wizard cannot be opened in that case, but the server guards anyway)
 **And** it validates the entire snapshot against the faction rules from `src/lib/faction-config.ts` BEFORE any insert: every tile type must be legal, every colony type must be legal for its tile, every building must pass `canBuildOn(tile, colony, buildingType, factionId)`, Chaos Warriors/Marauders colonies must have a `chaosGod` and respect the diversity rule from Story 3.6, Daemons of Chaos must have ZERO colonies — any violation returns `BAD_REQUEST` with a specific error code identifying the offending element
-**And** inserts happen in dependency order: `player_territories` (with `co_balance = 0` initially), `tiles`, `colonies`, `buildings`, then the initial `manual_income` transaction via `withCoTransaction(tx, { type: 'manual_income', amount: initialBalance, metadata: { reason: 'Setup campagne — Semaine ' + currentWeek } })` — `withCoTransaction` updates the balance atomically to the declared amount
+**And** inserts happen in dependency order: `player_territories` (with `co_balance = 0` initially, returning the new `playerTerritoryId`), `tiles`, `colonies`, `buildings`, then the initial `manual_income` transaction via `withCoTransaction(tx, { playerTerritoryId, type: 'manual_income', amount: initialBalance, label: 'Setup campagne — Semaine ' + currentWeek, metadata: { reason: 'initial-setup', week: currentWeek } })` — `withCoTransaction` updates the balance atomically to the declared amount
 **And** free buildings (farm on plaine agricole, menagerie on marais, Dwarf mine on mountain) are auto-inserted by the handler with `is_free = true` so the player's wizard selections don't need to include them
 
 **Given** integration tests against real PostgreSQL

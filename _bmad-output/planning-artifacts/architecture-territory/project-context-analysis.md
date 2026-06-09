@@ -42,7 +42,7 @@
 - Existing wizard pattern: `post-match-wizard/` (8 files, reducer + phases) — reusable for setup wizard
 
 **From PRD constraints:**
-- All ~15 factions must be supported at MVP — partial support breaks adoption
+- All 18 factions must be supported at MVP — partial support breaks adoption
 - Faction rules are data-driven (config, not per-faction code)
 - CO balance is server-authoritative — no client-side computation
 - Transaction log is append-only — cancellations create reversal entries

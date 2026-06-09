@@ -35,7 +35,7 @@ The core promise: a player opens the app, sees their empire at a glance, trigger
 
 ### Key Design Challenges
 
-1. **Faction rule complexity** — ~15 factions with unique colonization rules, faction buildings, and special structures (Chaos Portals, Ogre Tyrant Hall, Dwarf mine upgrades, etc.). The UX must hide this complexity by showing only what's relevant to the player's faction while remaining rules-accurate.
+1. **Faction rule complexity** — 18 factions with unique colonization rules, faction buildings, and special structures (Chaos Portals, Ogre Tyrant Hall, Dwarf mine upgrades, etc.). The UX must hide this complexity by showing only what's relevant to the player's faction while remaining rules-accurate.
 
 2. **Mid-campaign onboarding** — Players already own tiles, colonies, and buildings. The setup flow must bootstrap existing state without being tedious (same pattern as the existing initial XP bootstrap).
 

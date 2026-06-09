@@ -24,8 +24,8 @@
 **When** `POST /api/cron/advance-week` is called with header `X-Cron-Secret: <env.CRON_SECRET>`
 **Then** the endpoint increments `campaign_week` by 1 atomically (`UPDATE … SET campaign_week = campaign_week + 1, updated_at = now() WHERE id = 1`), returns `{ ok: true, newWeek: <n> }` with 200
 **And** requests without the header or with a wrong secret return 401 with no side effect
-**And** the endpoint invokes `generateWeeklyIncomeFn` (Story 5.3) for every player in `player_territories` inside the same response — the endpoint returns the per-player result summary `[{ playerId, amount, skipped }]`
 **And** the handler is exported from a route file (TanStack Start server route, NOT a `createServerFn`) so that the VPS cron can hit it via plain `curl`
+**And** this story does NOT call `generateWeeklyIncomeFn` — Story 5.1 delivers ONLY the week counter and the cron endpoint shell. Player income generation (manual trigger AND cron fan-out) is wired in Story 5.3 once `generateWeeklyIncomeFn` exists. Players can manually trigger income via the UI (Story 5.4) until the cron fan-out is added.
 
 **Given** integration tests
 **When** they run
@@ -72,10 +72,15 @@
 **Given** the file `src/server/territory-economy.ts`
 **When** Story 5.3 is complete
 **Then** it exports `generateWeeklyIncomeFn = createServerFn({ method: 'POST' }).validator(z.object({ playerId: z.string().uuid() })).middleware([authMiddleware]).handler(…)` returning `ServerResult<{ amount: number, week: number, skipped: boolean }>`
-**And** the handler loads the current `campaign_week`, loads the player's full territory snapshot (tiles + buildings), calls `calculateWeeklyIncome`, then inside `db.transaction()` calls `withCoTransaction(tx, { playerId, type: 'income_generation', amount: total, metadata: { week, lines } })`
-**And** idempotence is enforced via a check inside the transaction: `SELECT 1 FROM co_transactions WHERE player_id = $1 AND type = 'income_generation' AND (metadata->>'week')::int = $2 LIMIT 1 FOR UPDATE` — if a row exists, the handler short-circuits and returns `{ amount: 0, week, skipped: true }` without mutating balance
-**And** a partial unique index on `co_transactions ((player_id), ((metadata->>'week')::int)) WHERE type = 'income_generation'` is added via Drizzle migration as a belt-and-braces guarantee against race conditions — if the insert ever violates the index (because two parallel transactions slipped past the SELECT), the handler catches the unique violation and returns the same `skipped: true` result
-**And** the transaction uses `isolation level serializable` for weekly income inserts
+**And** the handler resolves `session.playerId → player_territories.id`, loads the current `campaign_week`, loads the player's full territory snapshot (tiles + buildings), calls `calculateWeeklyIncome`, then inside `db.transaction({ isolationLevel: 'serializable' })` calls `withCoTransaction(tx, { playerTerritoryId, type: 'income_generation', amount: total, label: 'Revenu hebdomadaire — Semaine ' + week, weekNumber: week, metadata: { lines } })`
+**And** idempotence is enforced via a check inside the transaction: `SELECT 1 FROM co_transactions WHERE player_territory_id = $1 AND type = 'income_generation' AND week_number = $2 LIMIT 1 FOR UPDATE` — if a row exists, the handler short-circuits and returns `{ amount: 0, week, skipped: true }` without mutating balance
+**And** the partial unique index `(player_territory_id, week_number) WHERE type = 'income_generation'` (already created in Story 3.1) provides the belt-and-braces SQL-level guarantee — if the insert ever violates the index (because two parallel transactions slipped past the SELECT), the handler catches the unique violation and returns the same `skipped: true` result
+
+**Given** the cron endpoint shell from Story 5.1
+**When** Story 5.3 is complete
+**Then** the cron handler at `POST /api/cron/advance-week` is extended to invoke `generateWeeklyIncomeFn` for every player in `player_territories` after incrementing the week (sequential or batched, inside a per-player transaction — NOT a single global transaction)
+**And** the cron endpoint response is extended to include the per-player result summary `[{ playerId, amount, skipped }]`
+**And** any per-player failure is logged but does not abort the loop — other players still receive their income
 
 **Given** the UI calls `generateWeeklyIncomeFn` for a player who already received income this week
 **When** the response returns `skipped: true`
@@ -130,8 +135,8 @@
 **Given** `src/server/territory-economy.ts`
 **When** Story 5.5 is complete
 **Then** it exports two server functions:
-  - `manualIncomeFn({ playerId, amount, reason })` — validates `amount > 0` and `reason: z.string().min(1).max(200)`, wraps `withCoTransaction(tx, { type: 'manual_income', amount, metadata: { reason } })`, returns the new balance
-  - `manualExpenseFn({ playerId, amount, reason })` — validates `amount > 0` (UI-facing sign) and the handler passes `amount = -Math.abs(input.amount)` to `withCoTransaction` with `type: 'manual_expense'`
+  - `manualIncomeFn({ amount, reason })` — validates `amount > 0` and `reason: z.string().min(1).max(200)`, resolves `session.playerId → playerTerritoryId`, then inside `db.transaction()` calls `withCoTransaction(tx, { playerTerritoryId, type: 'manual_income', amount, label: 'Recette manuelle — ' + reason, metadata: { reason } })`, returns the new balance
+  - `manualExpenseFn({ amount, reason })` — same resolution pattern; the handler passes `amount = -Math.abs(input.amount)` and `type: 'manual_expense'` with `label: 'Dépense manuelle — ' + reason` and `metadata: { reason }`
 **And** both handlers enforce authorization: the caller must be the territory owner OR (future extension, TODO comment) a campaign admin; for now, only the owner is allowed — non-owners return `FORBIDDEN`
 **And** `manualExpenseFn` refuses to take the balance below 0 — if the resulting balance would be negative, return `BAD_REQUEST` "Solde insuffisant"
 

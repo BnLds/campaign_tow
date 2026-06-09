@@ -100,7 +100,7 @@
 
 **Integration**
 
-- **NFR12:** OWB import script correctly identifies faction for all ~15 campaign factions.
+- **NFR12:** OWB import script correctly identifies faction for all 18 campaign factions.
 - **NFR13:** Faction data (colonization rules, buildings, special structures) is maintained as structured configuration, not hardcoded logic — enabling rule updates without code changes.
 
 ## Additional Requirements
@@ -170,7 +170,7 @@
 
 **Integration Requirements:**
 
-- OWB import script must detect and assign the correct faction for all ~15 campaign factions (from free-text parsing to canonical faction ID).
+- OWB import script must detect and assign the correct faction for all 18 campaign factions (from free-text parsing to canonical faction ID).
 - Migration must backfill `armies.faction` for existing armies without data loss.
 
 ## UX Design Requirements

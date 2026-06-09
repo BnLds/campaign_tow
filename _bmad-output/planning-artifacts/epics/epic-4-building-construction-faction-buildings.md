@@ -70,7 +70,7 @@ So that the building construction flow is secure, consistent, and reuses the bat
   8. Enforce no-duplicate rule in cities: if the colony is a city, verify no existing building of the same `type` is already on it → `BAD_REQUEST` "Pas de doublon de bâtiments dans une ville"
   9. Compute the effective cost (base catalog cost OR `variant.cost` for military variants), verify balance → `BAD_REQUEST` "Solde insuffisant (besoin : X CO)"
   10. Insert the building row with `is_free = false`
-  11. Call `withCoTransaction(tx, playerTerritoryId, 'building_construction', -cost, label, { type: 'building', id: newBuildingId })`
+  11. Call `withCoTransaction(tx, { playerTerritoryId, type: 'building_construction', amount: -cost, label, relatedEntityType: 'building', relatedEntityId: newBuildingId, metadata: { buildingId: newBuildingId, buildingType, variant, level, replacedBuilding: replacedSnapshot ?? null } })` — `replacedSnapshot` is null in Story 4.2 and populated by Story 4.5 for multi-level building replacement (snapshot of the row deleted in the same transaction)
 
 **Given** integration tests against a real test PostgreSQL DB
 **When** `pnpm vitest` runs

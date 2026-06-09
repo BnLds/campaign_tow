@@ -18,10 +18,12 @@ So that colony state can be stored 0:1 per tile and every CO mutation can be log
 
 **Given** the same migration
 **When** the `co_transactions` table is created
-**Then** it has columns: `id` (text PK, UUID), `player_territory_id` (text, FK to `player_territories.id`, NOT NULL), `type` (text with CHECK constraint matching the 7 canonical values from the architecture doc: `income_generation`, `colony_construction`, `colony_upgrade`, `building_construction`, `manual_expense`, `manual_income`, `reversal`), `amount` (integer, NOT NULL — signed; positive = credit, negative = debit), `label` (text, NOT NULL), `related_entity_type` (text, nullable), `related_entity_id` (text, nullable), `week_number` (integer, nullable), `reversed_transaction_id` (text, nullable, FK to `co_transactions.id`), `created_at` (timestamp, default now)
+**Then** it has columns: `id` (text PK, UUID), `player_territory_id` (text, FK to `player_territories.id`, NOT NULL), `type` (text with CHECK constraint matching the 7 canonical values from the architecture doc: `income_generation`, `colony_construction`, `colony_upgrade`, `building_construction`, `manual_expense`, `manual_income`, `reversal`), `amount` (integer, NOT NULL — signed; positive = credit, negative = debit), `label` (text, NOT NULL), `related_entity_type` (text, nullable), `related_entity_id` (text, nullable), `week_number` (integer, nullable), `metadata` (jsonb, NOT NULL, default `'{}'::jsonb` — free-form payload for type-specific data: `{lines}` for income breakdown, `{reason}` for manual entries, `{buildingId, replacedBuilding}` for building construction, `{colonyId}` for colony events, `{originalTransactionId}` for reversals), `reversed_transaction_id` (text, nullable, FK to `co_transactions.id` — set ONLY on `reversal` rows, points to the transaction being reversed), `reversed_by_transaction_id` (text, nullable, FK to `co_transactions.id` — set on the ORIGINAL transaction when it has been reversed, points to the `reversal` row that cancelled it), `created_at` (timestamp, default now)
 **And** the FK to `player_territories` uses `ON DELETE CASCADE`
-**And** a composite index exists on `(player_territory_id, created_at DESC)` to accelerate dashboard and history queries
+**And** a composite index exists on `(player_territory_id, created_at DESC, id DESC)` to accelerate dashboard and history queries with stable tie-break for keyset pagination
+**And** a partial unique index exists on `(player_territory_id, week_number) WHERE type = 'income_generation'` to guarantee at SQL level that weekly income cannot be double-credited (race-safe even under concurrent transactions)
 **And** the table is append-only by convention — no application code ever deletes rows; the architecture rule is enforced by code review and a comment in the schema file
+**And** the two reversal columns (`reversed_transaction_id`, `reversed_by_transaction_id`) are mutually exclusive in practice: an original transaction has `reversed_by_transaction_id` set when cancelled; a reversal row has `reversed_transaction_id` set pointing back to its target. Document this invariant in a schema comment.
 
 **Given** both tables exist
 **When** I inspect `src/db/schema.ts`
@@ -39,18 +41,35 @@ So that all future CO flows in Epics 3-5 use a single battle-tested pattern with
 
 **Given** the `colonies` and `co_transactions` tables from Story 3.1
 **When** Story 3.2 is complete
-**Then** `src/db/queries/territory.ts` exports an async function `withCoTransaction(tx, playerTerritoryId, type, amount, label, relatedEntity?, weekNumber?): Promise<string>` matching exactly the signature in `implementation-patterns-consistency-rules.md`
-**And** the function's first parameter is a `DrizzleTransaction` type (imported from the Drizzle types used in the codebase) — NEVER the global `db` export
-**And** the function inserts a new `co_transactions` row with the provided fields and returns the new `id`
+**Then** `src/db/queries/territory.ts` exports an async function with an **object-style** signature:
+```ts
+async function withCoTransaction(
+  tx: DrizzleTransaction,
+  input: {
+    playerTerritoryId: string
+    type: CoTransactionType  // union of the 7 canonical literals
+    amount: number           // signed: positive = credit, negative = debit
+    label: string            // human-readable, persisted as co_transactions.label
+    relatedEntityType?: 'colony' | 'building' | 'tile' | null
+    relatedEntityId?: string | null
+    weekNumber?: number | null
+    metadata?: Record<string, unknown>  // free-form, defaults to {}
+  }
+): Promise<string>
+```
+**And** the first parameter is a `DrizzleTransaction` type (imported from the Drizzle types used in the codebase) — NEVER the global `db` export. The type signature must prevent passing `db` at compile time.
+**And** the parameter is named `playerTerritoryId` (NOT `playerId`) — callers MUST resolve `session.playerId → player_territories.id` before invoking this helper. A JSDoc note reinforces this rule.
+**And** the function inserts a new `co_transactions` row with the provided fields (defaulting `metadata` to `{}` when omitted) and returns the new `id`
 **And** the function atomically updates `player_territories.co_balance` using `sql\`co_balance + ${amount}\`` (positive credit, negative debit)
 **And** the function does NOT open its own transaction — it is always called from within a caller's `db.transaction()`
-**And** a JSDoc comment above the function reinforces: "Always call inside an existing `db.transaction()`. Never pass the global `db`. Never update `co_balance` elsewhere."
+**And** a JSDoc comment above the function reinforces: "Always call inside an existing `db.transaction()`. Never pass the global `db`. Never update `co_balance` elsewhere. Always pass `playerTerritoryId`, never `playerId`."
 
 **Given** unit/integration tests for the utility (using a real test PostgreSQL DB per the architecture testing strategy)
 **When** `pnpm vitest` runs
-**Then** a test creates a player territory with `co_balance = 100`, calls `withCoTransaction(tx, ..., 'manual_income', 50, 'test credit')` inside a transaction, and asserts the new balance is 150 and a new `co_transactions` row exists with the correct values
+**Then** a test creates a player territory with `co_balance = 100`, calls `withCoTransaction(tx, { playerTerritoryId, type: 'manual_income', amount: 50, label: 'test credit' })` inside a transaction, and asserts the new balance is 150 and a new `co_transactions` row exists with the correct values (including `metadata = '{}'::jsonb` by default)
 **And** a test calls the utility with a negative amount and asserts the balance decreases correctly
-**And** a test asserts that calling the utility outside a transaction (passing the global `db`) is discouraged by type — the parameter type must prevent accidental misuse at compile time
+**And** a test calls the utility with a `metadata` payload (e.g. `{ reason: 'unit test' }`) and asserts the JSONB column contains the round-tripped value
+**And** a test asserts that calling the utility outside a transaction (passing the global `db`) is rejected by type — the `tx` parameter type must prevent accidental misuse at compile time
 
 **Given** the `co_transactions.type` enum
 **When** the utility is called with each of the 7 canonical type values
@@ -79,7 +98,7 @@ So that I can grow my empire with full confidence that the rules and economy are
   5. Verify `FACTION_CONFIGS[factionId].colonization` allows this specific `terrain_type` (consulting `terrainRestrictions` or a dedicated `allowedVillageTerrains` field in the config), else `FORBIDDEN`
   6. Verify `player_territories.co_balance >= 150`, else `{ code: 'BAD_REQUEST', message: 'Solde insuffisant (besoin : 150 CO)' }`
   7. Insert the new `colonies` row with `type='village'` and `dedicated_god=null`
-  8. Call `withCoTransaction(tx, playerTerritoryId, 'colony_construction', -150, 'Construction village', { type: 'colony', id: newColonyId })`
+  8. Call `withCoTransaction(tx, { playerTerritoryId, type: 'colony_construction', amount: -150, label: 'Construction village', relatedEntityType: 'colony', relatedEntityId: newColonyId, metadata: { colonyId: newColonyId } })`
 **And** the handler returns `{ success: true, data: { colonyId } }` on success
 
 **Given** the expanded `TileCard` from Story 2.5 (placeholder "Pas de colonie" section)
@@ -125,7 +144,7 @@ So that I can invest further in my colonies and unlock additional building capac
   4. Verify the tile `terrain_type` is in the faction's city-eligible list (e.g., Bretonniens = `plaine_agricole`, Comtes Vampires = `marais`), else `FORBIDDEN`
   5. Verify `player_territories.co_balance >= 500`, else `BAD_REQUEST` "Solde insuffisant (besoin : 500 CO)"
   6. Update the colony `type` from `village` to `city`
-  7. Call `withCoTransaction(tx, playerTerritoryId, 'colony_upgrade', -500, 'Amélioration en ville', { type: 'colony', id: colony.id })`
+  7. Call `withCoTransaction(tx, { playerTerritoryId, type: 'colony_upgrade', amount: -500, label: 'Amélioration en ville', relatedEntityType: 'colony', relatedEntityId: colony.id, metadata: { colonyId: colony.id, fromType: 'village', toType: 'city' } })`
 **And** the handler returns `{ success: true, data: { colonyId } }` on success
 
 **Given** the expanded `TileCard` for a tile with a village colony
@@ -175,7 +194,7 @@ So that the "Construire un village" option never appears for me, and I use my fa
 **When** Story 3.5 is complete
 **Then** the handler is extended to support alt-structure upgrades in addition to village → city
 **And** the handler branches on `colony.type`: village → city (existing logic), or alt-base → alt-upgraded (new logic reading `FACTION_CONFIGS[factionId].colonization.alternativeStructure.upgradeCost` and `.upgradeSlots`)
-**And** the new branch verifies balance, updates `colonies.type` to the upgraded identifier, and calls `withCoTransaction(tx, ..., 'colony_upgrade', -cost, label, ...)`
+**And** the new branch verifies balance, updates `colonies.type` to the upgraded identifier, and calls `withCoTransaction(tx, { playerTerritoryId, type: 'colony_upgrade', amount: -cost, label, relatedEntityType: 'colony', relatedEntityId: colony.id, metadata: { colonyId: colony.id, fromType, toType } })`
 **And** slot capacity helpers (`getColonySlotCapacity`) are extended to handle alt-structure types
 
 **Given** a Chaos Daemon player taps "Transformer en Portail Majeur (300 CO)"
