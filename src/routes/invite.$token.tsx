@@ -67,7 +67,7 @@ type InvitePageData =
   | { status: 'activated' }
 
 const getInviteDataFn = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ token: z.string() }))
+  .validator(z.object({ token: z.string() }))
   .handler(async ({ data }): Promise<InvitePageData> => {
     // Reject non-UUID tokens before hitting the DB
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -96,7 +96,7 @@ const getInviteDataFn = createServerFn({ method: 'GET' })
   })
 
 const autoLoginViaInviteFn = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ token: z.string().uuid() }))
+  .validator(z.object({ token: z.string().uuid() }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const { getRequest } = await import('@tanstack/react-start/server')
     const req = getRequest()
@@ -122,7 +122,7 @@ const autoLoginViaInviteFn = createServerFn({ method: 'POST' })
   })
 
 const completeInviteSetupFn = createServerFn({ method: 'POST' })
-  .inputValidator(
+  .validator(
     z.object({
       token: z.string().uuid(),
       playerId: z.string().uuid(),

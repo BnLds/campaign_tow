@@ -82,9 +82,9 @@ describe('[AC1][AC10][P0] Server fn — deleteMatchFn — src/routes/index.tsx',
     expect(code).toMatch(/deleteMatchFn[\s\S]{0,200}authMiddleware/)
   })
 
-  it('[DEL-010] deleteMatchFn uses deleteMatchSchema as inputValidator', () => {
+  it('[DEL-010] deleteMatchFn uses deleteMatchSchema as validator', () => {
     const code = indexRoute()
-    expect(code).toMatch(/deleteMatchFn[\s\S]{0,300}inputValidator\(deleteMatchSchema\)/)
+    expect(code).toMatch(/deleteMatchFn[\s\S]{0,300}validator\(deleteMatchSchema\)/)
   })
 
   it('[DEL-011] deleteMatchFn checks isGuest and returns UNAUTHORIZED (AC10)', () => {

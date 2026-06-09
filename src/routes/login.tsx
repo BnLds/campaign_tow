@@ -56,7 +56,7 @@ const guestLoginFn = createServerFn({ method: 'POST' }).handler(async () => {
 })
 
 const loginFn = createServerFn({ method: 'POST' })
-  .inputValidator(loginSchema)
+  .validator(loginSchema)
   .handler(async ({ data }): Promise<ServerResult<{ redirect: string }>> => {
     // Rate limit check — same message as wrong credentials to prevent timing side-channels
     if (isLoginRateLimited(data.username)) {

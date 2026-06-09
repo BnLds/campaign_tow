@@ -8,7 +8,7 @@ import { assertUnitBelongsToArmy } from './guards'
 
 export const loadArmyFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ armyId: z.string() }))
+  .validator(z.object({ armyId: z.string() }))
   .handler(async ({ data, context }) => {
     const { getArmyWithUnits, getUnitDeltas, getGraveyardUnits } = await import('../db/queries')
 
@@ -69,7 +69,7 @@ export type LoadArmyResult = Awaited<ReturnType<typeof loadArmyFn>>
 
 export const fetchUnitDeltasFn = createServerFn({ method: 'GET' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(z.object({ armyId: z.string(), unitId: z.string() }))
+  .validator(z.object({ armyId: z.string(), unitId: z.string() }))
   .handler(async ({ data }) => {
     const guard = await assertUnitBelongsToArmy(data.unitId, data.armyId)
     if (!guard.ok) throw notFound()

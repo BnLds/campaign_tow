@@ -132,11 +132,11 @@ describe('[AC3][AC4][AC7][AC8][P0] submitUnitXpFn — server function contract (
     expect(code).toMatch(/submitUnitXpFn[\s\S]{0,400}authMiddleware/)
   })
 
-  // 10.10 — submitUnitXpFn uses inputValidator with submitInitialXpSchema (broader, 0-999)
+  // 10.10 — submitUnitXpFn uses validator with submitInitialXpSchema (broader, 0-999)
   // The 0-99 cap for standard matches is enforced server-side in the handler via matchType lookup.
-  it('[4.1-SFN-016] submitUnitXpFn uses inputValidator(submitInitialXpSchema)', () => {
+  it('[4.1-SFN-016] submitUnitXpFn uses validator(submitInitialXpSchema)', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/submitUnitXpFn[\s\S]{0,600}inputValidator[\s\S]{0,200}submitInitialXpSchema/)
+    expect(code).toMatch(/submitUnitXpFn[\s\S]{0,600}validator[\s\S]{0,200}submitInitialXpSchema/)
   })
 
   // 10.10 — rejects guest users (returns UNAUTHORIZED)
@@ -231,10 +231,10 @@ describe.skip('[AC5][P0] completeEvolutionsFn — server function contract (Task
     expect(code).toMatch(/completeEvolutionsFn[\s\S]{0,3000}evolutionsEnteredAt/)
   })
 
-  // 10.16 — uses inputValidator with completeEvolutionsSchema
-  it('[4.1-SFN-030] completeEvolutionsFn uses inputValidator(completeEvolutionsSchema)', () => {
+  // 10.16 — uses validator with completeEvolutionsSchema
+  it('[4.1-SFN-030] completeEvolutionsFn uses validator(completeEvolutionsSchema)', () => {
     const code = getPostMatchRoute()
-    expect(code).toMatch(/completeEvolutionsFn[\s\S]{0,600}inputValidator[\s\S]{0,200}completeEvolutionsSchema/)
+    expect(code).toMatch(/completeEvolutionsFn[\s\S]{0,600}validator[\s\S]{0,200}completeEvolutionsSchema/)
   })
 })
 

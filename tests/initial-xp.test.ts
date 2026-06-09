@@ -136,7 +136,7 @@ describe('[INIT-SFN] Server functions — post-match.tsx', () => {
   })
 
   it('[INIT-SFN-006] submitUnitXpFn uses submitInitialXpSchema as input validator', () => {
-    expect(getPostMatchRoute()).toMatch(/submitUnitXpFn[\s\S]{0,600}inputValidator[\s\S]{0,200}submitInitialXpSchema/)
+    expect(getPostMatchRoute()).toMatch(/submitUnitXpFn[\s\S]{0,600}validator[\s\S]{0,200}submitInitialXpSchema/)
   })
 
   it('[INIT-SFN-007] submitUnitXpFn enforces max 200 for standard matches server-side', () => {

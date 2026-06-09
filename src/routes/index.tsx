@@ -15,7 +15,7 @@ import { sessionQueryOptions } from '../lib/session-queries'
 
 export const submitMatchResultFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(submitMatchResultSchema)
+  .validator(submitMatchResultSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ participantId: string; result: string }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
@@ -60,7 +60,7 @@ export const submitMatchResultFn = createServerFn({ method: 'POST' })
 
 export const submitUnitSelectionFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(submitUnitSelectionSchema)
+  .validator(submitUnitSelectionSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ totalXp: number; totalPoints: number }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
@@ -117,7 +117,7 @@ export const submitUnitSelectionFn = createServerFn({ method: 'POST' })
 
 export const loadArmyUnitsForSelectionFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator((data: { matchId: string }) => data)
+  .validator((data: { matchId: string }) => data)
   .handler(async ({ context, data }): Promise<ServerResult<{ units: Array<{ id: string; name: string; type: string; xp: number; points: number; effectivePoints: number }>; preSelectedUnitIds: string[] }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
@@ -174,7 +174,7 @@ export const loadArmyUnitsForSelectionFn = createServerFn({ method: 'GET' })
 
 export const deleteMatchFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(deleteMatchSchema)
+  .validator(deleteMatchSchema)
   .handler(async ({ context, data }): Promise<ServerResult<null>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }

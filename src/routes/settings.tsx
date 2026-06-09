@@ -20,7 +20,7 @@ import { sessionQueryOptions } from '../lib/session-queries'
 
 const changePasswordFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(changePasswordSchema)
+  .validator(changePasswordSchema)
   .handler(async ({ context, data }): Promise<ServerResult<null>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
@@ -36,7 +36,7 @@ const changePasswordFn = createServerFn({ method: 'POST' })
 
 const updateUsernameFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(updateUsernameSchema)
+  .validator(updateUsernameSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ username: string }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
