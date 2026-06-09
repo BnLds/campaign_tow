@@ -30,7 +30,7 @@ jobs:
             echo "Release Sentry : $SENTRY_RELEASE"
 
             # Pas de sudo : vps_ben est membre du groupe docker
-            COMPOSE="docker compose -f ops/docker-compose.prod.yml"
+            COMPOSE="docker compose --env-file .env -f ops/docker-compose.prod.yml"
 
             $COMPOSE build --no-cache app
 

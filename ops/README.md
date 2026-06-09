@@ -27,13 +27,13 @@ POST: 0
 Before deploying a Compose change, validate the rendered configuration:
 
 ```bash
-docker compose -f ops/docker-compose.prod.yml config --quiet
+docker compose --env-file .env -f ops/docker-compose.prod.yml config --quiet
 ```
 
 From the production server, if the shell is already in the repository folder:
 
 ```bash
-docker compose -f ops/docker-compose.prod.yml config --quiet
+docker compose --env-file .env -f ops/docker-compose.prod.yml config --quiet
 ```
 
 ## Targeted Traefik Deployment
@@ -41,8 +41,8 @@ docker compose -f ops/docker-compose.prod.yml config --quiet
 To restart only Traefik and the socket proxy, without rebuilding the application or restarting the database:
 
 ```bash
-docker compose -f ops/docker-compose.prod.yml up -d docker-socket-proxy
-docker compose -f ops/docker-compose.prod.yml up -d --force-recreate traefik
+docker compose --env-file .env -f ops/docker-compose.prod.yml up -d docker-socket-proxy
+docker compose --env-file .env -f ops/docker-compose.prod.yml up -d --force-recreate traefik
 ```
 
 ## Post-Deployment Checks
