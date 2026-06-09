@@ -1,0 +1,96 @@
+# generated: 2026-04-20
+# last_updated: 2026-04-23-story-1-3
+# project: campaign_tow
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-04-20
+last_updated: 2026-04-27-story-2-1-review
+project: campaign_tow
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: done
+  1-1-db-migration-factions-table-and-backfill-armies-faction-fk: done
+  1-2-faction-config-typescript-module-18-factions: done
+  1-3-owb-import-script-canonical-faction-detection-and-assignment: done
+  1-4-db-migration-player-territories-table-lazy-bootstrap: done
+  1-5-territory-route-shell-load-territory-dashboard-fn-co-banner-empty-state: done
+  epic-1-retrospective: optional
+
+  epic-2: in-progress
+  2-1-db-migration-tiles-table: review
+  2-2-tile-server-functions-add-remove-toggle-river-adjacency: backlog
+  2-3-tilecard-collapsed-and-2-column-grid-on-dashboard: backlog
+  2-4-add-tile-flow-placeholder-tilecard-and-bottom-sheet-form: backlog
+  2-5-expand-tile-remove-tile-flow-and-river-adjacency-switch: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-db-migration-colonies-and-co-transactions-tables: backlog
+  3-2-with-co-transaction-shared-utility-and-foundation-tests: backlog
+  3-3-build-standard-village-faction-aware-co-atomic: backlog
+  3-4-upgrade-village-to-city-500-co-slot-expansion: backlog
+  3-5-alternative-faction-structures-auto-creation-on-tile-add-and-upgrade-flow: backlog
+  3-6-chaos-god-consecration-on-village-founding-warriors-of-chaos-and-marauders: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-db-migration-buildings-table-and-integrity-constraints: backlog
+  4-2-building-catalog-and-build-building-fn-server-function: backlog
+  4-3-building-slot-and-building-option-components-and-construction-sheet-and-rules-display: backlog
+  4-4-automatic-free-buildings-on-colony-founding-fr21: backlog
+  4-5-multi-level-buildings-wizard-tower-and-comptoir-mercenaires: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-campaign-settings-table-and-weekly-cron-endpoint: backlog
+  5-2-calculate-weekly-income-pure-library: backlog
+  5-3-generate-weekly-income-fn-idempotent-server-function: backlog
+  5-4-income-breakdown-component-and-co-banner-preview: backlog
+  5-5-manual-income-and-expense-entries: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-paginated-transaction-history-and-transaction-entry-component: backlog
+  6-2-undo-last-transaction-fn-lifo-cancellation-with-state-cascade: backlog
+  6-3-discord-export-markdown-territory-summary: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-territory-setup-wizard-multi-step-form: backlog
+  7-2-initialize-territory-fn-atomic-snapshot-creation: backlog
+  7-3-route-guard-and-automatic-setup-redirect: backlog
+  epic-7-retrospective: optional

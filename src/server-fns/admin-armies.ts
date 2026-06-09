@@ -25,8 +25,20 @@ export const importArmyFn = createServerFn({ method: 'POST' })
       }
     }
 
+    const { resolveCanonicalFactionId } = await import('../lib/faction-resolver')
+    const canonicalFaction = resolveCanonicalFactionId(parsed.faction)
+    if (canonicalFaction === null) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Faction non reconnue dans l'export OWB : « ${parsed.faction} ». Vérifiez que la ligne « Warhammer: The Old World, {faction}, … » utilise un nom canonique.`,
+        },
+      }
+    }
+
     try {
-      const { armyId, unitCount } = await createArmyWithUnits(parsed)
+      const { armyId, unitCount } = await createArmyWithUnits({ ...parsed, faction: canonicalFaction })
       return { success: true, data: { armyId, armyName: parsed.name, unitCount } }
     } catch {
       return {
