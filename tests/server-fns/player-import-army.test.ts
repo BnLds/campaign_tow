@@ -178,9 +178,9 @@ describe('[AC5][P0] playerImportArmyFn — happy path', () => {
     expect(code).toMatch(/success:\s*true[\s\S]{0,300}armyId[\s\S]{0,300}armyName[\s\S]{0,300}faction[\s\S]{0,300}unitCount/)
   })
 
-  it('[PAI-053] faction in response uses canonical id (not raw parsed.faction)', () => {
+  it('[PAI-053] faction comes from parsed (not createArmyWithUnits)', () => {
     const code = getServerFn()
-    expect(code).toMatch(/faction:\s*canonicalFaction/)
+    expect(code).toMatch(/faction:\s*parsed\.faction/)
   })
 })
 

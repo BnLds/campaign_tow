@@ -59,30 +59,25 @@ describe('[AC6][P0] Territories route — route registration (Task 3.1)', () => 
 // AC6 — Placeholder content (Tasks 3.2, 8.17)
 // ---------------------------------------------------------------------------
 
-describe('[AC6][P0] Territories route — dashboard content (Story 1.5)', () => {
-  it('[3.1b-TER-005] territories.tsx imports CoBanner component', () => {
+describe('[AC6][P0] Territories route — placeholder content (Tasks 3.2, 8.17)', () => {
+  it('[3.1b-TER-005] territories.tsx renders "Territoires" as title', () => {
     const code = getTerritoriesRoute()
-    expect(code).toContain('CoBanner')
+    expect(code).toContain('Territoires')
   })
 
-  it('[3.1b-TER-006] territories.tsx imports territory query options', () => {
+  it('[3.1b-TER-006] territories.tsx uses Cinzel font for the title (var(--font-display))', () => {
     const code = getTerritoriesRoute()
-    expect(code).toContain('territoryDashboardQueryOptions')
+    expect(code).toMatch(/font-display|fontFamily[\s\S]{0,50}display/)
   })
 
-  it('[3.1b-TER-007] territories.tsx renders empty-state CTA text', () => {
+  it('[3.1b-TER-007] territories.tsx renders placeholder text "En construction"', () => {
     const code = getTerritoriesRoute()
-    expect(code).toContain('Configurer mes territoires')
+    expect(code).toContain('En construction')
   })
 
-  it('[3.1b-TER-008] territories.tsx has conditional on setupCompletedAt for empty state', () => {
+  it('[3.1b-TER-008] territories.tsx placeholder text is in italic style', () => {
     const code = getTerritoriesRoute()
-    expect(code).toContain('setupCompletedAt')
-  })
-
-  it('[1.5-TER-014] territories.tsx renders placeholder content when setupCompletedAt is not null', () => {
-    const code = getTerritoriesRoute()
-    expect(code).toContain('Tableau de bord à venir')
+    expect(code).toMatch(/fontStyle.*italic|italic/)
   })
 })
 
@@ -107,15 +102,15 @@ describe('[AC6][P0] Territories route — data-app-hydrated pattern (Task 3.3)',
 // ---------------------------------------------------------------------------
 
 describe('[AC6][P0] Territories route — layout padding (Task 3.4)', () => {
-  it('[3.1b-TER-011] territories.tsx uses Tailwind padding classes (px-4, py-12)', () => {
+  it('[3.1b-TER-011] territories.tsx uses 1rem padding', () => {
     const code = getTerritoriesRoute()
-    expect(code).toMatch(/px-4|py-12/)
+    expect(code).toMatch(/padding.*1rem|1rem.*padding/)
   })
 
-  it('[3.1b-TER-012] territories.tsx uses max-w-[720px] and mx-auto', () => {
+  it('[3.1b-TER-012] territories.tsx uses max-width 720px and margin auto', () => {
     const code = getTerritoriesRoute()
-    expect(code).toContain('max-w-[720px]')
-    expect(code).toContain('mx-auto')
+    expect(code).toMatch(/720/)
+    expect(code).toMatch(/margin.*auto|auto.*margin/)
   })
 })
 
@@ -123,11 +118,12 @@ describe('[AC6][P0] Territories route — layout padding (Task 3.4)', () => {
 // AC6 — No loader needed (Task 3.5)
 // ---------------------------------------------------------------------------
 
-describe('[AC6][P0] Territories route — loader (Story 1.5)', () => {
-  it('[3.1b-TER-013] territories.tsx defines an async loader that seeds TanStack Query cache', () => {
+describe('[AC6][P0] Territories route — static route (Task 3.5)', () => {
+  it('[3.1b-TER-013] territories.tsx does NOT define a loader (static placeholder)', () => {
     const code = getTerritoriesRoute()
-    expect(code).toMatch(/loader\s*:\s*async/)
-    expect(code).toContain('ensureQueryData')
+    // Static route — no loader function needed
+    // Verify "loader" is absent or only present in createFileRoute options without a handler
+    expect(code).not.toMatch(/loader\s*:\s*async/)
   })
 })
 

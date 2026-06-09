@@ -29,13 +29,6 @@ export const unitGainTypeEnum = pgEnum('unit_gain_type', [
   'champion_lost',    // Champion killed in challenge
 ])
 
-// Terrain type — 8 canonical values, exact order (Story 2.1)
-// Mirrors the TerrainType union in src/lib/faction-config.ts.
-export const terrainTypeEnum = pgEnum('terrain_type', [
-  'port', 'plaines', 'plaine_agricole', 'lisiere_forestiere',
-  'montagnes', 'foret', 'plaine_fluviale', 'marais',
-])
-
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
@@ -57,43 +50,10 @@ export const sessions = pgTable('sessions', {
 
 // Story 2.1 — Army import & player assignment
 
-export const factions = pgTable('factions', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull().unique(),
-  displayName: text('display_name').notNull(),
-})
-
-export const playerTerritories = pgTable('player_territories', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  playerId: text('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
-  coBalance: integer('co_balance').notNull().default(0),
-  lastIncomeWeek: integer('last_income_week').notNull().default(0),
-  setupCompletedAt: timestamp('setup_completed_at'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
-}, (table) => [
-  uniqueIndex('player_territories_player_id_unique').on(table.playerId),
-])
-
-export const tiles = pgTable('tiles', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  playerTerritoryId: text('player_territory_id').notNull()
-    .references(() => playerTerritories.id, { onDelete: 'cascade' }),
-  terrainType: terrainTypeEnum('terrain_type').notNull(),
-  name: text('name'),
-  riverAdjacent: boolean('river_adjacent').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
-}, (table) => [
-  index('idx_tiles_player_territory_id').on(table.playerTerritoryId),
-  check('tiles_river_adjacent_only_on_plaine_fluviale',
-    sql`${table.riverAdjacent} = false OR ${table.terrainType} = 'plaine_fluviale'`),
-])
-
 export const armies = pgTable('armies', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
-  faction: text('faction').notNull().references(() => factions.id, { onDelete: 'restrict' }),
+  faction: text('faction').notNull(),
   playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
   initialXpCompletedAt: timestamp('initial_xp_completed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -251,17 +211,5 @@ export const matchParticipantsRelations = relations(matchParticipants, ({ one })
   army: one(armies, {
     fields: [matchParticipants.armyId],
     references: [armies.id],
-  }),
-}))
-
-export const playerTerritoriesRelations = relations(playerTerritories, ({ one, many }) => ({
-  player: one(players, { fields: [playerTerritories.playerId], references: [players.id] }),
-  tiles: many(tiles),
-}))
-
-export const tilesRelations = relations(tiles, ({ one }) => ({
-  territory: one(playerTerritories, {
-    fields: [tiles.playerTerritoryId],
-    references: [playerTerritories.id],
   }),
 }))
