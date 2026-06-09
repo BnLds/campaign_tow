@@ -39,6 +39,19 @@ export const playerImportArmyFn = createServerFn({ method: 'POST' })
       }
     }
 
+    // Resolve canonical faction id
+    const { resolveCanonicalFactionId } = await import('../faction-resolver')
+    const canonicalFaction = resolveCanonicalFactionId(parsed.faction)
+    if (canonicalFaction === null) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Faction non reconnue dans l'export OWB : « ${parsed.faction} ». Vérifiez que la ligne « Warhammer: The Old World, {faction}, … » utilise un nom canonique.`,
+        },
+      }
+    }
+
     // Guard: no units found
     if (parsed.units.length === 0) {
       return {
@@ -50,7 +63,7 @@ export const playerImportArmyFn = createServerFn({ method: 'POST' })
     // Create army, assign to player, verify ownership (race condition check)
     let armyId: string | undefined
     try {
-      const { armyId: createdArmyId, unitCount } = await createArmyWithUnits(parsed)
+      const { armyId: createdArmyId, unitCount } = await createArmyWithUnits({ ...parsed, faction: canonicalFaction })
       armyId = createdArmyId
 
       await assignArmyToPlayer(armyId, context.session.playerId)
@@ -68,7 +81,7 @@ export const playerImportArmyFn = createServerFn({ method: 'POST' })
         data: {
           armyId,
           armyName: parsed.name,
-          faction: parsed.faction,
+          faction: canonicalFaction,
           unitCount,
         },
       }
