@@ -9,7 +9,7 @@
 | 3 | Marais | 20 CO | — | — |
 | 4 | Plaine | 30 CO | — | — |
 | 5 | Lisière forestière | 40 CO | Village (1 emplacement, 0 libre) | Forge (60 CO) |
-| 6 | Montagne | 20 CO | Village (1 emplacement, 1 libre) | — |
+| 6 | Montagne | 20 CO | Village (1 emplacement, 0 libre) | Tour du Sorcier (80 CO) |
 
 ## Colonies et bâtiments
 
@@ -17,7 +17,7 @@
 
 | Tuile | Type | Emplacements | Libres | Pts d'armée | Héros |
 |---|---|---|---|---|---|
-| Montagne | Village | 1 | 1 | +100 pts | +1 |
+| Montagne | Village | 1 | 0 | +100 pts | +1 |
 | Lisière forestière | Village | 1 | 0 | +100 pts | +1 |
 
 ### Bâtiments
@@ -25,6 +25,7 @@
 | Bâtiment | Tuile | Colonie | Coût | Effet | Semaine |
 |---|---|---|---|---|---|
 | Forge | Lisière forestière | Village | 60 CO | Équipe 1 unité/personnage par semaine (options armes/armures de sa fiche) | S3 |
+| Tour du Sorcier | Montagne | Village | 80 CO | Génère 10 pts OM. Permet Sorcier niv. 1 → niv. 2 | S4 |
 
 ## Revenu par tour
 
@@ -74,8 +75,9 @@
 | Acquisition : Montagne | — | 155 CO |
 | Revenu du tour | +190 CO | 345 CO |
 | Village sur montagne | -150 CO | 195 CO |
+| Tour du Sorcier (montagne) | -80 CO | 115 CO |
 
-**Solde fin de semaine 4 : 195 CO**
+**Solde fin de semaine 4 : 115 CO**
 
 ## Capacité armée
 
