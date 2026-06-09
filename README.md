@@ -1,33 +1,164 @@
-Welcome to your new TanStack Start app! 
+# Campaign TOW
 
-# Getting Started
+A campaign tracker for **Warhammer: The Old World** tabletop battles. Players register their armies, fight matches, and the app tracks unit experience (XP), tier progression, territories, and the full battle history of the campaign.
 
-To run this application:
+Live instance: **https://old-world-campaign.ben-lds.com**
+
+> This is a private repository. Contributions are by invitation only — see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+## Tech stack
+
+| Area | Technology |
+|---|---|
+| Framework | [TanStack Start](https://tanstack.com/start) (React 19, SSR) |
+| Routing / data | TanStack Router, TanStack Query, TanStack Form |
+| Database | PostgreSQL 16 + [Drizzle ORM](https://orm.drizzle.team/) |
+| Validation | Zod v4 (via Standard Schema) |
+| UI | Tailwind CSS v4, shadcn / Radix UI, Lucide icons |
+| Auth | Session cookies + bcryptjs |
+| Testing | Vitest (unit + integration) |
+| Monitoring | Sentry |
+| Deployment | Docker Compose + Traefik on a VPS |
+
+Package manager: **pnpm 10.33**. Node: **22+**.
+
+---
+
+## Getting started (local development)
+
+### Prerequisites
+
+- Node.js 22+
+- pnpm 10.33 (`corepack enable` then `corepack use pnpm@10.33`)
+- Docker (for the local PostgreSQL database)
+
+### 1. Install dependencies
 
 ```bash
 pnpm install
+```
+
+### 2. Configure environment
+
+Copy the example file and fill in the values:
+
+```bash
+cp .env.example .env.local
+```
+
+Minimum required for local dev:
+
+```dotenv
+DATABASE_URL=postgresql://campaign_tow:dev_password@localhost:5432/campaign_tow_dev
+SESSION_SECRET=<run: openssl rand -hex 32>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=<bcrypt hash, 12 rounds, of your admin password>
+```
+
+Sentry variables can be left empty in local dev.
+
+### 3. Start the database
+
+The local `docker-compose.yml` provisions a PostgreSQL 16 instance on `localhost:5432`:
+
+```bash
+docker compose up -d db
+```
+
+### 4. Run migrations and seed the admin user
+
+```bash
+pnpm db:migrate
+pnpm seed:admin
+```
+
+### 5. Start the dev server
+
+```bash
 pnpm dev
 ```
 
-# Building For Production
+The app runs on **http://localhost:3000**. Log in with the admin credentials you seeded.
 
-To build this application for production:
+---
 
-```bash
-pnpm build
+## Useful scripts
+
+| Script | Description |
+|---|---|
+| `pnpm dev` | Start the dev server (port 3000) |
+| `pnpm build` | Production build |
+| `pnpm start` | Run the production build locally |
+| `pnpm test` | Run unit tests (Vitest) |
+| `pnpm typecheck` | Type-check without emitting (`tsc --noEmit`) |
+| `pnpm lint` | Lint with ESLint |
+| `pnpm format` | Check formatting (Prettier) |
+| `pnpm check` | Auto-fix formatting + lint |
+| `pnpm db:generate` | Generate a migration from schema changes |
+| `pnpm db:migrate` | Apply pending migrations |
+| `pnpm db:studio` | Open Drizzle Studio |
+| `pnpm seed:admin` | Create/refresh the admin account |
+| `pnpm db:reset-data` | Reset application data |
+
+---
+
+## Project structure
+
+```
+src/
+├── routes/          # File-based routes (TanStack Router): armies, match, territories, admin, api…
+├── server-fns/      # Server functions (server-side logic callable from the client)
+├── db/              # Drizzle schema, queries, seeds (schema.ts, queries/, seed-admin.ts)
+├── components/      # UI components (incl. shadcn primitives in components/ui)
+├── lib/             # Shared utilities and domain logic
+├── hooks/           # React hooks
+├── integrations/    # Third-party integrations
+└── styles.css       # Single CSS entry point (Tailwind v4 + design tokens)
+
+drizzle/             # Generated SQL migrations
+docs/                # Campaign rules: xp_rules.md, match_rule.md, army examples
+tests/               # Vitest unit + integration tests
 ```
 
-## Production Deployment
+### Domain rules
 
-Production is described by `docker-compose.prod.yml`.
+The campaign mechanics live in [`docs/`](./docs):
 
-Traefik must not mount `/var/run/docker.sock` directly. Docker discovery goes through `docker-socket-proxy`, which is only reachable on the internal Compose network:
+- [`xp_rules.md`](./docs/xp_rules.md) — how units earn XP and progress through tiers
+- [`match_rule.md`](./docs/match_rule.md) — XP catch-up bonus between mismatched armies
+- `army_example.txt` — example army list format
+
+### About `_bmad-output/`
+
+This directory holds design, architecture, UX, and test planning artifacts. It is versioned on purpose to preserve project context. **Do not modify it for ordinary application changes** — only when a PR explicitly concerns design docs or a documented project decision (see CONTRIBUTING.md).
+
+---
+
+## Testing
+
+All tests run with [Vitest](https://vitest.dev/):
+
+```bash
+pnpm test
+```
+
+Specs live under `tests/` (unit + `tests/integration/`) and `src/**/__tests__/`.
+
+---
+
+## Deployment
+
+Production is described by [`docker-compose.prod.yml`](./docker-compose.prod.yml) and runs behind Traefik on a VPS.
+
+Traefik must **not** mount `/var/run/docker.sock` directly. Docker discovery goes through `docker-socket-proxy`, which is only reachable on the internal Compose network:
 
 ```text
 traefik -> docker-socket-proxy -> /var/run/docker.sock
 ```
 
-The proxy currently allows only the Docker API endpoints Traefik needs for container discovery:
+The proxy only allows the Docker API endpoints Traefik needs for container discovery:
 
 ```yaml
 CONTAINERS: 1
@@ -43,7 +174,7 @@ Before deploying a Compose change, validate the rendered configuration:
 docker compose -f docker-compose.prod.yml config --quiet
 ```
 
-For a targeted Traefik/socket-proxy rollout, do not rebuild the app and do not restart the database:
+For a targeted Traefik / socket-proxy rollout — do not rebuild the app, do not restart the database:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d docker-socket-proxy
@@ -57,199 +188,16 @@ curl -I https://old-world-campaign.ben-lds.com
 docker inspect campaign_tow-traefik-1
 ```
 
-`campaign_tow-traefik-1` should not have `/var/run/docker.sock` mounted. Only `docker-socket-proxy` should mount the Docker socket.
+`campaign_tow-traefik-1` must not have `/var/run/docker.sock` mounted. Only `docker-socket-proxy` should mount the Docker socket.
 
-## Testing
+---
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+## Contributing
 
-```bash
-pnpm test
-```
+Contributions are by invitation, via pull request to `main`. Run `pnpm lint`, `pnpm typecheck`, and `pnpm test` before opening a PR. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow.
 
-## Styling
+---
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+## License
 
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `pnpm add @tailwindcss/vite tailwindcss --dev`
-
-## Linting & Formatting
-
-
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
-
-```bash
-pnpm lint
-pnpm format
-pnpm check
-```
-
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
-
-```bash
-pnpm dlx shadcn@latest add button
-```
-
-
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+Proprietary — all rights reserved. This code is not licensed for redistribution or use outside the invited contributor context.
