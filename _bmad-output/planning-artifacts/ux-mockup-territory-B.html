@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Campaign TOW — Territoires Proposal B</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    /* Backgrounds */
+    --color-bg: #f1eade;
+    --color-surface: #fffbf5;
+    --color-header-bg: #f7f1e8;
+    --color-border: #e0d5c8;
+    --color-separator: #dfd1bf;
+
+    /* Text */
+    --color-text-primary: #171310;
+    --color-text-secondary: #6b5f52;
+    --color-text-muted: #9a8d7f;
+    --color-section-label: #938677;
+
+    /* Brand */
+    --color-brand: #334155;
+    --color-brand-dark: #1e293b;
+
+    /* Semantic */
+    --color-bonus: #2d7a3a;
+    --color-bonus-bg: #edf8ef;
+    --color-malus: #b82c2c;
+    --color-malus-bg: #fdf0f0;
+    --color-gold: #d4a843;
+
+    /* Fonts */
+    --font-display: 'Cinzel', serif;
+    --font-body: 'Inter', sans-serif;
+
+    /* Extras */
+    --phone-shadow: 0 24px 70px rgba(0,0,0,.55);
+    --stroke: #2b241e;
+    --shadow: 0 12px 34px rgba(0,0,0,.34);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background:
+      radial-gradient(circle at top, rgba(212,168,67,.1), transparent 28%),
+      linear-gradient(180deg, #15110d, #0f0d0b 40%);
+    color: white;
+    min-height: 100vh;
+  }
+
+  .showcase {
+    max-width: 1560px;
+    margin: 0 auto;
+    padding: 42px 24px 72px;
+  }
+
+  .hero { text-align: center; margin-bottom: 36px; }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    letter-spacing: .08em;
+    color: var(--color-gold);
+    margin: 0 0 10px;
+  }
+  .hero p {
+    margin: 0 auto;
+    max-width: 900px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #a79a8b;
+  }
+
+  /* Section containers */
+  .section {
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+    border: 1px solid var(--stroke);
+    border-radius: 22px;
+    padding: 24px;
+    margin-bottom: 34px;
+    box-shadow: var(--shadow);
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 18px;
+    margin-bottom: 22px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    color: var(--color-gold);
+    font-size: 18px;
+    margin: 0 0 6px;
+    letter-spacing: .04em;
+  }
+  .section-sub {
+    margin: 0;
+    font-size: 13px;
+    color: #a89a8c;
+    line-height: 1.55;
+    max-width: 780px;
+  }
+
+  /* Phone frame */
+  .phones-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .phone-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .phone-col-label {
+    font-family: var(--font-display);
+    color: var(--color-gold);
+    font-size: 12px;
+    letter-spacing: .04em;
+    text-align: center;
+  }
+  .phone-col-sub {
+    max-width: 320px;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #988b7d;
+  }
+
+  .phone {
+    width: 336px;
+    background: linear-gradient(180deg, #f7f1e8, #f0e8dd 100%);
+    border-radius: 34px;
+    border: 4px solid #1d1a17;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 0 1px rgba(212,168,67,.12), var(--phone-shadow);
+  }
+  .phone.tall { height: 780px; }
+  .phone.medium { height: 690px; }
+  .phone.short { height: 560px; }
+  .phone.auto { height: auto; min-height: 690px; }
+
+  .statusbar {
+    height: 20px;
+    flex-shrink: 0;
+    background: var(--color-header-bg);
+  }
+
+  /* Simulated AppHeader (top bar context reminder) */
+  .app-header-hint {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    background: var(--color-header-bg);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+  .app-header-hint .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--color-text-muted);
+    opacity: .4;
+  }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--color-bg);
+    padding-bottom: 68px;
+    position: relative;
+  }
+  .content::-webkit-scrollbar { width: 0; }
+
+  /* TabBar */
+  .tabbar {
+    flex-shrink: 0;
+    height: 58px;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+  }
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    position: relative;
+  }
+  .tab.active {
+    color: var(--color-brand);
+    background: #dfe8f4;
+  }
+  .tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 3px;
+    background: var(--color-brand);
+    border-radius: 0 0 3px 3px;
+  }
+  .tab-icon { font-size: 18px; }
+
+  /* FAB */
+  .fab {
+    position: absolute;
+    bottom: 70px;
+    right: 16px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--color-brand);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 16px rgba(51,65,85,.35);
+    z-index: 60;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* ========== PROPOSAL B SPECIFIC STYLES ========== */
+
+  /* CO Balance — full-width banner strip (not a card) */
+  .co-banner {
+    background: var(--color-brand-dark);
+    color: white;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .co-amount {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    line-height: 1;
+  }
+  .co-amount small {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    opacity: .7;
+    margin-left: 4px;
+  }
+  .co-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .co-income {
+    font-size: 12px;
+    font-weight: 600;
+    color: #8cc99a;
+  }
+  .co-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .co-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+  .co-btn-primary {
+    background: var(--color-gold);
+    color: var(--color-brand-dark);
+  }
+  .co-btn-ghost {
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.8);
+  }
+
+  /* Map-style tile grid — Proposal B's key differentiator */
+  .territory-grid {
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .tile-card {
+    background: var(--color-surface);
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow .15s;
+    position: relative;
+  }
+  .tile-card:active {
+    box-shadow: 0 0 0 2px var(--color-brand);
+  }
+  .tile-card.expanded {
+    grid-column: 1 / -1;
+  }
+
+  .tile-terrain-strip {
+    height: 6px;
+    width: 100%;
+  }
+  .terrain-plaines { background: linear-gradient(90deg, #b8c97c, #a3b86c); }
+  .terrain-agricole { background: linear-gradient(90deg, #c9b86c, #d4c87a); }
+  .terrain-foret { background: linear-gradient(90deg, #5a8a5a, #4a7a4a); }
+  .terrain-colline { background: linear-gradient(90deg, #9a8a6a, #8a7a5a); }
+  .terrain-montagne { background: linear-gradient(90deg, #7a7a8a, #6a6a7a); }
+  .terrain-fluviale { background: linear-gradient(90deg, #6a8aaa, #5a7a9a); }
+  .terrain-marais { background: linear-gradient(90deg, #6a7a5a, #5a6a4a); }
+
+  .tile-body {
+    padding: 10px 12px;
+  }
+  .tile-name {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 4px;
+    line-height: 1.2;
+  }
+  .tile-terrain-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .tile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    gap: 6px;
+  }
+  .tile-revenue {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-bonus);
+    white-space: nowrap;
+  }
+  .tile-colony-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+  .badge-village {
+    background: #f0e6d0;
+    color: #8a7040;
+    border: 1px solid #ddd0b0;
+  }
+  .badge-ville {
+    background: linear-gradient(135deg, #fdf5e0, #f7ecd0);
+    color: #9a7020;
+    border: 1px solid var(--color-gold);
+  }
+  .badge-none {
+    background: #f0ece6;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+  }
+  .tile-slots {
+    display: flex;
+    gap: 3px;
+    margin-top: 6px;
+  }
+  .slot-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+  }
+  .slot-filled { background: var(--color-brand); }
+  .slot-empty { background: var(--color-border); border: 1px dashed var(--color-text-muted); }
+
+  /* Expanded tile detail */
+  .tile-detail {
+    border-top: 1px solid var(--color-border);
+    padding: 12px;
+    background: #faf6ee;
+  }
+  .detail-section {
+    margin-bottom: 10px;
+  }
+  .detail-section:last-child { margin-bottom: 0; }
+  .detail-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--color-section-label);
+    margin-bottom: 6px;
+  }
+  .detail-stat-row {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .detail-stat-row strong {
+    color: var(--color-text-primary);
+  }
+
+  /* Building slots in detail */
+  .building-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .building-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--color-surface);
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+  }
+  .building-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .building-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .building-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .building-desc {
+    font-size: 10px;
+    color: var(--color-text-muted);
+  }
+  .building-revenue {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-bonus);
+    white-space: nowrap;
+  }
+
+  .add-building-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    background: transparent;
+    border: 1.5px dashed var(--color-border);
+    border-radius: 10px;
+    color: var(--color-brand);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-body);
+    min-height: 44px;
+  }
+
+  /* Colony upgrade CTA */
+  .colony-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #f7f0e0, #f0e8d4);
+    border-radius: 10px;
+    border: 1px solid #e0d4b8;
+  }
+  .colony-cta-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .colony-cta-cost {
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+  .colony-cta-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: var(--color-brand);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+    min-height: 32px;
+  }
+
+  /* River adjacency toggle */
+  .adjacency-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+  .adjacency-label {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+  }
+  .toggle-track {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+    background: var(--color-border);
+    position: relative;
+    cursor: pointer;
+  }
+  .toggle-track.on { background: var(--color-brand); }
+  .toggle-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    transition: left .15s;
+  }
+  .toggle-track.on .toggle-thumb { left: 18px; }
+
+  /* Construction dialog (bottom sheet) */
+  .sheet-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.35);
+    z-index: 80;
+    display: flex;
+    align-items: flex-end;
+  }
+  .sheet {
+    width: 100%;
+    background: var(--color-surface);
+    border-radius: 20px 20px 0 0;
+    padding: 0;
+    max-height: 75%;
+    overflow-y: auto;
+  }
+  .sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+    margin: 10px auto;
+  }
+  .sheet-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    padding: 4px 16px 12px;
+  }
+  .sheet-list {
+    padding: 0 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sheet-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--color-bg);
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .sheet-option:active {
+    border-color: var(--color-brand);
+    background: #eee8dc;
+  }
+  .sheet-option-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .sheet-option-info { flex: 1; }
+  .sheet-option-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .sheet-option-desc {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    margin-top: 1px;
+  }
+  .sheet-option-tiers {
+    font-size: 9px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+    font-style: italic;
+  }
+  .sheet-option-cost {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-brand);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Transaction history */
+  .tx-list {
+    padding: 0 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .tx-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .tx-item:last-child { border-bottom: none; }
+  .tx-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .tx-info { flex: 1; }
+  .tx-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  .tx-date {
+    font-size: 10px;
+    color: var(--color-text-muted);
+  }
+  .tx-amount {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .tx-plus { color: var(--color-bonus); }
+  .tx-minus { color: var(--color-malus); }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+    text-align: center;
+    gap: 12px;
+  }
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #ece5d8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--color-text-muted);
+  }
+  .empty-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .empty-desc {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    max-width: 260px;
+    line-height: 1.5;
+  }
+  .empty-cta {
+    margin-top: 8px;
+    padding: 12px 28px;
+    border-radius: 12px;
+    background: var(--color-brand);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+    min-height: 44px;
+  }
+
+  /* Section header inside content */
+  .content-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--color-section-label);
+    padding: 14px 16px 6px;
+  }
+
+  /* Annotations */
+  .anno {
+    display: inline-block;
+    background: rgba(212,168,67,.15);
+    color: var(--color-gold);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: .04em;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .phones-row {
+      gap: 40px;
+    }
+    .phone {
+      width: 100%;
+      max-width: 375px;
+    }
+  }
+
+  /* Design notes */
+  .design-notes {
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    border: 1px solid var(--stroke);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 24px;
+  }
+  .design-notes h3 {
+    font-family: var(--font-display);
+    color: var(--color-gold);
+    font-size: 14px;
+    margin: 0 0 12px;
+    letter-spacing: .04em;
+  }
+  .design-notes ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    color: #a89a8c;
+    line-height: 1.8;
+  }
+  .design-notes li strong {
+    color: #d4c4a0;
+  }
+</style>
+</head>
+<body>
+
+<div class="showcase">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Territoires -- Proposal B</h1>
+    <p>
+      Approche "carte en grille" : les tuiles sont affichees en grille 2 colonnes comme des cartes de terrain.
+      L'expansion se fait en place. Le bandeau CO est une barre sombre qui ancre visuellement le joueur.
+      Le dialogue de construction utilise un bottom sheet natif mobile.
+    </p>
+  </div>
+
+  <!-- ==================== SCREEN 1: Main Territory View ==================== -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">Vue Territoires -- Grille</h2>
+        <p class="section-sub">
+          Les tuiles sont disposees en grille 2x2. Chaque carte a une bande de couleur terrain en haut.
+          Taper une tuile l'expand en pleine largeur avec les details. Le bandeau CO est sticky.
+        </p>
+      </div>
+    </div>
+
+    <div class="phones-row">
+
+      <!-- Phone 1: Collapsed grid -->
+      <div class="phone-col">
+        <div class="phone-col-label">Grille collapsed</div>
+        <div class="phone tall">
+          <div class="statusbar"></div>
+          <div class="app-header-hint">
+            <div class="dot"></div>
+            <span>AppHeader (Thomas - Bretonniens) -- rendu par __root.tsx</span>
+          </div>
+          <div class="content">
+            <!-- CO Banner -->
+            <div class="co-banner">
+              <div>
+                <div class="co-amount">340<small>CO</small></div>
+              </div>
+              <div class="co-meta">
+                <div class="co-income">+125 CO/semaine</div>
+              </div>
+              <div class="co-actions">
+                <button class="co-btn co-btn-primary">Revenus</button>
+                <button class="co-btn co-btn-ghost">Hist.</button>
+              </div>
+            </div>
+
+            <div class="content-section-label">Mes territoires <span class="anno">4 tuiles</span></div>
+
+            <div class="territory-grid">
+              <!-- Tile 1 -->
+              <div class="tile-card">
+                <div class="tile-terrain-strip terrain-plaines"></div>
+                <div class="tile-body">
+                  <div class="tile-terrain-label">Plaines</div>
+                  <div class="tile-name">Plaine du Roi</div>
+                  <div class="tile-footer">
+                    <span class="tile-revenue">30 CO</span>
+                    <span class="tile-colony-badge badge-village">Village</span>
+                  </div>
+                  <div class="tile-slots">
+                    <div class="slot-dot slot-filled" title="Caserne base"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tile 2 -->
+              <div class="tile-card">
+                <div class="tile-terrain-strip terrain-agricole"></div>
+                <div class="tile-body">
+                  <div class="tile-terrain-label">Plaine agricole</div>
+                  <div class="tile-name">Champs de Lyonesse</div>
+                  <div class="tile-footer">
+                    <span class="tile-revenue">20 CO</span>
+                    <span class="tile-colony-badge badge-village">Village</span>
+                  </div>
+                  <div class="tile-slots">
+                    <div class="slot-dot slot-filled" title="Ferme (gratuite)"></div>
+                    <div class="slot-dot slot-empty" title="Slot libre"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tile 3 -->
+              <div class="tile-card">
+                <div class="tile-terrain-strip terrain-foret"></div>
+                <div class="tile-body">
+                  <div class="tile-terrain-label">Foret</div>
+                  <div class="tile-name">Foret de Chalons</div>
+                  <div class="tile-footer">
+                    <span class="tile-revenue">50 CO</span>
+                    <span class="tile-colony-badge badge-none">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tile 4 -->
+              <div class="tile-card">
+                <div class="tile-terrain-strip terrain-colline"></div>
+                <div class="tile-body">
+                  <div class="tile-terrain-label">Plaines</div>
+                  <div class="tile-name">Colline du Graal</div>
+                  <div class="tile-footer">
+                    <span class="tile-revenue">30 CO</span>
+                    <span class="tile-colony-badge badge-ville">Ville</span>
+                  </div>
+                  <div class="tile-slots">
+                    <div class="slot-dot slot-filled" title="Manoir Seigneurial"></div>
+                    <div class="slot-dot slot-filled" title="Autel de la Dame"></div>
+                    <div class="slot-dot slot-empty" title="Slot libre"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <!-- TabBar -->
+          <div class="tabbar">
+            <a class="tab" href="#"><span class="tab-icon">&#x1F4DC;</span>Campagne</a>
+            <a class="tab" href="#"><span class="tab-icon">&#x1F6E1;</span>Armees</a>
+            <a class="tab active" href="#"><span class="tab-icon">&#x1F4D6;</span>Territoires</a>
+          </div>
+          <button class="fab">+</button>
+        </div>
+        <div class="phone-col-sub">
+          Grille 2 colonnes. Bandes de couleur terrain. Dots = slots batiments (plein/vide).
+          Le bandeau CO sombre cree un contraste fort avec le fond parchemin.
+        </div>
+      </div>
+
+      <!-- Phone 2: Expanded tile -->
+      <div class="phone-col">
+        <div class="phone-col-label">Tuile expanded</div>
+        <div class="phone tall">
+          <div class="statusbar"></div>
+          <div class="app-header-hint">
+            <div class="dot"></div>
+            <span>AppHeader (Thomas - Bretonniens)</span>
+          </div>
+          <div class="content">
+            <div class="co-banner">
+              <div>
+                <div class="co-amount">340<small>CO</small></div>
+              </div>
+              <div class="co-meta">
+                <div class="co-income">+125 CO/semaine</div>
+              </div>
+              <div class="co-actions">
+                <button class="co-btn co-btn-primary">Revenus</button>
+                <button class="co-btn co-btn-ghost">Hist.</button>
+              </div>
+            </div>
+
+            <div class="content-section-label">Mes territoires</div>
+
+            <div class="territory-grid">
+              <!-- Tile 4 EXPANDED (Colline du Graal - Ville) -->
+              <div class="tile-card expanded">
+                <div class="tile-terrain-strip terrain-colline"></div>
+                <div class="tile-body">
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div>
+                      <div class="tile-terrain-label">Plaines</div>
+                      <div class="tile-name">Colline du Graal</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span class="tile-revenue">30 CO</span>
+                      <span class="tile-colony-badge badge-ville">Ville</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="tile-detail">
+                  <div class="detail-section">
+                    <div class="detail-label">Informations</div>
+                    <div class="detail-stat-row">
+                      <span>Revenu base : <strong>30 CO</strong></span>
+                      <span>Taille armee : <strong>+300 pts</strong></span>
+                    </div>
+                    <div class="detail-stat-row" style="margin-top:4px;">
+                      <span>Personnages : <strong>+2 Heros ou +1 Seigneur</strong></span>
+                    </div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Batiments (2/3)</div>
+                    <div class="building-list">
+                      <div class="building-item">
+                        <div class="building-icon" style="background:#eef0f8;">&#x1F3E0;</div>
+                        <div class="building-info">
+                          <div class="building-name">Manoir Seigneurial</div>
+                          <div class="building-desc">Cavalerie speciale, -25% CO cav.</div>
+                        </div>
+                        <div style="font-size:10px; color:var(--color-text-muted);">60 CO</div>
+                      </div>
+                      <div class="building-item">
+                        <div class="building-icon" style="background:#f8f0ee;">&#x26EA;</div>
+                        <div class="building-info">
+                          <div class="building-name">Autel de la Dame</div>
+                          <div class="building-desc">Vertus pour personnages</div>
+                        </div>
+                        <div style="font-size:10px; color:var(--color-text-muted);">50 CO</div>
+                      </div>
+                      <button class="add-building-btn">+ Construire un batiment</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Other tiles collapsed below -->
+              <div class="tile-card">
+                <div class="tile-terrain-strip terrain-plaines"></div>
+                <div class="tile-body">
+                  <div class="tile-terrain-label">Plaines</div>
+                  <div class="tile-name">Plaine du Roi</div>
+                  <div class="tile-footer">
+                    <span class="tile-revenue">30 CO</span>
+                    <span class="tile-colony-badge badge-village">Village</span>
+                  </div>
+                  <div class="tile-slots"><div class="slot-dot slot-filled"></div></div>
+                </div>
+              </div>
+
+              <div class="tile-card">
+                <div class="tile-terrain-strip terrain-agricole"></div>
+                <div class="tile-body">
+                  <div class="tile-terrain-label">Plaine agricole</div>
+                  <div class="tile-name">Champs de Lyonesse</div>
+                  <div class="tile-footer">
+                    <span class="tile-revenue">20 CO</span>
+                    <span class="tile-colony-badge badge-village">Village</span>
+                  </div>
+                  <div class="tile-slots">
+                    <div class="slot-dot slot-filled"></div>
+                    <div class="slot-dot slot-empty"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <a class="tab" href="#"><span class="tab-icon">&#x1F4DC;</span>Campagne</a>
+            <a class="tab" href="#"><span class="tab-icon">&#x1F6E1;</span>Armees</a>
+            <a class="tab active" href="#"><span class="tab-icon">&#x1F4D6;</span>Territoires</a>
+          </div>
+          <button class="fab">+</button>
+        </div>
+        <div class="phone-col-sub">
+          La tuile "Colline du Graal" s'expand en pleine largeur. On voit ses batiments, le slot libre, et le CTA pour construire.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== SCREEN 2: Construction Sheet + Tile with river toggle ==================== -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">Construction + Plaine fluviale</h2>
+        <p class="section-sub">
+          Le bottom sheet de construction apparait par-dessus la vue. A droite : une tuile Plaine fluviale
+          avec le toggle d'adjacence riviere.
+        </p>
+      </div>
+    </div>
+
+    <div class="phones-row">
+
+      <!-- Phone 3: Construction dialog -->
+      <div class="phone-col">
+        <div class="phone-col-label">Sheet construction</div>
+        <div class="phone tall">
+          <div class="statusbar"></div>
+          <div class="app-header-hint">
+            <div class="dot"></div>
+            <span>AppHeader (Thomas - Bretonniens)</span>
+          </div>
+          <div class="content" style="filter: brightness(.85);">
+            <div class="co-banner" style="opacity:.6;">
+              <div><div class="co-amount">340<small>CO</small></div></div>
+              <div class="co-meta"><div class="co-income">+125 CO/semaine</div></div>
+            </div>
+            <div class="content-section-label">Mes territoires</div>
+            <div class="territory-grid" style="opacity:.4;">
+              <div class="tile-card"><div class="tile-terrain-strip terrain-plaines"></div><div class="tile-body"><div class="tile-name" style="font-size:11px;">Plaine du Roi</div></div></div>
+              <div class="tile-card"><div class="tile-terrain-strip terrain-agricole"></div><div class="tile-body"><div class="tile-name" style="font-size:11px;">Champs de Lyonesse</div></div></div>
+            </div>
+          </div>
+          <!-- Sheet overlay -->
+          <div class="sheet-overlay">
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">Construire un batiment</div>
+              <div style="padding: 0 16px 8px; font-size:11px; color:var(--color-text-muted);">
+                Champs de Lyonesse -- 1 emplacement libre
+              </div>
+              <div class="sheet-list">
+                <div class="sheet-option">
+                  <div class="sheet-option-icon" style="background:#edf8ef;">&#x2694;</div>
+                  <div class="sheet-option-info">
+                    <div class="sheet-option-name">Caserne</div>
+                    <div class="sheet-option-desc">Infanterie speciale</div>
+                    <div class="sheet-option-tiers">Base 50 CO / Amelioree 150 CO</div>
+                  </div>
+                  <div class="sheet-option-cost">50 CO</div>
+                </div>
+                <div class="sheet-option">
+                  <div class="sheet-option-icon" style="background:#f0edf8;">&#x1F40E;</div>
+                  <div class="sheet-option-info">
+                    <div class="sheet-option-name">Ecuries</div>
+                    <div class="sheet-option-desc">Cavalerie / chars speciaux</div>
+                    <div class="sheet-option-tiers">Base 50 CO / Amelioree 150 CO</div>
+                  </div>
+                  <div class="sheet-option-cost">50 CO</div>
+                </div>
+                <div class="sheet-option">
+                  <div class="sheet-option-icon" style="background:#f8f0ee;">&#x26EA;</div>
+                  <div class="sheet-option-info">
+                    <div class="sheet-option-name">Autel de la Dame</div>
+                    <div class="sheet-option-desc">Vertus pour personnages</div>
+                    <div class="sheet-option-tiers" style="color:var(--color-gold);">Faction Bretonniens</div>
+                  </div>
+                  <div class="sheet-option-cost">50 CO</div>
+                </div>
+                <div class="sheet-option">
+                  <div class="sheet-option-icon" style="background:#fdf5e0;">&#x1F33E;</div>
+                  <div class="sheet-option-info">
+                    <div class="sheet-option-name">Ferme</div>
+                    <div class="sheet-option-desc">+20 CO de revenu</div>
+                  </div>
+                  <div class="sheet-option-cost">50 CO</div>
+                </div>
+                <div class="sheet-option">
+                  <div class="sheet-option-icon" style="background:#eef4ff;">&#x1F3E5;</div>
+                  <div class="sheet-option-info">
+                    <div class="sheet-option-name">Barbier-Chirurgien</div>
+                    <div class="sheet-option-desc">Relance blessure personnage</div>
+                  </div>
+                  <div class="sheet-option-cost">70 CO</div>
+                </div>
+                <div class="sheet-option">
+                  <div class="sheet-option-icon" style="background:#f5ede0;">&#x2692;</div>
+                  <div class="sheet-option-info">
+                    <div class="sheet-option-name">Forge</div>
+                    <div class="sheet-option-desc">Equiper armes/armures</div>
+                  </div>
+                  <div class="sheet-option-cost">60 CO</div>
+                </div>
+                <div class="sheet-option">
+                  <div class="sheet-option-icon" style="background:#e8f0ee;">&#x1F3CB;</div>
+                  <div class="sheet-option-info">
+                    <div class="sheet-option-name">Camp d'Entrainement</div>
+                    <div class="sheet-option-desc">Unite Aguerrie en 1 semaine</div>
+                  </div>
+                  <div class="sheet-option-cost">50 CO</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar" style="opacity:.3;">
+            <a class="tab" href="#"><span class="tab-icon">&#x1F4DC;</span>Campagne</a>
+            <a class="tab" href="#"><span class="tab-icon">&#x1F6E1;</span>Armees</a>
+            <a class="tab active" href="#"><span class="tab-icon">&#x1F4D6;</span>Territoires</a>
+          </div>
+        </div>
+        <div class="phone-col-sub">
+          Bottom sheet avec tous les batiments disponibles (filtres par faction Bretonniens).
+          Chaque option montre nom, description courte, cout CO. Les batiments de faction sont etiquetes.
+        </div>
+      </div>
+
+      <!-- Phone 4: River plain tile expanded -->
+      <div class="phone-col">
+        <div class="phone-col-label">Plaine fluviale (hypothetique)</div>
+        <div class="phone medium">
+          <div class="statusbar"></div>
+          <div class="app-header-hint">
+            <div class="dot"></div>
+            <span>AppHeader (hypothetique -- Empire)</span>
+          </div>
+          <div class="content">
+            <div class="co-banner">
+              <div><div class="co-amount">280<small>CO</small></div></div>
+              <div class="co-meta"><div class="co-income">+95 CO/semaine</div></div>
+              <div class="co-actions">
+                <button class="co-btn co-btn-primary">Revenus</button>
+                <button class="co-btn co-btn-ghost">Hist.</button>
+              </div>
+            </div>
+
+            <div class="content-section-label">Mes territoires</div>
+
+            <div class="territory-grid">
+              <div class="tile-card expanded">
+                <div class="tile-terrain-strip terrain-fluviale"></div>
+                <div class="tile-body">
+                  <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div>
+                      <div class="tile-terrain-label">Plaine fluviale</div>
+                      <div class="tile-name">Gue de la Reik</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span class="tile-revenue">30 CO</span>
+                      <span class="tile-colony-badge badge-village">Village</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="tile-detail">
+                  <div class="detail-section">
+                    <div class="detail-label">Adjacences fluviales</div>
+                    <div class="adjacency-row">
+                      <span class="adjacency-label">Plaine fluviale nord <span style="color:var(--color-bonus); font-weight:600;">+20 CO</span></span>
+                      <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+                    </div>
+                    <div class="adjacency-row">
+                      <span class="adjacency-label">Plaine fluviale est <span style="color:var(--color-bonus); font-weight:600;">+20 CO</span></span>
+                      <div class="toggle-track on"><div class="toggle-thumb"></div></div>
+                    </div>
+                    <div style="margin-top:4px; padding:6px 10px; background:var(--color-bonus-bg); border-radius:8px; font-size:11px; color:var(--color-bonus); font-weight:600;">
+                      Bonus riviere total : +40 CO
+                    </div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Colonie</div>
+                    <div class="colony-cta">
+                      <div>
+                        <div class="colony-cta-label">Evoluer en Ville</div>
+                        <div class="colony-cta-cost">+200 pts, +2 emplacements</div>
+                      </div>
+                      <button class="colony-cta-btn">500 CO</button>
+                    </div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="detail-label">Batiments (0/1)</div>
+                    <div class="building-list">
+                      <button class="add-building-btn">+ Construire un batiment</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <a class="tab" href="#"><span class="tab-icon">&#x1F4DC;</span>Campagne</a>
+            <a class="tab" href="#"><span class="tab-icon">&#x1F6E1;</span>Armees</a>
+            <a class="tab active" href="#"><span class="tab-icon">&#x1F4D6;</span>Territoires</a>
+          </div>
+          <button class="fab">+</button>
+        </div>
+        <div class="phone-col-sub">
+          Tuile plaine fluviale avec les toggles d'adjacence riviere. Chaque riviere adjacente ajoute +20 CO.
+          CTA pour evoluer le village en ville.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== SCREEN 3: Transaction History + Empty State ==================== -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">Historique CO + Etat vide</h2>
+        <p class="section-sub">
+          L'historique s'affiche comme un sub-view accessible depuis le bouton "Hist." du bandeau CO.
+          A droite : l'etat vide quand le joueur n'a pas encore configure ses territoires.
+        </p>
+      </div>
+    </div>
+
+    <div class="phones-row">
+
+      <!-- Phone 5: Transaction history -->
+      <div class="phone-col">
+        <div class="phone-col-label">Historique des transactions</div>
+        <div class="phone medium">
+          <div class="statusbar"></div>
+          <div class="app-header-hint">
+            <div class="dot"></div>
+            <span>AppHeader (Thomas - Bretonniens)</span>
+          </div>
+          <div class="content">
+            <div class="co-banner">
+              <div><div class="co-amount">340<small>CO</small></div></div>
+              <div class="co-meta"><div class="co-income">+125 CO/semaine</div></div>
+              <div class="co-actions">
+                <button class="co-btn co-btn-ghost" style="background:rgba(255,255,255,.25); color:white;">Tuiles</button>
+                <button class="co-btn co-btn-primary" style="font-weight:700;">Hist.</button>
+              </div>
+            </div>
+
+            <div class="content-section-label">Transactions recentes</div>
+
+            <div class="tx-list">
+              <div class="tx-item">
+                <div class="tx-icon" style="background:var(--color-bonus-bg); color:var(--color-bonus);">&#x1F4B0;</div>
+                <div class="tx-info">
+                  <div class="tx-label">Revenu semaine 6</div>
+                  <div class="tx-date">7 avril 2026</div>
+                </div>
+                <div class="tx-amount tx-plus">+125 CO</div>
+              </div>
+
+              <div class="tx-item">
+                <div class="tx-icon" style="background:#f0edf8; color:#6a5acd;">&#x26EA;</div>
+                <div class="tx-info">
+                  <div class="tx-label">Construction Autel de la Dame</div>
+                  <div class="tx-date">5 avril 2026 -- Colline du Graal</div>
+                </div>
+                <div class="tx-amount tx-minus">-50 CO</div>
+              </div>
+
+              <div class="tx-item">
+                <div class="tx-icon" style="background:var(--color-malus-bg); color:var(--color-malus);">&#x1F6E1;</div>
+                <div class="tx-info">
+                  <div class="tx-label">Achat unite (manuel)</div>
+                  <div class="tx-date">4 avril 2026</div>
+                </div>
+                <div class="tx-amount tx-minus">-80 CO</div>
+              </div>
+
+              <div class="tx-item">
+                <div class="tx-icon" style="background:var(--color-bonus-bg); color:var(--color-bonus);">&#x1F4B0;</div>
+                <div class="tx-info">
+                  <div class="tx-label">Revenu semaine 5</div>
+                  <div class="tx-date">31 mars 2026</div>
+                </div>
+                <div class="tx-amount tx-plus">+105 CO</div>
+              </div>
+
+              <div class="tx-item">
+                <div class="tx-icon" style="background:#fdf5e0; color:#9a7020;">&#x1F3D7;</div>
+                <div class="tx-info">
+                  <div class="tx-label">Construction Manoir Seigneurial</div>
+                  <div class="tx-date">28 mars 2026 -- Colline du Graal</div>
+                </div>
+                <div class="tx-amount tx-minus">-60 CO</div>
+              </div>
+
+              <div class="tx-item">
+                <div class="tx-icon" style="background:#fdf5e0; color:#9a7020;">&#x1F3D7;</div>
+                <div class="tx-info">
+                  <div class="tx-label">Fondation Ville</div>
+                  <div class="tx-date">28 mars 2026 -- Colline du Graal</div>
+                </div>
+                <div class="tx-amount tx-minus">-500 CO</div>
+              </div>
+
+              <div class="tx-item">
+                <div class="tx-icon" style="background:var(--color-bonus-bg); color:var(--color-bonus);">&#x1F4B0;</div>
+                <div class="tx-info">
+                  <div class="tx-label">Revenu semaine 4</div>
+                  <div class="tx-date">24 mars 2026</div>
+                </div>
+                <div class="tx-amount tx-plus">+85 CO</div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <a class="tab" href="#"><span class="tab-icon">&#x1F4DC;</span>Campagne</a>
+            <a class="tab" href="#"><span class="tab-icon">&#x1F6E1;</span>Armees</a>
+            <a class="tab active" href="#"><span class="tab-icon">&#x1F4D6;</span>Territoires</a>
+          </div>
+          <button class="fab">+</button>
+        </div>
+        <div class="phone-col-sub">
+          Historique CO : chaque entree a une icone typee, un label, la tuile concernee si applicable,
+          et le montant +/- colore. Toggle "Tuiles/Hist." dans le bandeau CO.
+        </div>
+      </div>
+
+      <!-- Phone 6: Empty state -->
+      <div class="phone-col">
+        <div class="phone-col-label">Etat vide -- Setup initial</div>
+        <div class="phone medium">
+          <div class="statusbar"></div>
+          <div class="app-header-hint">
+            <div class="dot"></div>
+            <span>AppHeader (Nouveau joueur)</span>
+          </div>
+          <div class="content">
+            <div class="co-banner" style="opacity:.5;">
+              <div><div class="co-amount">0<small>CO</small></div></div>
+              <div class="co-meta"><div class="co-income" style="color:var(--color-text-muted);">Aucun revenu</div></div>
+            </div>
+
+            <div class="empty-state">
+              <div class="empty-icon">&#x1F5FA;</div>
+              <div class="empty-title">Aucun territoire</div>
+              <div class="empty-desc">
+                Configurez vos territoires pour commencer a developper vos colonies et generer des revenus en Couronnes d'Or.
+              </div>
+              <button class="empty-cta">Configurer mes territoires</button>
+            </div>
+          </div>
+          <div class="tabbar">
+            <a class="tab" href="#"><span class="tab-icon">&#x1F4DC;</span>Campagne</a>
+            <a class="tab" href="#"><span class="tab-icon">&#x1F6E1;</span>Armees</a>
+            <a class="tab active" href="#"><span class="tab-icon">&#x1F4D6;</span>Territoires</a>
+          </div>
+          <button class="fab">+</button>
+        </div>
+        <div class="phone-col-sub">
+          Etat vide sobre avec CTA central. Le bandeau CO reste visible mais desature pour montrer
+          la structure avant le setup.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Design Notes -->
+  <div class="design-notes">
+    <h3>Notes de design -- Proposal B</h3>
+    <ul>
+      <li><strong>Grille 2 colonnes vs. liste verticale :</strong> Les tuiles sont affichees comme des cartes en grille, similaire a une carte de region. L'expansion se fait en place (la tuile passe en pleine largeur). Cela permet de voir 4 tuiles d'un coup sans scroller, ce qui est important pour 3-5 tuiles typiques.</li>
+      <li><strong>Bandeau CO sombre :</strong> Le bandeau CO utilise la couleur brand-dark (#1e293b) pour creer un ancrage visuel fort en haut du contenu. Il se distingue clairement de l'AppHeader et du fond parchemin. C'est le premier element vu, ce qui est voulu : le solde CO est l'info la plus critique.</li>
+      <li><strong>Dots pour les slots :</strong> Les emplacements de batiments sont representes par des petits carres (pleins = occupes, en pointilles = libres). Cela donne un apercu immediat de la capacite sans avoir a ouvrir la tuile.</li>
+      <li><strong>Bandes de couleur terrain :</strong> Chaque tuile a une bande de couleur en haut qui encode le type de terrain visuellement (vert pour foret, dore pour plaine agricole, etc.). Plus informatif qu'une simple icone.</li>
+      <li><strong>Toggle Tuiles/Hist. :</strong> L'historique des transactions et la vue tuiles partagent le meme ecran via un toggle dans le bandeau CO, evitant une navigation supplementaire.</li>
+      <li><strong>Bottom sheet construction :</strong> La selection de batiment utilise un bottom sheet natif mobile, coherent avec les patterns iOS/Android. Les options montrent le cout + une description courte + les tiers disponibles pour les batiments militaires.</li>
+      <li><strong>River adjacency toggles :</strong> Les plaines fluviales montrent des toggles par adjacence, avec un recap du bonus total. Simple et explicite.</li>
+      <li><strong>Pas de header duplique :</strong> Le contenu territoires s'integre sous l'AppHeader existant. Seul le bandeau CO (qui est du contenu, pas de la navigation) est ajoute.</li>
+    </ul>
+  </div>
+
+</div>
+
+</body>
+</html>
