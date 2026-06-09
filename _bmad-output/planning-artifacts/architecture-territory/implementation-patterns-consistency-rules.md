@@ -51,7 +51,10 @@ interface FactionConfig {
       upgradeSlots?: number
     }
   }
-  terrainRestrictions: TerrainType[]
+  /** Empty = no faction-level restriction on village-buildable terrain. Non-empty = villages can ONLY be founded on listed terrains. */
+  villageTerrainWhitelist: TerrainType[]
+  /** Empty = cities follow default territory rules. Non-empty = cities can ONLY be founded on listed terrains. Per-faction city exceptions (e.g. Bretonnie on plaine_agricole) are NOT encoded here — tracked in deferred-work.md. */
+  cityTerrainWhitelist: TerrainType[]
   availableBuildings: BuildingId[]
   automaticBuildings: Array<{
     terrain: TerrainType
