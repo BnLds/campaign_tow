@@ -1,0 +1,1 @@
+ALTER TABLE "armies" ADD CONSTRAINT "armies_faction_factions_id_fk" FOREIGN KEY ("faction") REFERENCES "public"."factions"("id") ON DELETE restrict ON UPDATE no action;

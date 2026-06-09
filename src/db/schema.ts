@@ -50,10 +50,16 @@ export const sessions = pgTable('sessions', {
 
 // Story 2.1 — Army import & player assignment
 
+export const factions = pgTable('factions', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  displayName: text('display_name').notNull(),
+})
+
 export const armies = pgTable('armies', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
-  faction: text('faction').notNull(),
+  faction: text('faction').notNull().references(() => factions.id, { onDelete: 'restrict' }),
   playerId: text('player_id').references(() => players.id, { onDelete: 'set null' }),
   initialXpCompletedAt: timestamp('initial_xp_completed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
