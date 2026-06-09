@@ -111,24 +111,26 @@ src/
 ├── routes/          # File-based routes (TanStack Router): armies, match, territories, admin, api…
 ├── server-fns/      # Server functions (server-side logic callable from the client)
 ├── db/              # Drizzle schema, queries, seeds (schema.ts, queries/, seed-admin.ts)
+├── lib/             # Domain logic, validators, helpers, shared types
 ├── components/      # UI components (incl. shadcn primitives in components/ui)
-├── lib/             # Shared utilities and domain logic
 ├── hooks/           # React hooks
 ├── integrations/    # Third-party integrations
 └── styles.css       # Single CSS entry point (Tailwind v4 + design tokens)
 
 drizzle/             # Generated SQL migrations
-docs/                # Campaign rules: xp_rules.md, match_rule.md, army examples
+docs/                # Campaign rules and army export examples
+ops/                 # Production deployment config & runbook (Compose, Traefik)
 tests/               # Vitest unit + integration tests
 ```
 
 ### Domain rules
 
-The campaign mechanics live in [`docs/`](./docs):
+The campaign mechanics live in [`docs/campaign-rules/`](./docs/campaign-rules):
 
-- [`xp_rules.md`](./docs/xp_rules.md) — how units earn XP and progress through tiers
-- [`match_rule.md`](./docs/match_rule.md) — XP catch-up bonus between mismatched armies
-- `army_example.txt` — example army list format
+- [`xp_rules.md`](./docs/campaign-rules/xp_rules.md) — how units earn XP and progress through tiers
+- [`match_rule.md`](./docs/campaign-rules/match_rule.md) — XP catch-up bonus between mismatched armies
+
+Example army exports (the formats the importer accepts) are in [`docs/examples/`](./docs/examples).
 
 ### About `_bmad-output/`
 
@@ -150,45 +152,9 @@ Specs live under `tests/` (unit + `tests/integration/`) and `src/**/__tests__/`.
 
 ## Deployment
 
-Production is described by [`docker-compose.prod.yml`](./docker-compose.prod.yml) and runs behind Traefik on a VPS.
+Production runs in Docker behind Traefik on a VPS, described by [`ops/docker-compose.prod.yml`](./ops/docker-compose.prod.yml).
 
-Traefik must **not** mount `/var/run/docker.sock` directly. Docker discovery goes through `docker-socket-proxy`, which is only reachable on the internal Compose network:
-
-```text
-traefik -> docker-socket-proxy -> /var/run/docker.sock
-```
-
-The proxy only allows the Docker API endpoints Traefik needs for container discovery:
-
-```yaml
-CONTAINERS: 1
-EVENTS: 1
-INFO: 1
-NETWORKS: 1
-POST: 0
-```
-
-Before deploying a Compose change, validate the rendered configuration:
-
-```bash
-docker compose -f docker-compose.prod.yml config --quiet
-```
-
-For a targeted Traefik / socket-proxy rollout — do not rebuild the app, do not restart the database:
-
-```bash
-docker compose -f docker-compose.prod.yml up -d docker-socket-proxy
-docker compose -f docker-compose.prod.yml up -d --force-recreate traefik
-```
-
-Post-deployment checks:
-
-```bash
-curl -I https://old-world-campaign.ben-lds.com
-docker inspect campaign_tow-traefik-1
-```
-
-`campaign_tow-traefik-1` must not have `/var/run/docker.sock` mounted. Only `docker-socket-proxy` should mount the Docker socket.
+The full runbook — Traefik / `docker-socket-proxy` topology, Compose validation, targeted rollout, post-deployment checks, and required environment variables — lives in [`ops/README.md`](./ops/README.md).
 
 ---
 

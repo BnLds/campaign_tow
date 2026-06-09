@@ -61,7 +61,7 @@ services:
   # ── Application ──
   app:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
       args:
         # VITE_SENTRY_DSN est inliné dans le bundle browser au build —
