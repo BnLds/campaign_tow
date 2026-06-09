@@ -1,20 +1,20 @@
 # BMAD Output
 
-Ce dossier contient les artefacts de travail produits pendant la conception et le pilotage du projet Campaign TOW.
+This folder contains the working artifacts produced while designing and steering the Campaign TOW project.
 
-Il est versionne volontairement: ces documents ne sont pas confidentiels et servent de contexte projet pour comprendre les decisions d'architecture, d'UX et de test.
+It is intentionally versioned: these documents are not confidential and provide project context for understanding architecture, UX, and testing decisions.
 
-## Contenu
+## Contents
 
-- `planning-artifacts/architecture/`: decisions d'architecture, structure projet et regles de coherence.
-- `planning-artifacts/ux-design-specification/`: direction UX, parcours utilisateur, fondations visuelles et accessibilite.
-- `planning-artifacts/ux-mockup.html`: prototype UX statique.
-- `test-artifacts/`: checklists ATDD, tracabilite et progres de mise en place des tests.
+- `planning-artifacts/architecture/`: architecture decisions, project structure, and consistency rules.
+- `planning-artifacts/ux-design-specification/`: UX direction, user journeys, visual foundations, and accessibility.
+- `planning-artifacts/ux-mockup.html`: static UX prototype.
+- `test-artifacts/`: ATDD checklists, traceability, and test setup progress.
 
-## Regles De Modification
+## Modification Rules
 
-Les contributeurs peuvent lire ce dossier pour comprendre le contexte du projet.
+Contributors may read this folder to understand the project context.
 
-Ne modifiez `_bmad-output/` dans une pull request.
+Do not modify `_bmad-output/` in a pull request.
 
-Pour les changements applicatifs courants, modifiez plutot `src/`, `tests/`, `docs/` ou les fichiers de configuration concernes.
+For regular application changes, modify `src/`, `tests/`, `docs/`, or the relevant configuration files instead.

@@ -1,18 +1,18 @@
 # Operations
 
-Ce dossier contient la documentation et la configuration d'exploitation de Campaign TOW.
+This folder contains the operations documentation and configuration for Campaign TOW.
 
-La configuration Compose de production est decrite par `ops/docker-compose.prod.yml`.
+The production Compose configuration is described by `ops/docker-compose.prod.yml`.
 
-## Architecture Production
+## Production Architecture
 
-Traefik ne doit pas monter `/var/run/docker.sock` directement. La decouverte Docker passe par `docker-socket-proxy`, accessible uniquement sur le reseau Compose interne `socket`:
+Traefik must not mount `/var/run/docker.sock` directly. Docker discovery goes through `docker-socket-proxy`, which is accessible only on the internal Compose network `socket`:
 
 ```text
 traefik -> docker-socket-proxy -> /var/run/docker.sock
 ```
 
-Le proxy autorise uniquement les endpoints Docker necessaires a Traefik pour la decouverte des containers:
+The proxy only allows the Docker endpoints Traefik needs for container discovery:
 
 ```yaml
 CONTAINERS: 1
@@ -22,43 +22,43 @@ NETWORKS: 1
 POST: 0
 ```
 
-## Validation Compose
+## Compose Validation
 
-Avant de deployer un changement Compose, valider la configuration rendue:
-
-```bash
-docker compose -f ops/docker-compose.prod.yml config --quiet
-```
-
-Depuis le serveur de production, si le shell est deja dans le dossier du repo:
+Before deploying a Compose change, validate the rendered configuration:
 
 ```bash
 docker compose -f ops/docker-compose.prod.yml config --quiet
 ```
 
-## Deploiement Cible Traefik
+From the production server, if the shell is already in the repository folder:
 
-Pour relancer uniquement Traefik et le socket proxy, sans reconstruire l'application ni redemarrer la base:
+```bash
+docker compose -f ops/docker-compose.prod.yml config --quiet
+```
+
+## Targeted Traefik Deployment
+
+To restart only Traefik and the socket proxy, without rebuilding the application or restarting the database:
 
 ```bash
 docker compose -f ops/docker-compose.prod.yml up -d docker-socket-proxy
 docker compose -f ops/docker-compose.prod.yml up -d --force-recreate traefik
 ```
 
-## Checks Post-Deploiement
+## Post-Deployment Checks
 
 ```bash
 curl -I https://old-world-campaign.ben-lds.com
 docker inspect campaign_tow-traefik-1
 ```
 
-`campaign_tow-traefik-1` ne doit pas avoir `/var/run/docker.sock` monte. Seul `docker-socket-proxy` doit monter le socket Docker.
+`campaign_tow-traefik-1` must not have `/var/run/docker.sock` mounted. Only `docker-socket-proxy` should mount the Docker socket.
 
-## Variables D'Environnement
+## Environment Variables
 
-Les secrets et valeurs de production ne doivent jamais etre committees.
+Production secrets and values must never be committed.
 
-Variables attendues par `ops/docker-compose.prod.yml`:
+Variables expected by `ops/docker-compose.prod.yml`:
 
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -71,10 +71,10 @@ Variables attendues par `ops/docker-compose.prod.yml`:
 - `SENTRY_AUTH_TOKEN`
 - `SENTRY_RELEASE`
 
-Utiliser `.env.example` comme reference pour documenter les variables sans valeur sensible.
+Use `.env.example` as the reference for documenting variables without sensitive values.
 
-## Notes Sentry
+## Sentry Notes
 
-`VITE_SENTRY_DSN` est integre dans le bundle browser au build. Changer ce DSN necessite donc un rebuild de l'image.
+`VITE_SENTRY_DSN` is embedded in the browser bundle at build time. Changing this DSN therefore requires rebuilding the image.
 
-`SENTRY_RELEASE` doit correspondre au commit deploye pour que les sourcemaps et les events soient rattaches a la meme release.
+`SENTRY_RELEASE` must match the deployed commit so sourcemaps and events are attached to the same release.
