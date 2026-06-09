@@ -1,0 +1,11 @@
+title = "Campaign TOW Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Ignore versioned BMAD planning artifacts"
+paths = [
+  '''(^|/)_bmad/''',
+  '''(^|/)_bmad-output/''',
+]

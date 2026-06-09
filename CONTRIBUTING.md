@@ -15,6 +15,7 @@ Ce depot est prive. Les contributions se font par invitation et via pull request
 Commandes recommandees avant PR:
 
 ```bash
+pnpm secrets:scan
 pnpm lint
 pnpm typecheck
 pnpm test

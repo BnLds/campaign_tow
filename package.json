@@ -22,6 +22,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "format": "prettier --check .",
+    "secrets:scan": "scripts/gitleaks.sh git",
+    "secrets:scan:dir": "scripts/gitleaks.sh dir",
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {

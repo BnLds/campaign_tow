@@ -110,6 +110,8 @@ The app runs on **http://localhost:3000**. Log in with the admin credentials you
 | `pnpm typecheck` | Type-check without emitting (`tsc --noEmit`) |
 | `pnpm lint` | Lint with ESLint |
 | `pnpm format` | Check formatting (Prettier) |
+| `pnpm secrets:scan` | Scan Git history for committed secrets with Gitleaks |
+| `pnpm secrets:scan:dir` | Scan the current working tree for secrets with Gitleaks |
 | `pnpm check` | Auto-fix formatting + lint |
 | `pnpm db:generate` | Generate a migration from schema changes |
 | `pnpm db:migrate` | Apply pending migrations |
