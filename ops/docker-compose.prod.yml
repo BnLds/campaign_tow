@@ -34,8 +34,8 @@ services:
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
     ports:
-      - "VPS_BIND_IP_REDACTED:80:80"
-      - "VPS_BIND_IP_REDACTED:443:443"
+      - "${VPS_BIND_IP}:80:80"
+      - "${VPS_BIND_IP}:443:443"
     volumes:
       - letsencrypt:/letsencrypt
 
