@@ -26,11 +26,12 @@ Les colonies augmentent la taille de votre armée et développent vos territoire
 | Colonie | Coût | Taille armée | Personnages | Bâtiments |
 |---------|------|-------------|-------------|-----------|
 | Village | 150 CO | +100 pts | +1 Héros (en respectant les restrictions) | 1 emplacement |
-| Ville | 500 CO | +300 pts | +2 Héros OU +1 Seigneur (en respectant les restrictions) | 3 emplacements |
+| Ville | 500 CO | +300 pts | +3 Héros (en respectant les restrictions) | 3 emplacements |
 
 ### Règles de colonisation
 
 - Une ville doit toujours être construite à partir d'un village existant.
+- Les seigneurs ne sont pas recrutables via les colonies. Seuls des héros peuvent être recrutés.
 - Les bâtiments doivent être payés en CO.
 - Pas de doublon de bâtiments dans une même ville.
 - Certains terrains limitent la construction de villes ou de bâtiments.
