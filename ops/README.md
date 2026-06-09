@@ -63,6 +63,9 @@ Variables expected by `ops/docker-compose.prod.yml`:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`
+- `VPS_BIND_IP`
+- `ACME_EMAIL`
+- `TRAEFIK_DOCKER_NETWORK`
 - `SESSION_SECRET`
 - `ADMIN_USERNAME`
 - `ADMIN_PASSWORD_HASH`
