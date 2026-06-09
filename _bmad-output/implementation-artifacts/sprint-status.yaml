@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-20
-last_updated: 2026-04-23-story-1-4
+last_updated: 2026-04-23-story-1-5
 project: campaign_tow
 project_key: NOKEY
 tracking_system: file-system
@@ -47,7 +47,7 @@ development_status:
   1-2-faction-config-typescript-module-18-factions: done
   1-3-owb-import-script-canonical-faction-detection-and-assignment: done
   1-4-db-migration-player-territories-table-lazy-bootstrap: review
-  1-5-territory-route-shell-load-territory-dashboard-fn-co-banner-empty-state: backlog
+  1-5-territory-route-shell-load-territory-dashboard-fn-co-banner-empty-state: ready-for-dev
   epic-1-retrospective: optional
 
   epic-2: backlog

@@ -23,3 +23,7 @@
 - `parsed.faction` non-string defensive guard absent : si `parseOwbExport` renvoyait `undefined` pour un export malformé, `.replace` lèverait un TypeError au lieu d'un `VALIDATION_ERROR`. Le type du parser est `string` mais ceinture-et-bretelles manque. [src/lib/faction-resolver.ts:9]
 - Le handler admin `importArmyFn` ne valide pas `parsed.units.length === 0` — pré-existant avant 1.3, non introduit par ce changement. [src/server-fns/admin-armies.ts]
 - Test de parité SQL réelle (lire `drizzle/0005_chemical_goliath.sql` au runtime, extraire le bloc VALUES, comparer à `FACTION_VARIANTS`) — spec §SQL parity le marque "optional, recommended". Le round-trip actuel ne vérifie que la self-consistency de la liste TS.
+
+## Playwright E2E bootstrap (deferred from Story 1.5)
+
+Story 1.5's epic AC mentioned a Playwright e2e test for the `/territories` route. Deferred because: no `playwright.config.*`, no `e2e/` directory, no global-setup, no auth fixtures, no `.auth/` storageState directory exist in the repo. Bootstrapping all of this is an epic-level task — a single-story scope expansion would balloon. Vitest integration tests (`territory-queries.test.ts`) cover the lazy-bootstrap behaviour at the helper layer. **Action:** schedule a dedicated bootstrap story before Epic 2 ships (recommended: as the first story of Epic 2 or as a 1.6 spike) to set up Playwright config, global-setup with cookie-based session injection, and a first smoke spec covering `/territories`.

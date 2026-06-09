@@ -9,3 +9,6 @@ export const STALE_TIME_CAMPAIGN_TIMELINE = 10_000 // 10 seconds
 
 /** Polling interval for campaign timeline auto-refresh */
 export const REFETCH_INTERVAL_CAMPAIGN_TIMELINE = 15_000 // 15 seconds
+
+/** Cache duration for territory dashboard queries */
+export const STALE_TIME_TERRITORY = 30_000 // 30 seconds
