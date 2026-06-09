@@ -41,8 +41,8 @@ docker compose --env-file .env -f ops/docker-compose.prod.yml config --quiet
 To restart only Traefik and the socket proxy, without rebuilding the application or restarting the database:
 
 ```bash
-docker compose --env-file .env -f ops/docker-compose.prod.yml up -d docker-socket-proxy
-docker compose --env-file .env -f ops/docker-compose.prod.yml up -d --force-recreate traefik
+docker compose -p campaign_tow --env-file .env -f ops/docker-compose.prod.yml up -d docker-socket-proxy
+docker compose -p campaign_tow --env-file .env -f ops/docker-compose.prod.yml up -d --force-recreate traefik
 ```
 
 ## Post-Deployment Checks
