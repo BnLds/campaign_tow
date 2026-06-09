@@ -29,6 +29,13 @@ export const unitGainTypeEnum = pgEnum('unit_gain_type', [
   'champion_lost',    // Champion killed in challenge
 ])
 
+// Terrain type — 8 canonical values, exact order (Story 2.1)
+// Mirrors the TerrainType union in src/lib/faction-config.ts.
+export const terrainTypeEnum = pgEnum('terrain_type', [
+  'port', 'plaines', 'plaine_agricole', 'lisiere_forestiere',
+  'montagnes', 'foret', 'plaine_fluviale', 'marais',
+])
+
 export const players = pgTable('players', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text('username').notNull().unique(),
@@ -66,6 +73,21 @@ export const playerTerritories = pgTable('player_territories', {
   updatedAt: timestamp('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   uniqueIndex('player_territories_player_id_unique').on(table.playerId),
+])
+
+export const tiles = pgTable('tiles', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  playerTerritoryId: text('player_territory_id').notNull()
+    .references(() => playerTerritories.id, { onDelete: 'cascade' }),
+  terrainType: terrainTypeEnum('terrain_type').notNull(),
+  name: text('name'),
+  riverAdjacent: boolean('river_adjacent').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [
+  index('idx_tiles_player_territory_id').on(table.playerTerritoryId),
+  check('tiles_river_adjacent_only_on_plaine_fluviale',
+    sql`${table.riverAdjacent} = false OR ${table.terrainType} = 'plaine_fluviale'`),
 ])
 
 export const armies = pgTable('armies', {
@@ -232,6 +254,14 @@ export const matchParticipantsRelations = relations(matchParticipants, ({ one })
   }),
 }))
 
-export const playerTerritoriesRelations = relations(playerTerritories, ({ one }) => ({
+export const playerTerritoriesRelations = relations(playerTerritories, ({ one, many }) => ({
   player: one(players, { fields: [playerTerritories.playerId], references: [players.id] }),
+  tiles: many(tiles),
+}))
+
+export const tilesRelations = relations(tiles, ({ one }) => ({
+  territory: one(playerTerritories, {
+    fields: [tiles.playerTerritoryId],
+    references: [playerTerritories.id],
+  }),
 }))
