@@ -28,7 +28,7 @@ describe('[MOUNT-STRUCT-001] toggleMountFn server function declaration', () => {
 
   it('toggleMountFn uses the correct z.object input schema', () => {
     const code = readSrc('src/server-fns/unit-mutations.ts')
-    // Coupled: inputValidator and schema on the same toggleMountFn block
+    // Coupled: validator and schema on the same toggleMountFn block
     expect(code).toMatch(/const toggleMountFn[\s\S]{0,300}z\.object\(\{ armyId: z\.string\(\)\.uuid\(\), subProfileId: z\.string\(\)\.uuid\(\), isMount: z\.boolean\(\) \}\)/)
   })
 })

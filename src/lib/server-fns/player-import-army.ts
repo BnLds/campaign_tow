@@ -9,7 +9,7 @@ import type { ServerResult } from '../types'
 
 export const playerImportArmyFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(importArmySchema)
+  .validator(importArmySchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ armyId: string; armyName: string; faction: string; unitCount: number }>> => {
     // Guard: guests cannot import
     if (context.session.isGuest) {

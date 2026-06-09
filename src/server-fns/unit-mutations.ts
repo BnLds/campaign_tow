@@ -27,7 +27,7 @@ export const VALID_STATS = ['m', 'cc', 'ct', 'f', 'e', 'pv', 'i', 'a', 'cd'] as 
 
 export const addStatModifierFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       armyId: z.string().uuid(),
       unitId: z.string().uuid(),
@@ -53,7 +53,7 @@ export const addStatModifierFn = createServerFn({ method: 'POST' })
 
 export const removeStatModifierFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(z.object({ armyId: z.string().uuid(), modifierId: z.string().uuid() }))
+  .validator(z.object({ armyId: z.string().uuid(), modifierId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const guard = await assertModifierBelongsToArmy(data.modifierId, data.armyId)
     if (!guard.ok) return guard.result
@@ -71,7 +71,7 @@ export const removeStatModifierFn = createServerFn({ method: 'POST' })
 
 export const addUnitGainFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       armyId: z.string().uuid(),
       unitId: z.string().uuid(),
@@ -92,7 +92,7 @@ export const addUnitGainFn = createServerFn({ method: 'POST' })
 
 export const removeUnitGainFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(z.object({ armyId: z.string().uuid(), gainId: z.string().uuid() }))
+  .validator(z.object({ armyId: z.string().uuid(), gainId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const guard = await assertGainBelongsToArmy(data.gainId, data.armyId)
     if (!guard.ok) return guard.result
@@ -110,7 +110,7 @@ export const removeUnitGainFn = createServerFn({ method: 'POST' })
 
 export const toggleMountFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(z.object({ armyId: z.string().uuid(), subProfileId: z.string().uuid(), isMount: z.boolean() }))
+  .validator(z.object({ armyId: z.string().uuid(), subProfileId: z.string().uuid(), isMount: z.boolean() }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const guard = await assertSubProfileBelongsToArmy(data.subProfileId, data.armyId)
     if (!guard.ok) return guard.result
@@ -125,7 +125,7 @@ export const toggleMountFn = createServerFn({ method: 'POST' })
 
 export const updateXpFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       armyId: z.string().uuid(),
       unitId: z.string().uuid(),
@@ -147,7 +147,7 @@ export const updateXpFn = createServerFn({ method: 'POST' })
 
 export const updatePointsFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       armyId: z.string().uuid(),
       unitId: z.string().uuid(),
@@ -182,7 +182,7 @@ export const updatePointsFn = createServerFn({ method: 'POST' })
 
 export const updateNicknameFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       armyId: z.string().uuid(),
       unitId: z.string().uuid(),
@@ -211,7 +211,7 @@ export const updateNicknameFn = createServerFn({ method: 'POST' })
 
 export const sendToGraveyardFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       armyId: z.string().uuid(),
       unitId: z.string().uuid(),
@@ -251,7 +251,7 @@ export const sendToGraveyardFn = createServerFn({ method: 'POST' })
 
 export const deleteUnitFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(z.object({ armyId: z.string().uuid(), unitId: z.string().uuid() }))
+  .validator(z.object({ armyId: z.string().uuid(), unitId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const guard = await assertUnitBelongsToArmy(data.unitId, data.armyId)
     if (!guard.ok) return guard.result
@@ -279,7 +279,7 @@ export const deleteUnitFn = createServerFn({ method: 'POST' })
 
 export const restoreUnitFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(z.object({ armyId: z.string().uuid(), unitId: z.string().uuid() }))
+  .validator(z.object({ armyId: z.string().uuid(), unitId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const guard = await assertUnitBelongsToArmy(data.unitId, data.armyId)
     if (!guard.ok) return guard.result

@@ -6,7 +6,7 @@ import { createPlayerSchema } from '../lib/validators'
 
 export const createPlayerFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(createPlayerSchema)
+  .validator(createPlayerSchema)
   .handler(async ({ data }): Promise<ServerResult<{ id: string; username: string; inviteToken: string }>> => {
     const { checkUsernameExists, createPlayer } = await import('../db/queries')
 
@@ -40,7 +40,7 @@ export const listPlayersFn = createServerFn({ method: 'GET' })
 // Story 1.6 — deletePlayerFn: POST mutation, returns ServerResult<null>
 export const deletePlayerFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ playerId: z.string().uuid() }))
+  .validator(z.object({ playerId: z.string().uuid() }))
   .handler(async ({ context, data }): Promise<ServerResult<null>> => {
     if (data.playerId === context.session.playerId) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Impossible de supprimer votre propre compte' } }
@@ -54,7 +54,7 @@ export const deletePlayerFn = createServerFn({ method: 'POST' })
 
 export const getInviteLinkFn = createServerFn({ method: 'GET' })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ playerId: z.string().uuid() }))
+  .validator(z.object({ playerId: z.string().uuid() }))
   .handler(async ({ data }): Promise<ServerResult<{ inviteToken: string | null }>> => {
     const { getPlayerInviteToken } = await import('../db/queries')
     const result = await getPlayerInviteToken(data.playerId)
@@ -66,7 +66,7 @@ export const getInviteLinkFn = createServerFn({ method: 'GET' })
 
 export const regenerateInviteTokenFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ playerId: z.string().uuid() }))
+  .validator(z.object({ playerId: z.string().uuid() }))
   .handler(async ({ context, data }): Promise<ServerResult<{ inviteToken: string }>> => {
     if (data.playerId === context.session.playerId) {
       return { success: false, error: { code: 'FORBIDDEN', message: 'Impossible de regénérer votre propre lien' } }

@@ -77,7 +77,7 @@ export const loadOpponentsFn = createServerFn({ method: 'GET' })
 
 export const createMatchFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/) }))
+  .validator(z.object({ opponentPlayerId: z.string(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), time: z.string().regex(/^\d{2}:\d{2}$/) }))
   .handler(async ({ context, data }) => {
     const { session } = context
 
@@ -141,7 +141,7 @@ export const createMatchFn = createServerFn({ method: 'POST' })
 
 export const checkDuplicateMatchFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ opponentPlayerId: z.string(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+  .validator(z.object({ opponentPlayerId: z.string(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
   .handler(async ({ context, data }) => {
     if (context.session.isGuest) throw new Error('UNAUTHORIZED')
     const { checkDuplicateMatch } = await import('../db/queries')

@@ -14,7 +14,7 @@ import type { ServerResult } from '../lib/types'
 
 export const updateArmyNameFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       armyId: z.string().uuid(),
       name: z

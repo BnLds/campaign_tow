@@ -57,9 +57,9 @@ describe('[P0] playerImportArmyFn — declaration and middleware', () => {
     expect(code).toMatch(/playerImportArmyFn\s*=\s*createServerFn[\s\S]{0,300}\.middleware\(\[authMiddleware\]\)/)
   })
 
-  it('[PAI-003] playerImportArmyFn uses inputValidator with importArmySchema', () => {
+  it('[PAI-003] playerImportArmyFn uses validator with importArmySchema', () => {
     const code = getServerFn()
-    expect(code).toMatch(/\.inputValidator\(importArmySchema\)/)
+    expect(code).toMatch(/\.validator\(importArmySchema\)/)
   })
 
   it('[PAI-004] playerImportArmyFn return type is ServerResult<{...}>', () => {

@@ -7,7 +7,7 @@ import { createMatchSchema } from '../lib/validators'
 // Story 3.1 — createMatchFn: POST admin tool to create a match with two participants
 export const createMatchFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(createMatchSchema)
+  .validator(createMatchSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ matchId: string }>> => {
     if (data.army1Id === data.army2Id) {
       return { success: false, error: { code: 'VALIDATION_ERROR', message: 'Les deux armées doivent être différentes' } }
@@ -52,7 +52,7 @@ export const createMatchFn = createServerFn({ method: 'POST' })
 // Delete pending match — admin (no participant check, same guard as player path)
 export const deleteMatchAdminFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ matchId: z.string().min(1) }))
+  .validator(z.object({ matchId: z.string().min(1) }))
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const { deleteMatchWithXpRollback } = await import('../db/queries')
     try {

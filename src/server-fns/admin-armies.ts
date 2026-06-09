@@ -7,7 +7,7 @@ import { importArmySchema, assignArmySchema, addUnitSchema, updateSubProfileSche
 // Story 2.1 — importArmyFn: POST, parses OWB text and inserts army + units + sub_profiles
 export const importArmyFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(importArmySchema)
+  .validator(importArmySchema)
   .handler(async ({ data }): Promise<ServerResult<{ armyId: string; armyName: string; unitCount: number }>> => {
     const { parseOwbExport } = await import('../lib/owb-parser')
     const { createArmyWithUnits } = await import('../db/queries')
@@ -50,7 +50,7 @@ export const listArmiesFn = createServerFn({ method: 'GET' })
 // Story 2.1 — assignArmyFn: POST, assigns a player to an army
 export const assignArmyFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(assignArmySchema)
+  .validator(assignArmySchema)
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const { assignArmyToPlayer } = await import('../db/queries')
     try {
@@ -67,7 +67,7 @@ export const assignArmyFn = createServerFn({ method: 'POST' })
 // Story 2.2 — addUnitFn: POST, manually adds a unit + sub_profile to an army
 export const addUnitFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(addUnitSchema)
+  .validator(addUnitSchema)
   .handler(async ({ data }): Promise<ServerResult<{ unitId: string; subProfileId: string }>> => {
     const { insertUnit } = await import('../db/queries')
     try {
@@ -96,7 +96,7 @@ export const addUnitFn = createServerFn({ method: 'POST' })
 // Story 2.2 — updateSubProfileFn: POST, updates stat fields on a sub_profile row
 export const updateSubProfileFn = createServerFn({ method: 'POST' })
   .middleware([adminMiddleware])
-  .inputValidator(updateSubProfileSchema)
+  .validator(updateSubProfileSchema)
   .handler(async ({ data }): Promise<ServerResult<null>> => {
     const { updateSubProfileStats } = await import('../db/queries')
     try {
@@ -123,7 +123,7 @@ export const updateSubProfileFn = createServerFn({ method: 'POST' })
 // Story 2.2 — getArmyUnitsFn: GET, returns units + sub_profiles for a given army
 export const getArmyUnitsFn = createServerFn({ method: 'GET' })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ armyId: z.string() }))
+  .validator(z.object({ armyId: z.string() }))
   .handler(async ({ data }) => {
     const { getUnitsForArmy } = await import('../db/queries')
     return getUnitsForArmy(data.armyId)

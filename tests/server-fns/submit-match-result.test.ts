@@ -48,10 +48,10 @@ describe('[AC1][AC4][P0] Server function — submitMatchResultFn — src/routes/
     expect(route).toMatch(/submitMatchResultFn\s*=\s*createServerFn[\s\S]{0,600}\.middleware\(\[authMiddleware\]\)/)
   })
 
-  // AC: 1 — Task 3.1: uses inputValidator with submitMatchResultSchema
-  it('[3.3-SFN-003] submitMatchResultFn uses inputValidator with submitMatchResultSchema', () => {
+  // AC: 1 — Task 3.1: uses validator with submitMatchResultSchema
+  it('[3.3-SFN-003] submitMatchResultFn uses validator with submitMatchResultSchema', () => {
     const route = getCampaignRoute()
-    expect(route).toMatch(/submitMatchResultFn[\s\S]{0,600}\.inputValidator\(submitMatchResultSchema\)/)
+    expect(route).toMatch(/submitMatchResultFn[\s\S]{0,600}\.validator\(submitMatchResultSchema\)/)
   })
 
   // AC: 1, 4 — Task 3.1: submitMatchResultSchema is imported from validators

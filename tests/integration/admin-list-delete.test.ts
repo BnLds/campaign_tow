@@ -128,10 +128,10 @@ describe('[AC4][AC5][P0] deletePlayerFn server function — src/server-fns/admin
     expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,200}method:\s*['"]POST['"]/)
   })
 
-  it('[1.6-INT-015] deletePlayerFn has .inputValidator() with z.object (input validation — playerId required)', () => {
+  it('[1.6-INT-015] deletePlayerFn has .validator() with z.object (input validation — playerId required)', () => {
     const adminPlayers = readFileSync(resolve(root, 'src/server-fns/admin-players.ts'), 'utf-8')
-    // .inputValidator and z.object must be coupled in the deletePlayerFn chain
-    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,600}\.inputValidator\(z\.object/)
+    // .validator and z.object must be coupled in the deletePlayerFn chain
+    expect(adminPlayers).toMatch(/deletePlayerFn[\s\S]{0,600}\.validator\(z\.object/)
   })
 
   it('[1.6-INT-016] deletePlayerFn self-delete guard returns FORBIDDEN error code (AC5 — server-side protection)', () => {

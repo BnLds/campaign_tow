@@ -67,7 +67,7 @@ describe('[AC3][AC4][AC8][P0] DB queries — incrementUnitXp — src/db/queries.
   // 10.3 — returns null for non-existent unitId
   it('[4.1-QRY-007] incrementUnitXp returns null when unit not found (rows.length === 0)', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/incrementUnitXp[\s\S]{0,1000}(rows\.length > 0[\s\S]{0,100}null|\? rows\[0\] : null|length === 0[\s\S]{0,100}null)/)
+    expect(queries).toMatch(/incrementUnitXp[\s\S]{0,1000}(rows\.length > 0[\s\S]{0,100}null|\? rows\[0\] : null|length === 0[\s\S]{0,100}null|rows\[0\] \?\? null)/)
   })
 
   // 10.1 — filters by unitId using eq()

@@ -66,7 +66,7 @@ describe('[AC1][AC4][P0] DB queries — getMatchParticipantByMatchAndPlayer — 
   // AC: 4 — Task 7.3: returns null when matchId does not exist (same null path)
   it('[3.3-QRY-008] getMatchParticipantByMatchAndPlayer return type is { id, matchId, playerId, armyId, result } | null', () => {
     const queries = getQueries()
-    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,2000}(length > 0[\s\S]{0,100}null|null[\s\S]{0,100}length > 0|\? rows\[0\] : null)/)
+    expect(queries).toMatch(/getMatchParticipantByMatchAndPlayer[\s\S]{0,2000}(length > 0[\s\S]{0,100}null|null[\s\S]{0,100}length > 0|\? rows\[0\] : null|rows\[0\] \?\? null)/)
   })
 })
 

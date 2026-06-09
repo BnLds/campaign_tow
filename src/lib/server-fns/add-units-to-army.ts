@@ -11,7 +11,7 @@ import { invariant } from '../invariant'
 
 export const addUnitsToArmyFn = createServerFn({ method: 'POST' })
   .middleware([armyOwnerMiddleware])
-  .inputValidator(addUnitsToArmySchema)
+  .validator(addUnitsToArmySchema)
   .handler(async ({ data }): Promise<ServerResult<{ unitCount: number }>> => {
     const { db } = await import('../../db')
     const { units, subProfiles } = await import('../../db/schema')

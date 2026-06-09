@@ -7,19 +7,28 @@ import { createFileRoute } from '@tanstack/react-router'
 // SÉCURITÉ : la whitelist host + projectId est essentielle. Sans elle, cet
 // endpoint devient un proxy ouvert vers n'importe quel projet Sentry.
 // On dérive ces valeurs depuis SENTRY_DSN (env) — une seule source de vérité.
-if (!process.env.SENTRY_DSN) {
-  throw new Error('[Sentry tunnel] SENTRY_DSN environment variable is required')
+const sentryDsn = process.env.SENTRY_DSN
+if (process.env.NODE_ENV === 'production' && !sentryDsn) {
+  throw new Error(
+    '[Sentry tunnel] SENTRY_DSN environment variable is required in production',
+  )
 }
-
-const sentryDsn = new URL(process.env.SENTRY_DSN)
-const SENTRY_HOST = sentryDsn.hostname
-const SENTRY_PROJECT_IDS = new Set([sentryDsn.pathname.replace(/^\//, '')])
 
 export const Route = createFileRoute('/api/tunnel')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!sentryDsn) {
+          return new Response(null, { status: 204 })
+        }
+
         try {
+          const allowedDsn = new URL(sentryDsn)
+          const sentryHost = allowedDsn.hostname
+          const sentryProjectIds = new Set([
+            allowedDsn.pathname.replace(/^\//, ''),
+          ])
+
           // L'envelope doit être lue en bytes — elle peut contenir du binaire
           // (attachments, payloads Replay) qu'on ne doit pas re-sérialiser.
           const envelopeBytes = await request.arrayBuffer()
@@ -38,14 +47,14 @@ export const Route = createFileRoute('/api/tunnel')({
           const dsn = new URL(header.dsn)
           const projectId = dsn.pathname.replace(/^\//, '')
 
-          if (dsn.hostname !== SENTRY_HOST) {
+          if (dsn.hostname !== sentryHost) {
             return new Response('invalid sentry host', { status: 400 })
           }
-          if (!SENTRY_PROJECT_IDS.has(projectId)) {
+          if (!sentryProjectIds.has(projectId)) {
             return new Response('invalid project id', { status: 400 })
           }
 
-          const upstream = `https://${SENTRY_HOST}/api/${projectId}/envelope/`
+          const upstream = `https://${sentryHost}/api/${projectId}/envelope/`
           const upstreamRes = await fetch(upstream, {
             method: 'POST',
             body: envelopeBytes,

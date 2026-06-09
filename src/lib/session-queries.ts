@@ -20,7 +20,7 @@ export const getSessionFn = createServerFn({ method: 'GET' }).handler(async () =
 // Accepts playerId as input to avoid a redundant session read.
 export const getPlayerArmyInfoFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ playerId: z.string() }))
+  .validator(z.object({ playerId: z.string() }))
   .handler(async ({ context, data: { playerId } }) => {
     // authMiddleware guarantees context.session is always defined here
     if (context.session.isGuest || context.session.playerId !== playerId) {

@@ -39,7 +39,7 @@ type PostMatchLoaderData = {
 
 const loadPostMatchDataFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .inputValidator(loadPostMatchDataSchema)
+  .validator(loadPostMatchDataSchema)
   .handler(async ({ context, data }): Promise<PostMatchLoaderData> => {
     if (context.session.isGuest) {
       throw redirect({ to: '/' })
@@ -303,7 +303,7 @@ const loadPostMatchDataFn = createServerFn({ method: 'GET' })
 
 export const submitUnitXpFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(submitInitialXpSchema)
+  .validator(submitInitialXpSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ unitId: string; newXp: number }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
@@ -359,7 +359,7 @@ export const submitUnitXpFn = createServerFn({ method: 'POST' })
 
 export const completeEvolutionsWithGainsFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
-  .inputValidator(completeEvolutionsWithGainsSchema)
+  .validator(completeEvolutionsWithGainsSchema)
   .handler(async ({ context, data }): Promise<ServerResult<{ matchId: string }>> => {
     if (context.session.isGuest) {
       return { success: false, error: { code: 'UNAUTHORIZED', message: 'Connexion requise' } }
