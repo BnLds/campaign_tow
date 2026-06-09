@@ -1,10 +1,23 @@
 # Campaign TOW
 
-A campaign tracker for **Warhammer: The Old World** tabletop battles. Players register their armies, fight matches, and the app tracks unit experience (XP), tier progression, territories, and the full battle history of the campaign.
+A web app for a closed club of ~15 players to follow a **Warhammer: The Old World** campaign. It records how each army evolves across battles — unit experience (XP), tier progression, permanent injuries, territories — and turns it into a living, shareable history.
 
 Live instance: **https://old-world-campaign.ben-lds.com**
 
 > This is a private repository. Contributions are by invitation only — see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+## Philosophy
+
+The app fits into an existing ritual instead of replacing it: the friendly end-of-game calculation on paper stays intact — the app remembers what the players decided. Four ideas drive the product:
+
+- **The app waits for the player.** XP entry is manual and intentional. An out-of-date army is fine — there is no forced synchronisation and no heavy onboarding. The app accepts what a player deposits, when they want.
+- **Trust over enforcement.** This is a closed club of people who know each other. Either player can record a match result, evolutions are entered without cross-validation, and the legality of chosen improvements is left to the players — the app guides, it does not police.
+- **A narrative timeline, not a spreadsheet.** The central view is a scrollable chronicle of an army's evolution — current state on top, then each past battle with its consequences below.
+- **Cross-visibility.** Every player can browse their opponents' armies — current strength, campaign history, tiers crossed — to prepare for a match.
+
+It serves two moments: **reference at the table** during a game (current unit state and rules tables, two taps away) and **campaign log after a game** (a guided, unit-by-unit post-match flow that records XP, character injuries and tier-up improvements).
 
 ---
 
@@ -23,6 +36,8 @@ Live instance: **https://old-world-campaign.ben-lds.com**
 | Deployment | Docker Compose + Traefik on a VPS |
 
 Package manager: **pnpm 10.33**. Node: **22+**.
+
+> Code conventions and the architectural rules contributors must follow are documented in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ---
 
