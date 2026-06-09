@@ -1,4 +1,5 @@
 # État de mon armée
+Faction: Tribu des Orcs et Gobelins
 
 ## Territoires
 
@@ -10,6 +11,7 @@
 | 4 | Plaine | 30 CO | — | — |
 | 5 | Lisière forestière | 40 CO | Village (1 emplacement, 0 libre) | Forge (60 CO) |
 | 6 | Montagne | 20 CO | Village (1 emplacement, 0 libre) | Tour du Sorcier (80 CO) |
+| 7 | Lisière forestière | 40 CO | — | — |
 
 ## Colonies et bâtiments
 
@@ -31,8 +33,8 @@
 
 | Source | CO |
 |---|---|
-| Territoires (base) | 190 CO |
-| **Total** | **190 CO** |
+| Territoires (base) | 230 CO |
+| **Total** | **230 CO** |
 
 ## Historique des dépenses
 
@@ -78,6 +80,16 @@
 | Tour du Sorcier (montagne) | -80 CO | 115 CO |
 
 **Solde fin de semaine 4 : 115 CO**
+
+### Semaine 5
+
+| Opération | Coût | Solde après |
+|---|---|---|
+| Report semaine 4 | — | 115 CO |
+| Acquisition : Lisière forestière | — | 115 CO |
+| Revenu du tour | +230 CO | 345 CO |
+
+**Solde fin de semaine 5 : 345 CO**
 
 ## Capacité armée
 
